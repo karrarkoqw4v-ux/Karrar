@@ -10,9 +10,10 @@ H.mount=function(){
  '<div class="home" id="main">'
  +'<header class="topbar"><button class="icon-btn" id="bMenu"><svg class="ic flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h10"/></svg></button><div class="title" id="title"></div><button class="icon-btn" id="bSound"></button><button class="icon-btn" id="bNew">'+K.icon('message-circle-plus',22)+'</button></header>'
  +'<div class="scroll chat" id="scroll"><div class="empty" id="empty"><div class="logo-big">'+K.LOGO+'</div><h2>'+K.t('hi')+'</h2></div><div class="msgs" id="msgs"></div></div>'
- +'<div class="composer-wrap"><div class="composer" id="composer"><div class="previews" id="previews"></div><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea>'
- +'<div class="crow"><button class="pill" id="pThink">'+K.icon('atom',15)+'<span>'+K.t('think')+'</span></button><button class="pill" id="pSearch">'+K.icon('globe',15)+'<span>'+K.t('search')+'</span></button><span class="sp"></span><button class="ring-btn" id="bPlus">'+K.icon('plus',14)+'</button><button class="ring-btn" id="bSend">'+K.icon('audio-lines',14)+'</button></div></div>'
- +'<div class="sheet" id="sheet"><div class="gal" id="gal"></div><div class="big3"><button id="aCam">'+K.icon('camera',32)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',32)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',32)+'<span>'+K.t('file')+'</span></button></div></div></div></div>'
+ +'<div class="composer-wrap" id="cwrap"><div class="pmenu" id="pmenu"><div class="gal" id="gal"></div><div class="attrow"><button id="aCam">'+K.icon('camera',22)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',22)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',22)+'<span>'+K.t('file')+'</span></button></div>'
+ +'<div class="mlist"><button class="mi soon" id="mImg">'+K.icon('image',24)+'<span>'+K.t('create_img')+'</span><i class="badge">'+K.t('soon')+'</i></button><button class="mi" id="mThink">'+K.icon('atom',24)+'<span>'+K.t('think')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mSearch">'+K.icon('globe',24)+'<span>'+K.t('web_search')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button></div></div>'
+ +'<div class="mchips" id="mchips"></div>'
+ +'<div class="bar" id="composer"><div class="previews" id="previews"></div><div class="brow"><button class="bplus" id="bPlus">'+K.icon('plus',27)+'</button><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea><button class="bmic" id="bMic">'+K.icon('mic',23)+'</button><button class="bblue" id="bSend"></button></div></div></div>'
  +'<div class="scrim" id="scrim"></div>'
  +'<aside class="drawer" id="drawer"><div class="dsearch">'+K.icon('search',24)+'<input id="dq" placeholder="'+esc(K.t('search_chats'))+'"></div><div class="dlist" id="dlist"></div>'
  +'<button class="delbar hidden" id="delbar"></button><div class="dprof press" id="dprof"><div class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="9.4" r="3.9" fill="#8e8e93"/><path d="M4.6 20Q5.5 14 12 14t7.400 6Q16 23 12 23T4.600 20z" fill="#8e8e93"/></svg></div><b id="pname"></b><span class="mo">'+K.icon('ellipsis',26)+'</span></div></aside>';
@@ -20,15 +21,19 @@ H.mount=function(){
  $('bMenu').onclick=()=>H.openDrawer();
  $('bNew').onclick=()=>H.newChat();
  $('bSound').onclick=()=>{const on=!K.pref.bool('sound',false);K.pref.setBool('sound',on);if(!on)K.native.stopSpeak();H.paintSound();K.toast(K.t('s_sound')+(on?' ✓':' ✕'))};
- $('pThink').onclick=()=>{S().think=!S().think;H.paintPills();K.native.haptic()};
- $('pSearch').onclick=()=>{S().search=!S().search;H.paintPills();K.native.haptic()};
+ $('mThink').onclick=()=>{S().think=!S().think;H.paintPills();H.toggleSheet(false);K.native.haptic()};
+ $('mSearch').onclick=()=>{S().search=!S().search;H.paintPills();H.toggleSheet(false);K.native.haptic()};
+ $('mImg').onclick=()=>K.toast(K.t('create_img')+' — '+K.t('soon'));
  $('bPlus').onclick=()=>H.toggleSheet(!H.sheetOpen);
  $('bSend').onclick=()=>H.sendOrVoice();
- const ta=$('ta');ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,150)+'px';H.refreshComposer()});
+ $('bMic').onclick=async()=>{const t=await K.native.voice();if(t){const ta=$('ta');ta.value+=(ta.value?' ':'')+t;ta.dispatchEvent(new Event('input'))}else if(K.native.real)K.toast(K.t('voice_fail'))};
+ const ta=$('ta');ta.addEventListener('input',()=>{ta.style.height='auto';const lh=parseFloat(getComputedStyle(ta).lineHeight)||24;const bar=$('composer');
+  if(!ta.value){bar.classList.remove('multi')}else if(ta.scrollHeight>lh*1.6)bar.classList.add('multi');
+  ta.style.height=Math.min(ta.scrollHeight,150)+'px';H.refreshComposer()});
  ta.addEventListener('focus',()=>H.toggleSheet(false));
- $('aCam').onclick=async()=>{const r=await K.native.camera();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
- $('aAlb').onclick=async()=>{const r=await K.native.pickImages();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
- $('aFile').onclick=async()=>{const f=await K.native.pickFile();if(f&&f.name)H.addAtt({kind:'file',name:f.name,text:f.text||''})};
+ $('aCam').onclick=async()=>{H.toggleSheet(false);const r=await K.native.camera();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
+ $('aAlb').onclick=async()=>{H.toggleSheet(false);const r=await K.native.pickImages();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
+ $('aFile').onclick=async()=>{H.toggleSheet(false);const f=await K.native.pickFile();if(f&&f.name)H.addAtt({kind:'file',name:f.name,text:f.text||''})};
  $('scrim').onclick=()=>H.closeDrawer();
  $('dq').oninput=e=>{H.q=e.target.value.trim().toLowerCase();H.renderList()};
  $('dprof').onclick=()=>{H.closeDrawer();K.settings.open('main')};
@@ -41,25 +46,30 @@ H.mount=function(){
  H.paintSound();H.paintPills();H.refreshComposer();
 };
 H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',22)};
-H.paintPills=function(){$('pThink').classList.toggle('on',S().think);$('pSearch').classList.toggle('on',S().search)};
+H.paintPills=function(){
+ $('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
+ const c=$('mchips');c.innerHTML=(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
+ c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
+};
 H.refreshComposer=function(){
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
- let icon='audio-lines',cls='ring-btn';
- if(S().streaming){icon='square';cls+=' stop'}else if(has){icon='arrow-up';cls+=' send'}
- if(b.dataset.s!==cls){b.className=cls;b.innerHTML=K.icon(icon,icon==='square'?11:14);b.dataset.s=cls;if(icon!=='audio-lines'){b.classList.remove('pop');void b.offsetWidth}}
+ let icon='audio-lines';if(S().streaming)icon='square';else if(has)icon='arrow-up';
+ if(b.dataset.s!==icon){b.dataset.s=icon;b.innerHTML=K.icon(icon,icon==='square'?15:21);b.classList.remove('pulse');void b.offsetWidth;if(icon!=='audio-lines')b.classList.add('pulse')}
+ if(!ta.value)$('composer').classList.remove('multi');
  const pv=$('previews');pv.innerHTML=S().atts.map((a,i)=>'<div class="pv">'+(a.kind==='img'?'<img src="'+a.th+'">':'<div class="fchip">'+K.icon('file-text',22)+'<span>'+esc(a.name)+'</span></div>')+'<button class="x" data-i="'+i+'">'+K.icon('x',13,3)+'</button></div>').join('');
  pv.querySelectorAll('.x').forEach(x=>x.onclick=()=>{S().atts.splice(+x.dataset.i,1);H.refreshComposer();H.markGallery()});
 };
 H.addAtt=function(a){S().atts.push(a);H.refreshComposer()};
+/* empty bar: blue wave button = voice conversation (speak, then the answer is read aloud) */
 H.sendOrVoice=async function(){
  const has=$('ta').value.trim().length>0||S().atts.length>0;
  if(S().streaming||has){K.chat.send();return}
- const t=await K.native.voice();if(t){const ta=$('ta');ta.value+=t;ta.dispatchEvent(new Event('input'))}else if(t===''&&K.native.real)K.toast(K.t('voice_fail'));
+ const t=await K.native.voice();
+ if(t){$('ta').value=t;S().voiceReply=true;$('ta').dispatchEvent(new Event('input'));K.chat.send()}else if(K.native.real)K.toast(K.t('voice_fail'));
 };
 /* ---- attach sheet ---- */
 H.toggleSheet=function(open){
- H.sheetOpen=open;$('sheet').classList.toggle('open',open);
- $('bPlus').innerHTML=K.icon(open?'x':'plus',14);
+ H.sheetOpen=open;$('pmenu').classList.toggle('open',open);$('bPlus').classList.toggle('open',open);
  if(open){document.activeElement&&document.activeElement.blur();H.loadGallery()}
 };
 H.closeSheet=()=>H.toggleSheet(false);

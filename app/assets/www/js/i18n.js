@@ -3,7 +3,7 @@ window.K=window.K||{};
 const D={
 app:["كرّار AI","Karrar AI"],
 hi:["مرحبًا، ما الذي يمكنني مساعدتك به؟","Hi, how can I help you today?"],
-hint:["رسالة أو اضغط للتحدث","Message or tap to talk"],
+hint:["اسأل كرّار","Ask Karrar"],create_img:["إنشاء صورة","Create image"],soon:["قريبًا","Soon"],web_search:["بحث في الويب","Search the web"],
 think:["تفكير","Think"],search:["بحث","Search"],
 new_chat:["محادثة جديدة","New chat"],
 thinking:["جارٍ التفكير…","Thinking…"],thought_for:["تم التفكير لمدة {0} ثانية","Thought for {0} seconds"],

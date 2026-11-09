@@ -123,7 +123,7 @@ C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
  if(!view.m.c&&!view.m.t)view.m.c='—';
  view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
- if(K.pref.bool('sound',false))K.native.speak(view.m.c);
+ if(K.pref.bool('sound',false)||S.voiceReply)K.native.speak(view.m.c);S.voiceReply=false;
 };
 C.stop=function(){if(S.handle)S.handle.cancel();K.native.stopSpeak();if(S.live){if(!S.live.m.s&&S.live.m.t)S.live.m.s=1;C.finish(S.live)}};
 C.action=function(v,a){
