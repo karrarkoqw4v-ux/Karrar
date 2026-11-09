@@ -56,6 +56,7 @@ C.mount=function(){
  msgs.addEventListener('click',function(e){
   const t=e.target;
   const gb=t.closest('[data-g]');if(gb){K.imggen.act(gb.closest('.msg.ai')._view,gb.dataset.g);return}
+  const sv=t.closest('[data-save]');if(sv){const cb=sv.closest('.codebox');K.files.saveCode(cb.querySelector('.ch>span').textContent,cb.querySelector('pre').innerText);return}
   const dl=t.closest('[data-fid]');if(dl){K.files.save(dl.dataset.fid,dl);return}
   const cp=t.closest('[data-copy]');if(cp){const pre=cp.closest('.codebox').querySelector('pre');K.native.copy(pre.innerText);if(!cp._t){const sp=cp.querySelector('span'),old=sp.textContent,ic=cp.querySelector('svg');cp.classList.add('done');sp.textContent=K.t('copied');cp._t=setTimeout(function(){cp.classList.remove('done');sp.textContent=old;cp._t=0},1600)}return}
   const a=t.closest('[data-a]');if(a){const v=a.closest('.msg.ai')._view;C.action(v,a.dataset.a);return}

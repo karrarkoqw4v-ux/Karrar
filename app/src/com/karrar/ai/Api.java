@@ -64,8 +64,13 @@ public final class Api {
                     if (extraCtx != null && extraCtx.length() > 0) sys = (sys.isEmpty() ? "" : sys + "\n\n") + extraCtx;
                     sys = BASE + (plan ? PLAN : "") + (sys.isEmpty() ? "" : "\n\n" + sys);
                     if (!sys.isEmpty()) msgs.put(new JSONObject().put("role", "system").put("content", sys));
-                    for (Store.Msg m : history) {
+                    int lastUser = -1;
+                    for (int i = history.size() - 1; i >= 0; i--) if (history.get(i).role.equals("user")) { lastUser = i; break; }
+                    for (int hi = 0; hi < history.size(); hi++) {
+                        Store.Msg m = history.get(hi);
                         if (m.content.isEmpty() && m.role.equals("assistant")) continue;
+                        if (hi == lastUser && FILE_REQ.matcher(m.content).find())
+                        { Store.Msg c2 = new Store.Msg(); c2.role = m.role; c2.content = m.content + FILE_HINT; c2.images = m.images; m = c2; }
                         if (m.images != null && !m.images.isEmpty()) {
                             JSONArray parts = new JSONArray();
                             parts.put(new JSONObject().put("type", "text").put("text", m.content.isEmpty() ? "?" : m.content));
@@ -192,6 +197,11 @@ public final class Api {
         }
     }
 
+    private static final java.util.regex.Pattern FILE_REQ = java.util.regex.Pattern.compile(
+            "(\\u0645\\u0644\\u0641|\\bfiles?\\b|\\bzip\\b|\\bdocx?\\b|\\bxlsx?\\b|\\bcsv\\b|\\bpdf\\b|\\bapk\\b|\\u062a\\u062d\\u0645\\u064a\\u0644|download)", java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final String FILE_HINT = "\n\n[System note: the user wants a downloadable file. Deliver it as ONE fenced block whose first line is exactly ```file:<filename.ext> "
+            + "(for example ```file:notes.txt) with the complete file content inside, then close with ```. For a .zip put several files separated by lines like === path/file.ext ===. "
+            + "Do not describe the file instead of sending it. If the format is binary (apk, pdf, image, video) say you cannot create it and offer a .zip with the source.]";
     private static final String BASE = "You are Bawsala (\u0628\u0648\u0635\u0644\u0629), a helpful assistant. Always answer in the user's language. "
             + "Give detailed, accurate, well-structured answers: start with a direct answer, then explain with ## headings, bullet or numbered lists, "
             + "a table when comparing things, code blocks tagged with the language for code, and short concrete examples; finish with a brief summary or next step when useful. "
@@ -252,6 +262,14 @@ public final class Api {
                     ? "المستخدم يسأل: «" + q + "».\nسأحلّل السؤال أولاً، ثم أحدد النقاط الأساسية، وبعدها أرتّب الإجابة بشكل واضح ومختصر.\nبما أنني في الوضع التجريبي، سأعرض شكل الرد فقط."
                     : "The user asks: \"" + q + "\".\nFirst I'll analyse the question, pick the key points, then structure a clear answer.\nSince this is demo mode I'll only show how a reply looks.";
             stream(h, t, true, cb, ui, 14, 30);
+        }
+        if (FILE_REQ.matcher(q).find()) {
+            String fa = ar
+                    ? "\u0623\u0643\u064a\u062f\u060c \u0647\u0630\u0627 \u0645\u0644\u0641 \u062c\u0627\u0647\u0632 \u0644\u0644\u062a\u062d\u0645\u064a\u0644 \ud83d\udc47 (\u0631\u062f \u062a\u062c\u0631\u064a\u0628\u064a)\n\n```file:notes.txt\n\u0623\u0641\u0643\u0627\u0631 \u062a\u0637\u0628\u064a\u0642\u0627\u062a:\n1. \u062a\u0637\u0628\u064a\u0642 \u0645\u0647\u0627\u0645 \u0628\u0648\u0627\u062c\u0647\u0629 \u062f\u0627\u0643\u0646\u0629\n2. \u062a\u0637\u0628\u064a\u0642 \u0645\u0635\u0627\u0631\u064a\u0641 \u0634\u062e\u0635\u064a\u0629\n3. \u062a\u0637\u0628\u064a\u0642 \u062a\u0639\u0644\u0651\u0645 \u0644\u063a\u0627\u062a\n```\n\n\u0627\u0636\u063a\u0637 \u00ab\u062a\u062d\u0645\u064a\u0644\u00bb \u0644\u062d\u0641\u0638\u0647 \u0641\u064a \u0627\u0644\u062a\u0646\u0632\u064a\u0644\u0627\u062a. \u0644\u0644\u0645\u0644\u0641\u0627\u062a \u0627\u0644\u062d\u0642\u064a\u0642\u064a\u0629 \u0623\u0636\u0641 \u0645\u0641\u062a\u0627\u062d API \u0645\u0646 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a."
+                    : "Sure, here is a downloadable file \ud83d\udc47 (demo reply)\n\n```file:notes.txt\nApp ideas:\n1. A to-do app with a dark UI\n2. A personal budget tracker\n3. A language-learning app\n```\n\nTap Download to save it to Downloads. For real files add an API key in Settings.";
+            stream(h, fa, false, cb, ui, 10, 14);
+            post(ui, cb, null, null, "", h);
+            return;
         }
         String a = ar
                 ? "## وضع تجريبي\nهذا رد تجريبي يوضّح **شكل الإجابات** في «بوصلة». سؤالك كان:\n> ℹ️ " + q + "\n\n---\n\n## كيف تحصل على ردود حقيقية\n1. افتح **الإعدادات** ← **التطبيقات والخدمات المتصلة**.\n2. اختر الخدمة (DeepSeek أو OpenAI أو غيرها).\n3. أدخل **مفتاح API** ثم اضغط **اختبار الاتصال**.\n\n> 💡 بعد إدخال المفتاح تظهر خطوات تفكير حقيقية قبل كل رد.\n\n### مقارنة سريعة\n| الميزة | الحالة |\n|---|---|\n| التفكير قبل الرد | مفعّل |\n| البحث في الويب | مع المصادر |\n| حفظ المحادثات | على جهازك |\n\n### مثال كود\n```python\ndef hello(name):\n    return f\"مرحباً {name}\"\n\nprint(hello(\"بوصلة\"))\n```\n\n> ⚠️ لا تشارك مفتاح API مع أحد.\n\n**الخلاصة:** أضف المفتاح وسيصبح كل رد مفكَّرًا فيه ومفصّلًا."

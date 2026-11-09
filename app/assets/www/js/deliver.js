@@ -52,6 +52,11 @@ K.files.box=function(name,content){
  return '<div class="filebox'+(bad?' bad':'')+'" style="--fc:'+(bad?'#ff9f0a':k[1])+'"><span class="ft">'+esc(k[0])+'</span><div class="fn"><b>'+esc(name)+'</b><small>'+(bad?T('لا يمكن إنشاء هذا النوع من نص','Cannot be created from text'):K.files.size(size))+'</small></div>'
   +(bad?'':'<button class="dl" data-fid="'+id+'">'+K.icon('arrow-up',16,2.6).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'<span>'+T('تحميل','Download')+'</span></button>')+'</div>';
 };
+const EXT={javascript:'js',js:'js',typescript:'ts',ts:'ts',jsx:'jsx',tsx:'tsx',python:'py',py:'py',java:'java',kotlin:'kt',kt:'kt',c:'c',cpp:'cpp','c++':'cpp',csharp:'cs',cs:'cs',go:'go',rust:'rs',php:'php',swift:'swift',dart:'dart',sql:'sql',bash:'sh',sh:'sh',shell:'sh',ruby:'rb',json:'json',yaml:'yaml',yml:'yml',html:'html',xml:'xml',css:'css',markdown:'md',md:'md',csv:'csv',txt:'txt'};
+K.files.saveCode=async function(lang,code){
+ const e=EXT[(lang||'').trim().toLowerCase()]||'txt',name='code-'+Date.now().toString(36).slice(-4)+'.'+e;
+ try{const r=await build(name,code);const res=await K.native.saveFile(name,r.mime,r.b64);K.toast(res&&res.indexOf('err')===0?T('تعذّر الحفظ','Could not save'):T('تم الحفظ: ','Saved: ')+name)}catch(x){K.toast(T('تعذّر الحفظ','Could not save'))}
+};
 K.files.save=async function(id,btn){
  const f=reg[id];if(!f)return;
  const sp=btn&&btn.querySelector('span');if(sp)sp.textContent='…';
