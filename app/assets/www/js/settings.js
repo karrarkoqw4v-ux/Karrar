@@ -57,6 +57,7 @@ function mainPage(b){
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
  row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
  toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
+ row(c,{icon:'mic',title:(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style'),value:K.pref.get('dict_style','bar')==='orb'?(K.lang()==='ar'?'كرة':'Orb'):(K.lang()==='ar'?'شريط':'Bar'),onclick:async()=>{const k=await K.ui.choose(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style',K.lang()==='ar'?['شريط (يحلّ محل مربع الرسالة)','كرة نابضة (لوحة من الأسفل)']:['Bar (replaces the message box)','Pulsing orb (bottom sheet)'],K.pref.get('dict_style','bar')==='orb'?1:0);if(k!==null){K.pref.set('dict_style',k===1?'orb':'bar');S.rerender()}}});
  toggle(c,{icon:'atom',title:K.t('t_plan'),sub:K.t('t_plan_s'),key:'plan',def:true});
  toggle(c,{icon:'arrow-up',title:K.t('t_enter'),sub:K.t('t_enter_s'),key:'enter_send',def:false});
  const MT=['0','512','1024','2048','4096'];

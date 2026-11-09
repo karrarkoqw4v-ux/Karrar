@@ -30,7 +30,7 @@ H.mount=function(){
  $('mApps').onclick=()=>{H.toggleSheet(false);K.settings.open('apps')};
  $('bPlus').onclick=()=>H.toggleSheet(!H.sheetOpen);
  $('bSend').onclick=()=>H.sendOrVoice();
- $('bMic').onclick=async()=>{const t=await K.native.voice();if(t){const ta=$('ta');ta.value+=(ta.value?' ':'')+t;ta.dispatchEvent(new Event('input'))}else if(K.native.real)K.toast(K.t('voice_fail'))};
+ $('bMic').onclick=()=>K.dictate.start();
  const ta=$('ta');ta.addEventListener('input',()=>{ta.style.height='auto';const lh=parseFloat(getComputedStyle(ta).lineHeight)||24;const bar=$('composer');
   if(!ta.value){bar.classList.remove('multi')}else if(ta.scrollHeight>lh*1.6)bar.classList.add('multi');
   ta.style.height=Math.min(ta.scrollHeight,150)+'px';H.refreshComposer()});
