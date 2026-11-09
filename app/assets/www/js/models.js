@@ -17,7 +17,7 @@ K.models={
   const old=$('msheet');if(old)old.remove();
   const w=document.createElement('div');w.id='msheet';w.className='ms';
   w.innerHTML='<div class="ms-bd"></div><div class="ms-sh"><i class="ms-grab"></i><div class="ms-top"><b>'+T('اختيار النموذج','Select model')+'</b><button class="ms-x">'+K.icon('x',24,2.2)+'</button></div>'
-   +LIST().map((m,i)=>'<button class="ms-it'+(m[0]===K.models.cur()?' on':'')+'" data-i="'+i+'" style="--i:'+i+'"><span class="ck">'+(m[0]===K.models.cur()?K.icon('check',24,2.4):'')+'</span><div><div class="nm"><b>'+m[1]+'</b>'+(m[3]?'<i class="pill">'+T('قريباً','Soon')+'</i>':'')+'</div><small>'+m[2]+'</small></div></button>').join('')+'</div>';
+   +LIST().map((m,i)=>'<button class="ms-it'+(m[0]===K.models.cur()?' on':'')+'" data-i="'+i+'" style="--i:'+i+'"><span class="mck">'+(m[0]===K.models.cur()?K.icon('check',17,3.2):'')+'</span><div><div class="nm"><b>'+m[1]+'</b>'+(m[3]?'<i class="pill">'+T('قريباً','Soon')+'</i>':'')+'</div><small>'+m[2]+'</small></div></button>').join('')+'</div>';
   document.body.appendChild(w);
   const close=()=>{w.classList.add('out');setTimeout(()=>w.remove(),240)};K.models.close=close;
   w.querySelector('.ms-bd').onclick=close;w.querySelector('.ms-x').onclick=close;

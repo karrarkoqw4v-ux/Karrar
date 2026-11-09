@@ -58,7 +58,9 @@ html[data-theme=light] .dcirc{background:var(--surface);border-color:var(--borde
 .ms-top{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 6px}.ms-top b{flex:1;text-align:center;font-size:1.35em;font-weight:800;padding-inline-start:40px}.ms-top button{width:40px;height:40px;display:grid;place-items:center}
 .ms-it{display:flex;align-items:center;gap:12px;padding:16px;border-radius:20px;background:#232323;text-align:start;transition:transform .2s var(--spring);animation:fadeUp .4s calc(var(--i)*50ms) var(--ease) both}
 .ms-it:active{transform:scale(.98)}
-.ms-it .ck{width:32px;flex:none;color:#6f9bff;display:grid;order:2}
+.ms-it .mck{order:2;flex:none;width:28px;height:28px;border-radius:50%;border:2px solid #5a5a5f;display:grid;place-items:center;color:#fff;transition:all .25s var(--spring)}
+.ms-it.on .mck{background:#4d7cff;border-color:#4d7cff;box-shadow:0 0 14px rgba(77,124,255,.5)}
+.ms-it.on .mck svg{animation:pop .35s var(--spring) both}
 .ms-it>div{flex:1;min-width:0;text-align:start}.ms-it .nm b{direction:ltr}
 .ms-it .nm{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ms-it .nm b{font-size:1.2em;font-weight:800}
 .ms-it .pill{font-style:normal;background:#333;color:#cfcfd4;border-radius:99px;padding:3px 12px;font-weight:800;font-size:.8em}
