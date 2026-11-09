@@ -171,6 +171,50 @@ public class Bridge {
         }).start();
     }
 
+    /** Downloads an image (GET) or posts JSON (POST) and returns {"ok":true,"mime":..,"b64":..} or {"err":..}. */
+    @JavascriptInterface
+    public void fetchImage(final int id, final String url, final String bearer, final String body) {
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(100000);
+                    c.setInstanceFollowRedirects(true);
+                    c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) Bawsala/2.0");
+                    c.setRequestProperty("Accept", "image/*");
+                    if (bearer != null && !bearer.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + bearer);
+                    if (body != null && !body.isEmpty()) {
+                        c.setRequestMethod("POST");
+                        c.setDoOutput(true);
+                        c.setRequestProperty("Content-Type", "application/json");
+                        java.io.OutputStream os = c.getOutputStream();
+                        os.write(body.getBytes("UTF-8"));
+                        os.close();
+                    }
+                    int code = c.getResponseCode();
+                    String mime = c.getContentType() == null ? "" : c.getContentType().toLowerCase();
+                    if (code >= 400 || !mime.startsWith("image/")) {
+                        java.io.InputStream es = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                        String t = "";
+                        try { if (es != null) { byte[] bb = new byte[400]; int n = es.read(bb); if (n > 0) t = new String(bb, 0, n, "UTF-8"); } } catch (Exception ignored) { }
+                        cb(id, new JSONObject().put("err", "HTTP " + code + " " + mime + " " + t).toString());
+                        return;
+                    }
+                    java.io.InputStream in = c.getInputStream();
+                    java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[16384];
+                    int n;
+                    while ((n = in.read(buf)) > 0) { bo.write(buf, 0, n); if (bo.size() > 12 * 1024 * 1024) break; }
+                    in.close();
+                    cb(id, new JSONObject().put("ok", true).put("mime", mime.split(";")[0]).put("b64", Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP)).toString());
+                } catch (Exception e) {
+                    try { cb(id, new JSONObject().put("err", e.getClass().getSimpleName() + ": " + e.getMessage()).toString()); } catch (Exception ignored) { }
+                }
+            }
+        }).start();
+    }
+
     @JavascriptInterface
     public void scanUrl(final int id, final String url, final boolean deep) {
         new Thread(new Runnable() {

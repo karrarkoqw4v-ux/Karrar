@@ -98,8 +98,17 @@ C.send=function(){
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
- K.pref.set('cur',conv.id);C.addUser(m);if(S.imgMode)K.imggen.start(conv,m);else C.start();
+ K.pref.set('cur',conv.id);C.addUser(m);if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
 };
+C.isDevQ=function(t){t=(t||'').trim();if(!t||t.length>140)return false;
+ const who=/(مطور|المطور|مبرمج|صاحب|مالك|مسؤول|المسؤول|من\s+(صنع|سوى|برمج|طور|عمل|انشأ|أنشأ)|مين\s+(صنع|سوى|برمج|طور|عمل)|تواصل|حسابات|developer|owner|admin|who\s+(made|built|created|developed|owns|runs)|contact)/i;
+ return who.test(t)&&/(التطبيق|تطبيق|بوصلة|bawsala|\bapp\b|الذكاء)/i.test(t)};
+C.devReply=function(conv){
+ const ar=K.lang()==='ar';
+ const md=ar?'## مطوّر «بوصلة» والمسؤول عن التطبيق\nالمسؤول عن التطبيق وتطويره: **كروري** (Karrouri)\n\n### طرق التواصل\n- 📧 البريد الإلكتروني: karrarkooqwtoi@gmail.com\n- 🎵 TikTok: [@vwv2e](https://www.tiktok.com/@vwv2e)\n- 📸 Instagram: [@10s.i2](https://www.instagram.com/10s.i2)\n- 🐦 X (تويتر): [@Compassv4](https://x.com/Compassv4)\n\nيمكنك أيضاً فتح صفحة **اتصل بنا** من شاشة الدخول أو من الإعدادات ← المساعدة، وفيها الحسابات والشروط وأحكام الاستخدام.'
+  :'## Bawsala developer & app owner\nThe person responsible for the app and its development: **Karrouri** (كروري)\n\n### Contact\n- 📧 Email: karrarkooqwtoi@gmail.com\n- 🎵 TikTok: [@vwv2e](https://www.tiktok.com/@vwv2e)\n- 📸 Instagram: [@10s.i2](https://www.instagram.com/10s.i2)\n- 🐦 X (Twitter): [@Compassv4](https://x.com/Compassv4)\n\nYou can also open **Contact us** from the login screen or Settings → Help for the accounts, terms and conditions.';
+ const ai={role:'assistant',c:md,t:'',s:0,src:[],v:0};conv.msgs.push(ai);
+ const v=new AIView(ai,{last:true,live:false});$('msgs').appendChild(v.el);K.db.save();C.scrollEnd(true)};
 C.start=function(){
  const conv=S.cur;
  conv.msgs.forEach(()=>0);

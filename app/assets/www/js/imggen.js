@@ -66,6 +66,7 @@ async function draw(cv,w,h,g,base){
 /* ---------- card html ---------- */
 function boxStyle(g){const r=g.w/g.h;const wpx=r>=1?340:Math.max(190,Math.round(380*r));return 'aspect-ratio:'+g.w+'/'+g.h+';width:min(100%,'+wpx+'px)'}
 K.imggen={
+ full:{},
  html(g,live){
   if(g.state==='run'){
    const sec=Math.max(1,Math.round((Date.now()-g.t0)/1000));
@@ -76,8 +77,8 @@ K.imggen={
     +'<div class="gb-txt"><b>'+T('جارٍ إنشاء الصورة','Creating the image')+'</b><span class="gb-sec">'+T(sec+' ثانية',sec+' s')+'</span></div></div>';
   }
   const od=outDims(g,g.res);
-  return '<div class="genbox done" style="'+boxStyle(g)+'"><img src="'+g.thumb+'" alt=""><span class="gb-tag">'+T('تجريبي','Demo')+'</span></div>'
-   +'<div class="gb-meta">'+od[0]+'×'+od[1]+' · '+resLabel(g.res)+(g.plat?' · '+esc(g.plat):'')+' · '+T('أُنشئت في '+g.took+' ثانية','made in '+g.took+' s')+'</div>'
+  return '<div class="genbox done" style="'+boxStyle(g)+'"><img src="'+g.thumb+'" alt=""><span class="gb-tag">'+(g.src?T('مفتوح المصدر','Open-source'):T('تجريبي','Demo'))+'</span></div>'
+   +'<div class="gb-meta">'+od[0]+'×'+od[1]+' · '+resLabel(g.res)+(g.plat?' · '+esc(g.plat):'')+(g.src?' · '+esc(g.src):'')+(g.saved?' · '+T('محفوظة','saved'):'')+' · '+T('أُنشئت في '+g.took+' ثانية','made in '+g.took+' s')+'</div>'
    +'<div class="gb-acts"><button data-g="save">'+K.icon('arrow-up',17,2.6).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'<span>'+T('تحميل','Download')+'</span></button><button data-g="again">'+K.icon('refresh-cw',17)+'<span>'+T('إعادة الإنشاء','Regenerate')+'</span></button></div>';
  },
  /* send handler: called from chat.js when image mode is on */
@@ -89,23 +90,52 @@ K.imggen={
   K.db.save();
   K.imggen.run(view);
  },
+ /* real generation with open-source image models (FLUX via Hugging Face token or the keyless Pollinations gateway); falls back to the demo art */
+ async enPrompt(text){
+  if(!text)return 'beautiful detailed digital art, vivid colours';
+  if(!/[^\x00-\x7f]/.test(text))return text;
+  return new Promise(res=>{let out='';const done=()=>{res(out.replace(/<think>[\s\S]*?<\/think>/g,'').trim().replace(/^["'`]+|["'`]+$/g,'')||text)};
+   try{K.native.chat([{role:'user',content:'Translate and expand this into ONE detailed English prompt for an AI image generator (max 60 words, no quotes, no explanations). Reply with the prompt only.\n\n'+text,images:[]}],false,'',ev=>{if(ev.t==='text')out+=ev.d;else if(ev.t==='err'||ev.t==='done')done()})}catch(e){res(text)}
+   setTimeout(done,14000)})},
+ async realImage(g){
+  const k=1024/Math.max(g.w,g.h),w=Math.max(256,Math.round(g.w*k/8)*8),h=Math.max(256,Math.round(g.h*k/8)*8);
+  const prompt=(await K.imggen.enPrompt(g.prompt)).slice(0,600);const tries=[];
+  const hf=K.pref.get('fk_hf','');
+  if(hf)tries.push(['FLUX.1 (Hugging Face)',()=>K.native.fetchImage('https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',hf,JSON.stringify({inputs:prompt,parameters:{width:w,height:h}}))]);
+  if(K.pref.bool('auto',true)){
+   tries.push(['FLUX (Pollinations)',()=>K.native.fetchImage('https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width='+w+'&height='+h+'&model=flux&nologo=true&private=true&seed='+(g.seed%99999),'','')]);
+   tries.push(['Stable Diffusion (Pollinations)',()=>K.native.fetchImage('https://image.pollinations.ai/prompt/'+encodeURIComponent(prompt)+'?width='+w+'&height='+h+'&model=turbo&nologo=true&private=true&seed='+(g.seed%99999),'','')])}
+  for(const t of tries){
+   try{const r=await Promise.race([t[1](),new Promise(x=>setTimeout(()=>x(null),80000))]);
+    if(r&&r.ok&&r.b64&&r.b64.length>2000)return {b64:r.b64,mime:r.mime||'image/jpeg',model:t[0],prompt}}catch(e){}}
+  return null},
  async run(view){
   const g=view.m.gen;g.t0=g.t0||Date.now();g.state='run';view.render();
-  const iv=setInterval(()=>{const e=view.el.querySelector('.gb-sec');if(!e){if(!document.body.contains(view.el))clearInterval(iv);return}const sec=Math.max(1,Math.round((Date.now()-g.t0)/1000));e.textContent=T(sec+' ثانية',sec+' s')},400);
-  const base=await loadImg(g.base),t=3800+Math.random()*1800;
-  await new Promise(r=>setTimeout(r,t));
+  const iv=setInterval(()=>{const e=view.el.querySelector('.gb-sec');if(!e){if(!document.body.contains(view.el)&&g.state!=='run')clearInterval(iv);return}const sec=Math.max(1,Math.round((Date.now()-g.t0)/1000));e.textContent=T(sec+' ثانية',sec+' s')},400);
+  const base=await loadImg(g.base);
+  let real=null;try{real=await K.imggen.realImage(g)}catch(e){}
   clearInterval(iv);
   const sc=document.createElement('canvas'),k=720/Math.max(g.w,g.h),tw=Math.max(80,Math.round(g.w*k)),th=Math.max(80,Math.round(g.h*k));
-  await draw(sc,tw,th,g,base);
-  g.thumb=sc.toDataURL('image/jpeg',.82);g.took=Math.max(1,Math.round((Date.now()-g.t0)/1000));g.state='done';
-  view.done=true;view.render();K.db.save();K.home.refreshComposer();
- },
+  if(real){
+   const im=await loadImg('data:'+real.mime+';base64,'+real.b64);
+   if(im){sc.width=tw;sc.height=th;const x=sc.getContext('2d');const kk=Math.max(tw/im.width,th/im.height),bw=im.width*kk,bh=im.height*kk;x.drawImage(im,(tw-bw)/2,(th-bh)/2,bw,bh);
+    g.thumb=sc.toDataURL('image/jpeg',.85);g.src=real.model;K.imggen.full[g.seed]={b64:real.b64,mime:real.mime};
+    // background save: the original file goes to Downloads/Bawsala right away
+    try{const ext=real.mime.indexOf('png')>=0?'png':real.mime.indexOf('webp')>=0?'webp':'jpg';
+     const r=await K.native.saveFile('bawsala-'+Date.now().toString(36)+'.'+ext,real.mime,real.b64);if(r&&String(r).indexOf('err')!==0){g.saved=1;K.toast(T('تم إنشاء الصورة وحفظها في التنزيلات','Image created and saved to Downloads'))}}catch(e){}}
+   else real=null}
+  if(!real){await draw(sc,tw,th,g,base);g.thumb=sc.toDataURL('image/jpeg',.82);g.src='';}
+  g.took=Math.max(1,Math.round((Date.now()-g.t0)/1000));g.state='done';
+  view.done=true;view.render();K.db.save();K.home.refreshComposer()},
  async act(view,k){
   const g=view.m.gen;if(!g)return;
   if(k==='again'){g.seed=hash((g.prompt||'')+Date.now());g.t0=Date.now();g.thumb='';K.imggen.run(view);return}
   if(k==='save'){
    K.toast(T('جارٍ تجهيز الصورة…','Preparing the image…'));
-   const od=outDims(g,g.res),cv=document.createElement('canvas');await draw(cv,od[0],od[1],g,await loadImg(g.base));
+   const od=outDims(g,g.res),cv=document.createElement('canvas');
+   if(g.src){const f=K.imggen.full[g.seed],im=await loadImg(f?'data:'+f.mime+';base64,'+f.b64:g.thumb);cv.width=od[0];cv.height=od[1];const x=cv.getContext('2d');x.imageSmoothingQuality='high';
+    if(im){const kk=Math.max(od[0]/im.width,od[1]/im.height),bw=im.width*kk,bh=im.height*kk;x.drawImage(im,(od[0]-bw)/2,(od[1]-bh)/2,bw,bh)}}
+   else await draw(cv,od[0],od[1],g,await loadImg(g.base));
    const b64=cv.toDataURL('image/png').split(',')[1];
    const r=await K.native.saveFile('bawsala-'+od[0]+'x'+od[1]+'-'+Date.now().toString(36)+'.png','image/png',b64);
    K.toast(r&&r.indexOf('err')===0?T('تعذّر الحفظ','Could not save'):T('تم الحفظ في التنزيلات','Saved to Downloads'));
