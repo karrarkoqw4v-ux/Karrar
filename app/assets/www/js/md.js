@@ -21,7 +21,7 @@ K.md=function(text,hasSrc){
   let m;
   if((m=l.match(/^(#{1,3})\s+(.*)/))){flush();out+='<h'+m[1].length+'>'+inline(m[2],hasSrc)+'</h'+m[1].length+'>';i++;continue}
   if(/^\s*(---|\*\*\*)\s*$/.test(l)){flush();out+='<hr>';i++;continue}
-  if(/^\s*>\s?/.test(l)){flush();const b=[];while(i<lines.length&&/^\s*>\s?/.test(lines[i])){b.push(lines[i].replace(/^\s*>\s?/,''));i++}out+='<blockquote>'+b.map(x=>inline(x,hasSrc)).join('<br>')+'</blockquote>';continue}
+  if(/^\s*>\s?/.test(l)){flush();const b=[];while(i<lines.length&&/^\s*>\s?/.test(lines[i])){b.push(lines[i].replace(/^\s*>\s?/,''));i++}const f=(b[0]||'').trim();const cl=/^(⚠|🚨|❗)/.test(f)?'warn':/^(💡|✨|🔥)/.test(f)?'tip':/^(✅|✔|🎯)/.test(f)?'ok':/^(❌|⛔|🚫)/.test(f)?'bad':/^(ℹ|📌|📝|📖)/.test(f)?'info':'';out+='<blockquote'+(cl?' class="co '+cl+'"':'')+'>'+b.map(x=>inline(x,hasSrc)).join('<br>')+'</blockquote>';continue}
   if(/^\s*[-*•]\s+/.test(l)){flush();let b='';while(i<lines.length&&/^\s*[-*•]\s+/.test(lines[i])){b+='<li>'+inline(lines[i].replace(/^\s*[-*•]\s+/,''),hasSrc)+'</li>';i++}out+='<ul>'+b+'</ul>';continue}
   if(/^\s*\d+[.)]\s+/.test(l)){flush();let b='';while(i<lines.length&&/^\s*\d+[.)]\s+/.test(lines[i])){b+='<li>'+inline(lines[i].replace(/^\s*\d+[.)]\s+/,''),hasSrc)+'</li>';i++}out+='<ol>'+b+'</ol>';continue}
   if(/^\s*\|.*\|\s*$/.test(l)&&i+1<lines.length&&/^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(lines[i+1])){flush();

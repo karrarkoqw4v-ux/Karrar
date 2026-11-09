@@ -23,3 +23,10 @@ html[dir=ltr] .lg-back svg{transform:scaleX(-1)}
 .lg-link{align-self:flex-start;color:#6f8cf5;font-weight:700;padding:2px 8px;margin-top:2px}
 .lg-alt{color:#6f8cf5;font-weight:800;padding:18px 0 6px}
 .lg-err{color:var(--danger);font-weight:700;min-height:1.4em;margin:8px 10px 0;text-align:start}
+/* keyboard open / small heights: never squash fields, scroll instead */
+.lg-body>*{flex-shrink:0}
+.lg-logo{flex:1 0 auto}
+.lg-body{scroll-padding-bottom:24px}
+.lg-t{margin-top:clamp(18px,7vh,70px);margin-bottom:clamp(16px,3.5vh,34px)}
+.lbtn.p{margin-top:clamp(14px,3vh,30px)}
+@media (max-height:640px){.lg-t{font-size:1.55em}.lg-top{height:64px}}

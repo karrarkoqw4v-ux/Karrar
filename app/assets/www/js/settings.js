@@ -57,6 +57,7 @@ function mainPage(b){
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
  row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
  toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
+ toggle(c,{icon:'atom',title:K.t('t_plan'),sub:K.t('t_plan_s'),key:'plan',def:true});
  toggle(c,{icon:'arrow-up',title:K.t('t_enter'),sub:K.t('t_enter_s'),key:'enter_send',def:false});
  const MT=['0','512','1024','2048','4096'];
  row(c,{icon:'a-large-small',title:K.t('t_maxtok'),value:K.pref.get('max_tokens','0')==='0'?K.t('t_auto'):K.pref.get('max_tokens','0'),onclick:async()=>{const i=await K.ui.choose(K.t('t_maxtok'),MT.map(x=>x==='0'?K.t('t_auto'):x),Math.max(0,MT.indexOf(K.pref.get('max_tokens','0'))));if(i!=null){K.pref.set('max_tokens',MT[i]);S.rerender()}}});

@@ -39,6 +39,7 @@ L.go=function(v){
   h=title(K.t('l_newpass_title'))+inp('fP','password',K.t('l_pass'),'<button type="button" class="leye" data-eye>'+E+'</button>')+inp('fP2','password',K.t('l_pass2'))+err()+'<button class="lbtn p" id="go">'+K.t('l_save')+'</button>';
  }
  b.className='lg-body '+v;b.innerHTML=h;K.emojifyEl(b);
+ b.querySelectorAll('input').forEach(i=>i.addEventListener('focus',()=>setTimeout(()=>{try{i.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},320)));
  b.querySelectorAll('.linp,.lbtn,.lg-link,.lg-alt,.lg-title,h1').forEach((e,i)=>{e.style.animation='fadeUp .45s '+(i*55)+'ms var(--ease) both'});
  b.querySelectorAll('[data-eye]').forEach(x=>x.onclick=()=>{const i=x.parentNode.querySelector('input');const s=i.type==='password';i.type=s?'text':'password';x.innerHTML=K.icon(s?'eye-off':'eye',22)});
  b.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key==='Enter'){const g=$('go');g&&g.click()}}));

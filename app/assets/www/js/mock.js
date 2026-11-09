@@ -5,9 +5,9 @@ K.mock={
   const q=(msgs[msgs.length-1]||{}).content||'';
   const reasoning=ar?'المستخدم يسأل عن: «'+q.slice(0,60)+'». سأحلّل السؤال أولاً، ثم أرتّب الإجابة بنقاط واضحة ومختصرة.':'The user asks: "'+q.slice(0,60)+'". I will analyse it first, then structure a clear short answer.';
   const answer=ar?
-  '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("بوصلة"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n':
+  '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("بوصلة"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n\n> 💡 نصيحة: ابدأ بمشروع صغير تحبه، فهو يبقيك متحمساً.\n\n> ⚠️ لا تنتقل بين اللغات كثيراً في البداية.\n\n> ✅ بعد شهر ستكتب برامج صغيرة بنفسك.\n\n**الخلاصة:** لغة واحدة + تدريب يومي + مشروع صغير.\n':
   '## Start with the basics 🚀\nHere is a short plan [1][2]:\n\n1. Pick one language such as **Python**.\n2. Practise daily with small projects.\n3. Read other people\'s code 😊\n\n```python\ndef hello(name):\n    return f"Hello {name}"\n```\n';
-  const parts=[];if(think)for(let i=0;i<reasoning.length;i+=4)parts.push(['think',reasoning.slice(i,i+4)]);
+  const parts=[];for(let i=0;i<reasoning.length;i+=4)parts.push(['think',reasoning.slice(i,i+4)]);
   for(let i=0;i<answer.length;i+=3)parts.push(['text',answer.slice(i,i+3)]);
   let k=0;(function step(){if(stop)return;if(k>=parts.length){cb({t:'done'});return}const p=parts[k++];cb({t:p[0],d:p[1]});setTimeout(step,k<20?60:14)})();
   return {cancel(){stop=true}}},

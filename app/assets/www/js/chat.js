@@ -105,9 +105,10 @@ C.start=function(){
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
  const run=function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
-  let t0=0;
+  let t0=0,first=1;view.setStatus(K.t('thinking'));
   S.handle=K.native.chat(hist,S.think,ctx,function(ev){
    if(view.finished)return;
+   if(first){first=0;view.status='';}
    if(ev.t==='think'){if(!t0)t0=Date.now();ai.t+=ev.d;view.open=true;view.thinking=true;view.dirty()}
    else if(ev.t==='text'){if(!ai.c&&t0&&!ai.s){ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));view.open=false;view.thinking=false}ai.c+=ev.d;view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c)}
    else if(ev.t==='done'){if(t0&&!ai.s)ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));C.finish(view)}

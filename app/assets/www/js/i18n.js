@@ -1,7 +1,8 @@
 window.K=window.K||{};
 (function(){
 const D={
-app:["بوصلة","Bawsala"],app_latin:["Bawsala","Bawsala"],
+app:["بوصلة","Bawsala"],t_plan:["التفكير قبل كل رد","Think before replying"],t_plan_s:["يظهر تفكير النموذج ثم رد أدق وأكثر تفصيلاً","Shows the model's reasoning, then a more careful, detailed reply"],
+app_latin:["Bawsala","Bawsala"],
 hi:["مرحبًا، ما الذي يمكنني مساعدتك به؟","Hi, how can I help you today?"],
 hint:["اسأل بوصلة","Ask Bawsala"],create_img:["إنشاء صورة","Create image"],soon:["قريبًا","Soon"],web_search:["بحث في الويب","Search the web"],
 think:["تفكير","Think"],search:["بحث","Search"],

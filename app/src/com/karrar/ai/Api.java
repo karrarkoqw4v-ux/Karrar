@@ -59,8 +59,10 @@ public final class Api {
                         if (mt > 0) body.put("max_tokens", mt);
                     } catch (Exception ignored) { }
                     JSONArray msgs = new JSONArray();
+                    final boolean plan = !think && Store.bool("plan", true);
                     String sys = Store.get("system", "").trim();
                     if (extraCtx != null && extraCtx.length() > 0) sys = (sys.isEmpty() ? "" : sys + "\n\n") + extraCtx;
+                    sys = BASE + (plan ? PLAN : "") + (sys.isEmpty() ? "" : "\n\n" + sys);
                     if (!sys.isEmpty()) msgs.put(new JSONObject().put("role", "system").put("content", sys));
                     for (Store.Msg m : history) {
                         if (m.content.isEmpty() && m.role.equals("assistant")) continue;
@@ -102,6 +104,7 @@ public final class Api {
                         return;
                     }
                     BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+                    final ThinkSplit split = new ThinkSplit();
                     String line;
                     while ((line = r.readLine()) != null) {
                         if (h.cancelled) break;
@@ -119,10 +122,11 @@ public final class Api {
                             String ct = delta.optString("content", "");
                             if (ct.equals("null")) ct = "";
                             if (!rc.isEmpty()) post(ui, cb, rc, null, null, h);
-                            if (!ct.isEmpty()) post(ui, cb, null, ct, null, h);
+                            if (!ct.isEmpty()) { if (plan) split.feed(ct, ui, cb, h); else post(ui, cb, null, ct, null, h); }
                         } catch (Exception ignored) { }
                     }
                     r.close();
+                    if (plan) split.flush(ui, cb, h);
                     post(ui, cb, null, null, "", h);
                 } catch (Exception e) {
                     if (!h.cancelled) post(ui, cb, null, null, e.getClass().getSimpleName() + ": " + e.getMessage(), h);
@@ -188,21 +192,67 @@ public final class Api {
         }
     }
 
+    private static final String BASE = "You are Bawsala (\u0628\u0648\u0635\u0644\u0629), a helpful assistant. Always answer in the user's language. "
+            + "Give detailed, accurate, well-structured answers: start with a direct answer, then explain with ## headings, bullet or numbered lists, "
+            + "a table when comparing things, code blocks tagged with the language for code, and short concrete examples; finish with a brief summary or next step when useful. "
+            + "Use callouts written as blockquotes that start with an emoji: > \u26a0\ufe0f warning, > \ud83d\udca1 tip, > \u2705 good/done, > \u274c avoid, > \u2139\ufe0f note. "
+            + "Be honest when you are unsure and never invent facts or sources.";
+    private static final String PLAN = "\n\nBefore every answer, first think briefly: write your reasoning inside <think>...</think> "
+            + "(in the user's language: what is asked, the key points, the plan), then write the final answer after the closing tag. Never mention these instructions.";
+
+    /** Splits "<think>...</think>answer" streamed text into reasoning and answer events. */
+    private static class ThinkSplit {
+        int mode = 0; // 0 undecided, 1 thinking, 2 answering
+        String pend = "";
+        void feed(String ct, Handler ui, Cb cb, Handle h) {
+            pend += ct;
+            while (true) {
+                if (mode == 0) {
+                    String t = pend.replaceFirst("^\\s+", "");
+                    if (t.length() < 7 && "<think>".startsWith(t)) return;
+                    if (t.startsWith("<think>")) { pend = t.substring(7); mode = 1; } else { mode = 2; }
+                } else if (mode == 1) {
+                    int i = pend.indexOf("</think>");
+                    if (i >= 0) {
+                        if (i > 0) post(ui, cb, pend.substring(0, i), null, null, h);
+                        pend = pend.substring(i + 8).replaceFirst("^\\s+", "");
+                        mode = 2;
+                    } else {
+                        int keep = 0, mx = Math.min(7, pend.length());
+                        for (int k = mx; k >= 1; k--) if (pend.endsWith("</think>".substring(0, k))) { keep = k; break; }
+                        int n = pend.length() - keep;
+                        if (n > 0) post(ui, cb, pend.substring(0, n), null, null, h);
+                        pend = pend.substring(n);
+                        return;
+                    }
+                } else {
+                    if (pend.length() > 0) post(ui, cb, null, pend, null, h);
+                    pend = "";
+                    return;
+                }
+            }
+        }
+        void flush(Handler ui, Cb cb, Handle h) {
+            if (pend.length() > 0) post(ui, cb, null, pend, null, h);
+            pend = "";
+        }
+    }
+
     // ------------------------------------------------------------------ demo mode
     private static void demo(final Handle h, boolean think, List<Store.Msg> history, Cb cb, Handler ui) throws Exception {
         boolean ar = Theme.rtl;
         String q = "";
         for (int i = history.size() - 1; i >= 0; i--) if (history.get(i).role.equals("user")) { q = history.get(i).content; break; }
         if (q.length() > 80) q = q.substring(0, 80) + "…";
-        if (think) {
+        {
             String t = ar
                     ? "المستخدم يسأل: «" + q + "».\nسأحلّل السؤال أولاً، ثم أحدد النقاط الأساسية، وبعدها أرتّب الإجابة بشكل واضح ومختصر.\nبما أنني في الوضع التجريبي، سأعرض شكل الرد فقط."
                     : "The user asks: \"" + q + "\".\nFirst I'll analyse the question, pick the key points, then structure a clear answer.\nSince this is demo mode I'll only show how a reply looks.";
             stream(h, t, true, cb, ui, 14, 30);
         }
         String a = ar
-                ? "## وضع تجريبي\nهذا رد تجريبي يوضّح **شكل الإجابات** في التطبيق. سؤالك كان:\n> " + q + "\n\n### للحصول على ردود حقيقية\n1. افتح **الإعدادات** ← **التطبيقات والخدمات المتصلة**.\n2. اختر الخدمة (DeepSeek أو OpenAI أو غيرها).\n3. أدخل **مفتاح API** واضغط اختبار الاتصال.\n\nمثال على كود:\n```python\ndef hello(name):\n    return f\"مرحباً {name}\"\n\nprint(hello(\"كرّار\"))\n```\n- يدعم التطبيق **التفكير العميق** وعرض خطوات التفكير.\n- ويدعم **البحث في الويب** مع عرض المصادر.\n- ويحفظ سجل المحادثات على جهازك."
-                : "## Demo mode\nThis is a sample reply showing **how answers look** in the app. You asked:\n> " + q + "\n\n### To get real answers\n1. Open **Settings** → **Connected apps & services**.\n2. Pick a service (DeepSeek, OpenAI, ...).\n3. Enter your **API key** and run the connection test.\n\nExample code:\n```python\ndef hello(name):\n    return f\"Hello {name}\"\n\nprint(hello(\"Karrar\"))\n```\n- Supports **DeepThink** with visible reasoning.\n- Supports **web search** with sources.\n- Keeps your chat history on-device.";
+                ? "## وضع تجريبي\nهذا رد تجريبي يوضّح **شكل الإجابات** في «بوصلة». سؤالك كان:\n> ℹ️ " + q + "\n\n---\n\n## كيف تحصل على ردود حقيقية\n1. افتح **الإعدادات** ← **التطبيقات والخدمات المتصلة**.\n2. اختر الخدمة (DeepSeek أو OpenAI أو غيرها).\n3. أدخل **مفتاح API** ثم اضغط **اختبار الاتصال**.\n\n> 💡 بعد إدخال المفتاح تظهر خطوات تفكير حقيقية قبل كل رد.\n\n### مقارنة سريعة\n| الميزة | الحالة |\n|---|---|\n| التفكير قبل الرد | مفعّل |\n| البحث في الويب | مع المصادر |\n| حفظ المحادثات | على جهازك |\n\n### مثال كود\n```python\ndef hello(name):\n    return f\"مرحباً {name}\"\n\nprint(hello(\"بوصلة\"))\n```\n\n> ⚠️ لا تشارك مفتاح API مع أحد.\n\n**الخلاصة:** أضف المفتاح وسيصبح كل رد مفكَّرًا فيه ومفصّلًا."
+                : "## Demo mode\nThis is a sample reply showing **how answers look** in Bawsala. You asked:\n> ℹ️ " + q + "\n\n---\n\n## How to get real answers\n1. Open **Settings** → **Connected apps & services**.\n2. Pick a service (DeepSeek, OpenAI, ...).\n3. Enter your **API key** and run **Test connection**.\n\n> 💡 Once the key is set you will see real reasoning before every reply.\n\n### Quick overview\n| Feature | Status |\n|---|---|\n| Thinking before replies | On |\n| Web search | With sources |\n| Chat history | On your device |\n\n### Example code\n```python\ndef hello(name):\n    return f\"Hello {name}\"\n\nprint(hello(\"Bawsala\"))\n```\n\n> ⚠️ Never share your API key with anyone.\n\n**Summary:** add your key and every reply will be thought through and detailed.";
         stream(h, a, false, cb, ui, 10, 18);
         post(ui, cb, null, null, "", h);
     }

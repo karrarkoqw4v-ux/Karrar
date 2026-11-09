@@ -20,3 +20,27 @@
 .codebox code{background:none!important;padding:0!important;border-radius:0!important;font-size:inherit!important;direction:ltr;unicode-bidi:plaintext;text-align:left}
 .codebox pre{direction:ltr;text-align:left}
 .md blockquote{border-radius:12px}
+/* ---- stronger reply design ---- */
+.md h1{font-size:1.45em;background:linear-gradient(90deg,var(--text),var(--accent-text));-webkit-background-clip:text;background-clip:text;color:transparent}
+.md h2{font-size:1.24em;padding-inline-start:11px;border-inline-start:4px solid var(--accent);border-radius:2px;margin-top:1.2em}
+.md h3{font-size:1.08em;color:var(--accent-text)}
+.md ul{list-style:none;padding-inline-start:.2em}
+.md ul>li{position:relative;padding-inline-start:1.35em}
+.md ul>li::before{content:"";position:absolute;inset-inline-start:.25em;top:.72em;width:.5em;height:.5em;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--cyan))}
+.md ol{list-style:none;counter-reset:mdn;padding-inline-start:.2em}
+.md ol>li{counter-increment:mdn;position:relative;padding-inline-start:2.1em;margin:.5em 0}
+.md ol>li::before{content:counter(mdn);position:absolute;inset-inline-start:0;top:.12em;width:1.55em;height:1.55em;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-weight:800;font-size:.82em;display:grid;place-items:center}
+.md strong{color:var(--text);background:linear-gradient(transparent 62%,var(--accent-soft) 62%);padding:0 .12em}
+.md code{color:var(--accent-text);border:1px solid var(--border)}
+.md hr{height:2px;border:0;background:linear-gradient(90deg,transparent,var(--accent),var(--cyan),transparent);opacity:.55;margin:1.2em 0}
+.md blockquote{border-radius:14px;border-inline-start-width:4px;padding:.55em 1em;margin:.8em 0}
+.md blockquote.co{border-inline-start-color:var(--c);background:color-mix(in srgb,var(--c) 11%,transparent);color:var(--text)}
+.md blockquote.warn{--c:#ff9f0a}.md blockquote.tip{--c:#ffd60a}.md blockquote.ok{--c:#34c759}.md blockquote.bad{--c:#ff453a}.md blockquote.info{--c:#4d8dff}
+.md table{display:table;width:100%;border:1px solid var(--border);border-radius:14px;border-collapse:separate;border-spacing:0;overflow:hidden}
+.md th{background:linear-gradient(180deg,var(--accent-soft),var(--surface));color:var(--text)}
+.md th,.md td{border:0;border-bottom:1px solid var(--border)}.md tr:last-child td{border-bottom:0}
+.md tbody tr:nth-child(even) td{background:var(--hover)}
+.codebox{border-radius:18px;box-shadow:0 6px 22px rgba(0,0,0,.28)}
+.codebox .ch{background:linear-gradient(180deg,var(--surface),var(--code));padding-block:7px}
+.codebox .ch>span:first-child{display:flex;align-items:center;gap:6px;text-transform:lowercase;letter-spacing:.3px}
+.codebox .ch>span:first-child::before{content:"";width:9px;height:9px;border-radius:50%;background:#ff5f57;box-shadow:14px 0 #febc2e,28px 0 #28c840;margin-inline-end:34px}
