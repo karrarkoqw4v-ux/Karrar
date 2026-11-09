@@ -7,7 +7,7 @@ html[data-theme=light] .bar{background:var(--surface);border-color:var(--border)
 .brow{display:grid;grid-template-columns:auto 1fr auto auto;grid-template-areas:"pl ta mic send";align-items:center;column-gap:2px;min-height:46px}
 .bar.multi .brow{grid-template-areas:"ta ta ta ta" "pl . mic send";row-gap:6px}
 .bar textarea{grid-area:ta;display:block;width:100%;min-height:26px;max-height:150px;resize:none;padding:6px 8px;font-size:1.1em;line-height:1.5;color:var(--text);font-weight:600;overflow-y:auto}
-.bar.multi textarea{padding:2px 10px 6px}
+.bar.multi textarea{padding:2px 10px 6px;min-height:52px;animation:fadeIn .25s both}
 .bplus,.bmic{width:40px;height:40px;display:grid;place-items:center;border-radius:50%;transition:transform .25s var(--spring),background .2s}
 .bplus{grid-area:pl}.bmic{grid-area:mic}
 .bplus:active,.bmic:active{transform:scale(.86);background:var(--hover)}
