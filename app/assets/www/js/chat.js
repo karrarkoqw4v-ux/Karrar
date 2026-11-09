@@ -15,7 +15,7 @@ function AIView(m,o){
  const el=this.el=document.createElement('div');el.className='msg ai'+(this.live?' live':' done');el._view=this;
  el.innerHTML='<div class="ai-head"><span class="logo">'+K.LOGO+'</span></div><div class="src"></div><div class="status shimmer hidden"></div><div class="dots hidden"><i></i><i></i><i></i></div>'
   +'<div class="think hidden"><button class="think-h">'+K.icon('atom',17)+'<span></span><span class="chev">'+K.icon('chevron-down',16)+'</span></button><div class="think-b"><div><p></p></div></div></div>'
-  +'<div class="gen hidden"></div><div class="md"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
+  +'<div class="md"></div><div class="gen hidden"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
   +'<div class="acts"><button data-a="copy">'+K.icon('copy',19)+'</button><button data-a="regen" class="'+(this.last?'':'hidden')+'">'+K.icon('refresh-cw',19)+'</button><button data-a="up">'+K.icon('thumbs-up',19)+'</button><button data-a="down">'+K.icon('thumbs-down',19)+'</button><button data-a="share">'+K.icon('share',19)+'</button></div>';
  const self=this;
  el.querySelector('.think-h').onclick=function(){self.open=!self.open;self.render()};
@@ -81,9 +81,9 @@ C.show=function(conv){
  conv.msgs.forEach(function(m,i){if(m.role==='user')C.addUser(m);else{const v=new AIView(m,{last:i===lastAi,live:false});box.appendChild(v.el)}});
  $('empty').classList.toggle('hidden',conv.msgs.length>0);
  if(K.home&&K.home.paintPills)K.home.paintPills();
- const tt=$('title');tt.textContent=conv.title||'';C.scrollEnd();
+ const tt=$('title');if(conv.title)tt.textContent=conv.title;else{tt.innerHTML='<button class="tbrand" id="tBrand"><b>Bawsala</b>'+K.icon('chevron-down',15,2.6)+'</button>';$('tBrand').onclick=function(){K.models.open()}}C.scrollEnd();
 };
-function toApi(msgs){return msgs.map(m=>({role:m.role==='assistant'?'assistant':'user',content:((m.ft?m.ft+'\n\n':'')+(m.c||'')),images:m._b64||[]})).filter(x=>x.content||x.images.length)}
+function toApi(msgs){return msgs.filter(function(m){return !m.gen}).map(m=>({role:m.role==='assistant'?'assistant':'user',content:((m.ft?m.ft+'\n\n':'')+(m.c||'')),images:m._b64||[]})).filter(x=>x.content||x.images.length)}
 function buildCtx(a){if(!a.length)return '';return 'Web search results (cite them in your answer as [1], [2] when you use them):\n'+a.map((s,i)=>(i+1)+'. '+s.title+' - '+(s.snippet||'')+' ('+s.url+')').join('\n')}
 C.send=function(){
  if(S.streaming){C.stop();return}

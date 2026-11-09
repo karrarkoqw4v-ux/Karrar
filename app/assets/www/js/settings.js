@@ -90,6 +90,7 @@ function mainPage(b){
  row(c,{icon:'database',title:K.t('t_import'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('t_import'),hint:K.t('t_import_h'),multi:true});if(!v)return;try{const o=JSON.parse(v);if(o.app!=='karrar')throw 0;(o.convs||[]).forEach(c=>{if(!K.db.find(c.id))K.db.convs.push(c)});if(o.prompts&&o.prompts.length)K.pref.set('prompts',JSON.stringify(o.prompts));if(o.memories&&o.memories.length)K.pref.set('memories',JSON.stringify(o.memories));K.db.save();K.toast(K.t('t_import_ok'))}catch(e){K.toast(K.t('t_import_bad'))}}});
  c=sec(b,K.t('s_about'));
  row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
+ row(c,{icon:'crown',title:(K.lang()==='ar'?'الاشتراك والترقية':'Subscription & Upgrade'),onclick:()=>K.plans.open()});
  row(c,{icon:'file-text',title:K.t('s_terms'),onclick:()=>K.legal.open('terms')});
  row(c,{icon:'info',title:K.t('t_licenses'),sub:K.t('t_licenses_s'),onclick:()=>S.open('licenses')});
  row(c,{icon:'share',title:K.t('t_share'),onclick:()=>K.native.share(K.t('t_share_t'))});

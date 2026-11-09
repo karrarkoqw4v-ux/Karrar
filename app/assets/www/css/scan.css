@@ -76,3 +76,6 @@ html[data-theme=light] .sc-ib{background:var(--surface);border-color:var(--borde
 .sc-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .sc-btns button{display:flex;align-items:center;gap:7px;height:44px;padding:0 16px;border-radius:22px;background:var(--surface2);font-weight:700;transition:transform .2s var(--spring)}.sc-btns button:active{transform:scale(.95)}.sc-btns button.p{background:#5b78e6;color:#fff}
 .gauge .num small{direction:ltr}
+.tbrand{display:inline-flex;align-items:center;gap:4px;color:var(--text);font-weight:800;font-size:1.12em;padding:6px 12px;border-radius:18px;direction:ltr}.tbrand:active{background:var(--hover)}
+#mchips.enc{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}#mchips.enc::-webkit-scrollbar{display:none}
+.etl{display:contents}.mchip.tool{flex:none;background:var(--surface);border-color:var(--border);color:var(--text)}

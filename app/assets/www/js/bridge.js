@@ -41,7 +41,7 @@ K.native={
  },
  scanUrl(url,deep){return new Promise(r=>{if(!A||!A.scanUrl)return r(K.mock.scanUrl(url,deep));const id=reg(r);A.scanUrl(id,url,!!deep)})},
  saveFile(name,mime,b64){return new Promise(r=>{if(A&&A.saveFile){r(A.saveFile(name,mime,b64));return}try{const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);r('ok')}catch(e){r('err')}})},
- copy(t){if(A)A.copy(t);else{try{navigator.clipboard.writeText(t)}catch(e){}}K.toast(K.t('copied'))},
+ copy(t){if(A)A.copy(t);else{try{navigator.clipboard.writeText(t).catch(function(){})}catch(e){}}K.toast(K.t('copied'))},
  share(t){if(A)A.share(t)},
  open(u){if(A)A.open(u);else window.open(u,'_blank')},
  haptic(){if(A&&K.pref.bool('haptic',true))A.haptic()},

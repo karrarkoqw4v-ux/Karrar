@@ -339,10 +339,11 @@ const textReport=R=>{const L=LV[R.level];return [T('تقرير فحص — بوص
 
 /* ---------------- UI ---------------- */
 function sheet(html){const w=document.createElement('div');w.className='cd-layer';w.innerHTML='<div class="cd-bd"></div><div class="cd-sheet"><i class="cd-grab"></i>'+html+'</div>';$('scan').appendChild(w);const close=()=>{w.classList.add('out');setTimeout(()=>w.remove(),220)};w.querySelector('.cd-bd').onclick=close;w.close=close;return w}
-const KIND={url:['link',T('فحص رابط','Scan a link'),T('بنية الرابط والتحويلات والانتحال','Link structure, redirects and impersonation'),'#4d6bfe'],
+const KIND={enc:['lock',T('التشفير','Encryption'),T('شفّر ملفاتك وتطبيقاتك ومواقعك في محادثة خاصة','Encrypt files, apps and sites in a private chat'),'#f59e0b'],url:['link',T('فحص رابط','Scan a link'),T('بنية الرابط والتحويلات والانتحال','Link structure, redirects and impersonation'),'#4d6bfe'],
  file:['file',T('فحص ملف','Scan a file'),T('أي صيغة: APK وEXE وPDF وZIP وأوفيس…','Any format: APK, EXE, PDF, ZIP, Office…'),'#8b5cf6'],
  site:['globe',T('فحص موقع منشور','Scan a public website'),T('الشهادة وترويسات الأمان ومحتوى الصفحة','Certificate, security headers and page content'),'#0ea5e9']};
 K.scan={
+ sha256,
  isOpen(){return !!$('scan')},
  back(){
   if(K.scan.runner&&K.scan.runner.active){K.scan.runner.cancel();return true}
@@ -356,13 +357,13 @@ K.scan={
   const d=$('scan');if(!d)return;const h=hist();
   d.innerHTML='<div class="sc-top"><button class="sc-ib" id="scBack">'+K.icon('chevron-right',24)+'</button><div class="sc-title">'+T('الأمان والفحص','Security & Scan')+'</div><span class="sc-ib ph"></span></div><div class="sc-body">'
    +'<div class="sc-hero"><div class="sc-shield">'+em('1f6e1','big')+'<i class="r r1"></i><i class="r r2"></i><i class="r r3"></i></div><b>'+T('افحص قبل أن تفتح','Scan before you open')+'</b><span>'+T('روابط وملفات ومواقع — نكشف الخطر ونشرح لك ماذا يستخدم على جهازك','Links, files and sites — we spot the danger and explain what it uses on your device')+'</span></div>'
-   +['url','file','site'].map((k,i)=>'<button class="sc-act" data-k="'+k+'" style="--c:'+KIND[k][3]+';--i:'+i+'"><span class="ti">'+K.icon(KIND[k][0],24)+'</span><div><b>'+KIND[k][1]+'</b><small>'+KIND[k][2]+'</small></div>'+K.icon('chevron-left',20)+'</button>').join('')
+   +['url','file','site','enc'].map((k,i)=>'<button class="sc-act" data-k="'+k+'" style="--c:'+KIND[k][3]+';--i:'+i+'"><span class="ti">'+K.icon(KIND[k][0],24)+'</span><div><b>'+KIND[k][1]+'</b><small>'+KIND[k][2]+'</small></div>'+K.icon('chevron-left',20)+'</button>').join('')
    +'<div class="sc-sect">'+T('آخر الفحوصات','Recent scans')+'</div>'
    +(h.length?h.map((x,i)=>'<button class="sc-h" data-i="'+i+'"><span class="dot" style="background:'+LV[x.l].c+'"></span><div><b>'+esc(x.n.length>46?x.n.slice(0,44)+'…':x.n)+'</b><small>'+T(LV[x.l].a,LV[x.l].n)+' · '+x.s+'/100</small></div><span class="k">'+T({url:'رابط',file:'ملف',site:'موقع'}[x.k],{url:'Link',file:'File',site:'Site'}[x.k])+'</span></button>').join(''):'<div class="sc-empty">'+em('1f50d')+'<span>'+T('لا توجد فحوصات بعد','No scans yet')+'</span></div>')
    +'<p class="sc-note">'+T('الفحص تحليل بنية وسلوك محلي ولا يغني عن مضاد فيروسات.','The scan is a local structural/behavioural analysis and does not replace antivirus.')+'</p></div>';
   K.emojifyEl&&0;
   $('scBack').onclick=()=>K.scan.back();
-  d.querySelectorAll('.sc-act').forEach(b=>b.onclick=()=>K.scan.start(b.dataset.k));
+  d.querySelectorAll('.sc-act').forEach(b=>b.onclick=()=>b.dataset.k==='enc'?K.enc.open():K.scan.start(b.dataset.k));
   d.querySelectorAll('.sc-h').forEach(b=>b.onclick=()=>K.scan.result(h[+b.dataset.i].r,true))},
  start(k){
   if(k==='file'){K.scan.pickAndRun();return}

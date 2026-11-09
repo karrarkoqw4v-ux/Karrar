@@ -63,11 +63,11 @@ ta.addEventListener('focus',()=>{H.toggleSheet(false);$('composer').classList.ad
 H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',22)};
 H.paintPills=function(){
  $('mImg').classList.toggle('on',!!S().imgMode);$('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
- const c=$('mchips');c.innerHTML=(S().imgMode?K.imggen.chips():'')+(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
+ const c=$('mchips');c.classList.toggle('enc',!!(S().cur&&S().cur.enc));c.innerHTML=(S().cur&&S().cur.enc?K.enc.chips(S().cur.enc):'')+(S().imgMode?K.imggen.chips():'')+(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
  const md=S().cur&&S().cur.mode;if(md&&MODES[md])c.insertAdjacentHTML('afterbegin','<button class="mchip" data-md="1">'+K.icon(MODES[md][0],16)+'<span>'+K.t(MODES[md][1])+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>');
  const repos=K.gh.tok()?K.gh.sel():[];
  c.insertAdjacentHTML('beforeend',repos.map(r=>'<button class="mchip" data-r="'+r.replace(/"/g,'')+'">'+K.icon('git-branch',16)+'<span>'+r.split('/').pop()+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>').join(''));
- c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.img){K.imggen.onChip(b.dataset.img,b);return}if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
+ c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.enc){K.enc.run(b.dataset.enc);return}if(b.dataset.img){K.imggen.onChip(b.dataset.img,b);return}if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
 };
 H.refreshComposer=function(){
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
@@ -116,13 +116,13 @@ H.buildProjects=function(){
 
 H.buildNav=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;
- const it=[['image',T('الصور','Images'),'img'],['file',T('المكتبة','Library'),'lib',1],['folder-git-2',T('المشروعات','Projects'),'proj'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['shield-check',T('الأمان والفحص','Security & Scan'),'scan'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['plug',T('المكونات الإضافية','Plugins'),'plug']];
+ const it=[['image',T('الصور','Images'),'img'],['file',T('المكتبة','Library'),'lib',1],['folder-git-2',T('المشروعات','Projects'),'proj'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['shield-check',T('الأمان والفحص','Security & Scan'),'scan'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['plug',T('المكونات الإضافية','Plugins'),'plug'],['crown',T('الاشتراك والترقية','Subscription & Upgrade'),'plans']];
  const n=$('dnav');n.innerHTML=it.map((x,i)=>'<button class="dn" data-k="'+x[2]+'" style="--i:'+i+'">'+K.icon(x[0],26)+'<span>'+x[1]+'</span>'+(x[3]?'<i class="badge">'+K.t('soon')+'</i>':'')+'</button>').join('');
  n.querySelectorAll('.dn').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
   if(k==='proj'){$('dproj').classList.toggle('open');b.classList.toggle('open');return}
   if(k==='lib'){K.toast(T('قريباً','Coming soon'));return}
   H.closeDrawer();
-  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='scan')K.scan.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
+  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='scan')K.scan.open();else if(k==='plans')K.plans.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
 };
 H.buildSugg=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;
@@ -137,7 +137,7 @@ H.openDrawer=function(){H.renderList();$('pname').textContent=K.pref.get('name',
 H.closeDrawer=function(){if(!H.drawerOpen)return;H.drawerOpen=false;if(H.selMode)H.exitSel();$('drawer').classList.remove('open');$('scrim').classList.remove('show');$('main').classList.remove('shift')};
 H.renderList=function(){
  const box=$('dlist');box.innerHTML='';const q=H.q;
- let all=K.db.convs.filter(c=>c.msgs.length&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
+ let all=K.db.convs.filter(c=>c.msgs.length&&!c.enc&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
  all.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.ts-a.ts);
  if(!all.length){box.innerHTML='<div class="dempty">'+K.t('no_history')+'</div>';return}
  const now=Date.now();let last='',first=true;const frag=document.createDocumentFragment();let idx=0;

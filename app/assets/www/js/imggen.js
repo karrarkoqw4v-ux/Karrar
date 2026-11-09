@@ -83,7 +83,7 @@ K.imggen={
  /* send handler: called from chat.js when image mode is on */
  start(conv,m){
   const s=D.size,res=D.res;
-  const ai={role:'assistant',c:'',t:'',s:0,src:[],v:0,gen:{state:'run',w:s.w,h:s.h,res:res,plat:s.plat,prompt:m.c||'',seed:hash((m.c||'')+Date.now()),t0:Date.now(),base:(m.imgs||[])[0]||''}};
+  const ai={role:'assistant',c:T('تم الحصول على تفاصيلك كاملة ✨\nنقوم بإنشاء الصورة حسب المطلوب','We have all your details ✨\nWe are creating the image as requested'),t:'',s:0,src:[],v:0,gen:{state:'run',w:s.w,h:s.h,res:res,plat:s.plat,prompt:m.c||'',seed:hash((m.c||'')+Date.now()),t0:Date.now(),base:(m.imgs||[])[0]||''}};
   conv.msgs.push(ai);
   const view=new K.chat.AIView(ai,{last:true,live:true});$('msgs').appendChild(view.el);K.chat.scrollEnd(true);
   K.db.save();
