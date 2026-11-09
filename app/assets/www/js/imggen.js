@@ -69,8 +69,11 @@ K.imggen={
  html(g,live){
   if(g.state==='run'){
    const sec=Math.max(1,Math.round((Date.now()-g.t0)/1000));
-   return '<div class="genbox run" style="'+boxStyle(g)+'"><div class="gb-bg"></div><div class="gb-bl"><i></i><i></i><i></i><i></i><i></i></div><div class="gb-shine"></div><div class="gb-grid"></div>'
-    +'<div class="gb-txt">'+em('1f3a8')+'<b>'+T('جارٍ إنشاء الصورة','Creating the image')+'</b><span class="gb-sec">'+T(sec+' ثانية',sec+' s')+'</span></div></div>';
+   const star='<svg viewBox="0 0 24 24"><path d="M12 2C12.6 7.4 16.6 11.4 22 12 16.6 12.6 12.6 16.6 12 22 11.4 16.6 7.4 12.6 2 12 7.4 11.4 11.4 7.4 12 2Z"/></svg>';
+   return '<div class="genbox run" style="'+boxStyle(g)+'"><div class="gb-mesh"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="gb-shine"></div>'
+    +'<span class="gb-tw t1">'+star+'</span><span class="gb-tw t2">'+star+'</span><span class="gb-tw t3">'+star+'</span><span class="gb-tw t4">'+star+'</span><span class="gb-tw t5">'+star+'</span>'
+    +'<div class="gb-star"><span class="halo"></span>'+star+'</div>'
+    +'<div class="gb-txt"><b>'+T('جارٍ إنشاء الصورة','Creating the image')+'</b><span class="gb-sec">'+T(sec+' ثانية',sec+' s')+'</span></div></div>';
   }
   const od=outDims(g,g.res);
   return '<div class="genbox done" style="'+boxStyle(g)+'"><img src="'+g.thumb+'" alt=""><span class="gb-tag">'+T('تجريبي','Demo')+'</span></div>'
