@@ -58,10 +58,15 @@ public final class Store {
         return u;
     }
 
+    public static String convKey() {
+        String e = sp.getString("user_email", "");
+        return e.isEmpty() ? "convs" : "convs_" + e;
+    }
+
     public static void load() {
         convs.clear();
         try {
-            JSONArray a = new JSONArray(sp.getString("convs", "[]"));
+            JSONArray a = new JSONArray(sp.getString(convKey(), "[]"));
             for (int i = 0; i < a.length(); i++) {
                 JSONObject o = a.getJSONObject(i);
                 Conv c = new Conv();
@@ -90,7 +95,7 @@ public final class Store {
 
     public static void save() {
         if (!bool("save_hist", true)) {
-            sp.edit().putString("convs", "[]").apply();
+            sp.edit().putString(convKey(), "[]").apply();
             return;
         }
         try {
@@ -116,7 +121,7 @@ public final class Store {
                 o.put("m", ms);
                 a.put(o);
             }
-            sp.edit().putString("convs", a.toString()).apply();
+            sp.edit().putString(convKey(), a.toString()).apply();
         } catch (Exception ignored) {
         }
     }

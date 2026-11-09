@@ -179,6 +179,30 @@ public class SettingsActivity extends Activity {
             }
         }, true);
 
+        row(c, IconView.CHAT, T.s("s_email"), Store.get("user_email", "").isEmpty() ? T.s("guest") : Store.get("user_email", ""), null, false);
+        row(c, IconView.CLOSE, T.s("s_logout"), null, new Runnable() {
+            public void run() {
+                Ui.confirm(SettingsActivity.this, T.s("s_logout_q"), new Runnable() {
+                    public void run() {
+                        Accounts.logout();
+                        Intent i = new Intent(SettingsActivity.this, LoginActivity.class);
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(i);
+                    }
+                });
+            }
+        }, false);
+
+        c = section(T.s("s_google"));
+        row(c, IconView.KEY, "Client ID", GoogleAuth.CLIENT_ID.substring(0, 12) + "…", null, true);
+        row(c, IconView.LINK, T.s("s_gsecret"), Store.get("google_secret", "").isEmpty() ? T.s("s_gsecret_sub") : mask(Store.get("google_secret", "")), new Runnable() {
+            public void run() {
+                Ui.edit(SettingsActivity.this, T.s("s_gsecret"), Store.get("google_secret", ""), "GOCSPX-...", false, true, new Ui.Str() {
+                    public void on(String s) { Store.put("google_secret", s); rebuild(); }
+                });
+            }
+        }, false);
+
         // ---------------- appearance
         c = section(T.s("s_appearance"));
         row(c, IconView.PALETTE, T.s("s_theme"), Theme.dark ? T.s("s_dark") : T.s("s_light"), new Runnable() {

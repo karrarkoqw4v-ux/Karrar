@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.graphics.Typeface;
 import android.text.InputType;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
@@ -38,7 +39,7 @@ public final class Ui {
     public static TextView label(Activity a, String t, float sp, int color, boolean bold) {
         TextView tv = new TextView(a);
         tv.setText(t);
-        tv.setTextSize(sp * Theme.font);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, sp * 0.86f * Theme.font);
         tv.setTextColor(color);
         if (bold) tv.setTypeface(Typeface.DEFAULT_BOLD);
         return tv;

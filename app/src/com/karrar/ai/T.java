@@ -42,6 +42,43 @@ public final class T {
         a("stopped", "تم إيقاف التوليد", "Generation stopped");
         a("guest", "مستخدم", "User");
 
+
+        // login
+        a("l_welcome", "أهلاً بك في كرّار", "Welcome to Karrar");
+        a("l_sub", "سجّل الدخول لمتابعة محادثاتك", "Sign in to continue your chats");
+        a("l_sub_up", "أنشئ حسابك في ثوانٍ", "Create your account in seconds");
+        a("l_google", "المتابعة باستخدام Google", "Continue with Google");
+        a("l_or", "أو", "or");
+        a("l_email", "البريد الإلكتروني", "Email");
+        a("l_pass", "كلمة المرور", "Password");
+        a("l_pass2", "تأكيد كلمة المرور", "Confirm password");
+        a("l_name", "الاسم", "Name");
+        a("l_login", "تسجيل الدخول", "Sign in");
+        a("l_signup", "إنشاء حساب", "Create account");
+        a("l_to_signup", "ليس لديك حساب؟ أنشئ حساباً", "No account? Create one");
+        a("l_to_login", "لديك حساب؟ سجّل الدخول", "Have an account? Sign in");
+        a("l_guest", "المتابعة كضيف", "Continue as guest");
+        a("l_show", "إظهار", "Show");
+        a("l_hide", "إخفاء", "Hide");
+        a("l_opening", "جارٍ فتح Google…", "Opening Google…");
+        a("l_wait", "أكمل تسجيل الدخول في المتصفح ثم ارجع للتطبيق", "Finish signing in in the browser, then come back");
+        a("l_lang", "English", "العربية");
+        a("e_name", "اكتب اسماً من حرفين على الأقل", "Enter a name (2+ characters)");
+        a("e_email", "البريد الإلكتروني غير صحيح", "Invalid email address");
+        a("e_pass_short", "كلمة المرور يجب ألا تقل عن 6 أحرف", "Password must be at least 6 characters");
+        a("e_pass_match", "كلمتا المرور غير متطابقتين", "Passwords do not match");
+        a("e_exists", "هذا البريد مسجّل مسبقاً", "This email is already registered");
+        a("e_nouser", "لا يوجد حساب بهذا البريد", "No account with this email");
+        a("e_wrong", "كلمة المرور غير صحيحة", "Wrong password");
+        a("e_empty", "اكتب كلمة المرور", "Enter your password");
+        a("e_bad", "حدث خطأ، حاول مرة أخرى", "Something went wrong, try again");
+        a("s_email", "البريد الإلكتروني", "Email");
+        a("s_logout", "تسجيل الخروج", "Sign out");
+        a("s_logout_q", "هل تريد تسجيل الخروج؟", "Sign out?");
+        a("s_google", "تسجيل الدخول بجوجل", "Google sign-in");
+        a("s_gsecret", "Google Client Secret (اختياري)", "Google client secret (optional)");
+        a("s_gsecret_sub", "مطلوب إذا رفضت جوجل الطلب بدونه", "Needed if Google rejects the request without it");
+
         // settings
         a("s_account", "الحساب", "Account");
         a("s_name", "الاسم", "Name");

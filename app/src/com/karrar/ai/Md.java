@@ -66,7 +66,7 @@ public final class Md {
         TextView tv = new TextView(a);
         tv.setText(block(s));
         tv.setTextColor(Theme.text);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f * Theme.font);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         tv.setLineSpacing(0, 1.28f);
         tv.setTextIsSelectable(selectable);
         tv.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
@@ -143,12 +143,12 @@ public final class Md {
         TextView l = new TextView(a);
         l.setText(lang.isEmpty() ? "code" : lang);
         l.setTextColor(Theme.text2);
-        l.setTextSize(12);
+        l.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
         head.addView(l, new LinearLayout.LayoutParams(0, -2, 1));
         TextView cp = new TextView(a);
         cp.setText(T.s("copy"));
         cp.setTextColor(Theme.text2);
-        cp.setTextSize(12);
+        cp.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
         cp.setPadding(Theme.dp(a, 10), Theme.dp(a, 6), Theme.dp(a, 10), Theme.dp(a, 6));
         cp.setBackground(Theme.rippleRect(a, 0x00000000, 8));
         cp.setOnClickListener(new View.OnClickListener() {
@@ -167,7 +167,7 @@ public final class Md {
         t.setText(code);
         t.setTypeface(Typeface.MONOSPACE);
         t.setTextColor(Theme.text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f * Theme.font);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f * Theme.font);
         t.setTextIsSelectable(true);
         t.setTextDirection(View.TEXT_DIRECTION_LTR);
         t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);

@@ -64,6 +64,11 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         Store.init(this);
         Store.applyTheme();
+        if (!Store.bool("logged", false)) {
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
         seenVersion = Store.version;
         Theme.styleWindow(this);
         think = Store.bool("def_think", false);
@@ -172,7 +177,7 @@ public class MainActivity extends Activity {
         input.setHint(T.s("hint"));
         input.setHintTextColor(Theme.text3);
         input.setTextColor(Theme.text);
-        input.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f * Theme.font);
+        input.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         input.setBackground(null);
         input.setMinHeight(dp(44));
         input.setMaxLines(6);
@@ -343,10 +348,21 @@ public class MainActivity extends Activity {
         String n = userName();
         av.setText(n.substring(0, 1).toUpperCase());
         prof.addView(av, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        LinearLayout pcol = new LinearLayout(this);
+        pcol.setOrientation(LinearLayout.VERTICAL);
         profileName = Ui.label(this, n, 16, Theme.text, true);
+        profileName.setSingleLine(true);
+        pcol.addView(profileName);
+        String em = Store.get("user_email", "");
+        if (!em.isEmpty()) {
+            TextView et = Ui.label(this, em, 12.5f, Theme.text3, false);
+            et.setSingleLine(true);
+            et.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            pcol.addView(et);
+        }
         LinearLayout.LayoutParams pn = new LinearLayout.LayoutParams(0, -2, 1);
         pn.setMarginStart(dp(12));
-        prof.addView(profileName, pn);
+        prof.addView(pcol, pn);
         prof.addView(new IconView(this, IconView.SETTINGS, Theme.text2), new LinearLayout.LayoutParams(dp(24), dp(24)));
         prof.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -479,7 +495,7 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(m.content);
         t.setTextColor(Theme.text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f * Theme.font);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         t.setLineSpacing(0, 1.2f);
         t.setTextIsSelectable(true);
         t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
