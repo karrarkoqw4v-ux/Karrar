@@ -1,0 +1,38 @@
+.scroll.chat{flex:1;position:relative}
+.msgs{padding:4px 18px 18px;display:flex;flex-direction:column}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 40px 40px;pointer-events:none}
+.empty .logo-big{width:62px;height:62px;color:var(--accent);animation:pop .6s var(--spring) both}
+.empty h2{margin-top:26px;font-size:1.55em;font-weight:700;line-height:1.3;animation:fadeUp .6s .1s var(--ease) both}
+.msg{margin-top:16px}
+.msg.user{display:flex;flex-direction:column;align-items:flex-end;gap:6px;animation:bubbleIn .4s var(--ease) both}
+.bubble{background:var(--bubble);padding:12px 18px;border-radius:24px;max-width:84%;font-size:1.06em;line-height:1.55;white-space:pre-wrap;word-break:break-word;user-select:text}
+.att-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:90%}
+.att-img{width:112px;height:112px;border-radius:20px;object-fit:cover;background:var(--surface);animation:pop .4s var(--spring) both}
+.att-file{display:flex;align-items:center;gap:10px;background:var(--bubble);padding:10px 16px 10px 14px;border-radius:18px;max-width:260px;font-weight:600}
+.att-file .fi{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.att-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr}
+.msg.ai{animation:fadeUp .45s var(--ease) both}
+.ai-head{display:flex;align-items:center;height:30px}
+.ai-head .logo{width:26px;height:26px;color:var(--accent)}
+.msg.ai.live .ai-head .logo{animation:breathe 1.6s ease-in-out infinite}
+.status{margin-top:10px;font-weight:700;font-size:.95em}
+.dots{display:flex;gap:5px;margin:12px 4px 2px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:dot 1.1s infinite}
+.dots i:nth-child(2){animation-delay:.15s;background:#6f7fff}.dots i:nth-child(3){animation-delay:.3s;background:var(--accent2)}
+.think{margin-top:10px}
+.think-h{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:var(--r-pill);background:var(--surface);color:var(--text2);font-weight:700;font-size:.9em}
+.think-h .chev{transition:transform .3s var(--ease)}
+.think.open .think-h .chev{transform:rotate(180deg)}
+.think.live .think-h{color:var(--accent-text)}
+.think.live .think-h span{background:linear-gradient(90deg,var(--text2) 30%,var(--text) 50%,var(--text2) 70%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 1.6s linear infinite}
+.think-b{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s var(--ease)}
+.think.open .think-b{grid-template-rows:1fr}
+.think-b>div{overflow:hidden}
+.think-b p{margin-top:8px;margin-inline-start:6px;padding:2px 12px;border-inline-start:2px solid var(--border);color:var(--text2);font-size:.92em;line-height:1.65;white-space:pre-wrap}
+.acts{display:flex;gap:2px;margin-top:6px;margin-inline-start:-8px;opacity:0;transform:translateY(4px);transition:opacity .35s,transform .35s}
+.msg.ai.done .acts{opacity:1;transform:none}
+.acts button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--text3);transition:transform .25s var(--spring),color .2s}
+.acts button:active{transform:scale(.82)}
+.acts button.on{color:var(--accent-text)}
+.demo-note{margin-top:6px;color:var(--text3);font-size:.82em;display:flex;gap:6px;align-items:center}
+.cursor{display:inline-block;width:2px;height:1.05em;background:var(--accent-text);margin-inline-start:2px;vertical-align:-.2em;animation:blink 1s steps(1) infinite}

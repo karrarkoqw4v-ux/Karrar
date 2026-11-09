@@ -1,0 +1,19 @@
+/* modals / dialogs / lightbox */
+#overlay{position:fixed;inset:0;z-index:80;pointer-events:none}
+#overlay>*{pointer-events:auto}
+.backdrop{position:fixed;inset:0;background:var(--scrim);animation:fadeIn .25s both}
+.dlg{position:fixed;inset-inline:0;bottom:0;background:var(--card);border-radius:30px 30px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));animation:sheetUp .36s var(--ease) both;max-height:80vh;display:flex;flex-direction:column}
+.dlg h3{font-size:1.25em;font-weight:800;margin-bottom:12px;text-align:start}
+.dlg p{color:var(--text2);line-height:1.6;font-weight:500;margin-bottom:6px}
+.dlg textarea,.dlg input{width:100%;background:var(--field);border-radius:18px;padding:14px 16px;font-size:1.05em;margin:4px 0 6px;direction:auto;color:var(--text)}
+.dlg textarea{min-height:110px;resize:none}
+.dlg .btns{display:flex;gap:10px;margin-top:14px}
+.dlg .btns button{flex:1;height:50px;border-radius:25px;font-weight:800;font-size:1.05em;background:var(--surface2);transition:transform .2s var(--spring)}
+.dlg .btns button:active{transform:scale(.95)}
+.dlg .btns .primary{background:var(--accent);color:#fff}
+.dlg .btns .danger{background:var(--danger);color:#fff}
+.opts{overflow-y:auto;margin:0 -8px}
+.opt{display:flex;align-items:center;justify-content:space-between;width:100%;height:56px;padding:0 14px;border-radius:16px;font-weight:700;font-size:1.1em;text-align:start}
+.opt:active{background:var(--hover)}.opt.sel{color:var(--accent-text)}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;animation:fadeIn .25s both}
+.lightbox img{max-width:96vw;max-height:88vh;border-radius:14px;animation:pop .35s var(--spring) both}

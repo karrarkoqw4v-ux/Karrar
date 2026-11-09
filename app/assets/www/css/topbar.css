@@ -1,0 +1,7 @@
+.home{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .35s var(--ease),border-radius .35s;will-change:transform}
+html[dir=rtl] .home.shift{transform:translateX(-9%) scale(.97);border-radius:28px}
+html[dir=ltr] .home.shift{transform:translateX(9%) scale(.97);border-radius:28px}
+.topbar{height:58px;display:flex;align-items:center;padding:0 10px;flex:none;position:relative;z-index:2}
+.topbar .title{flex:1;text-align:center;color:var(--text2);font-weight:700;font-size:1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;min-height:1.4em}
+.topbar .icon-btn svg{width:27px;height:27px}
+.topbar .caret::after{content:"";display:inline-block;width:2px;height:1em;background:var(--accent-text);margin-inline-start:2px;vertical-align:-.15em;animation:blink 1s steps(1) infinite}

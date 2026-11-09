@@ -1,0 +1,22 @@
+.md{font-size:1.04em;line-height:1.7;word-break:break-word;margin-top:6px;user-select:text}
+.md>*:first-child{margin-top:0}
+.md p{margin:.5em 0}
+.md h1,.md h2,.md h3{font-weight:800;line-height:1.35;margin:1em 0 .35em}
+.md h1{font-size:1.4em}.md h2{font-size:1.22em}.md h3{font-size:1.08em}
+.md ul,.md ol{margin:.4em 0;padding-inline-start:1.4em}.md li{margin:.25em 0}.md li::marker{color:var(--text3)}
+.md blockquote{margin:.6em 0;padding:.2em 1em;border-inline-start:3px solid var(--accent);color:var(--text2);background:var(--hover);border-radius:0 12px 12px 0}
+.md hr{border:0;border-top:1px solid var(--border);margin:1em 0}
+.md strong{font-weight:800}
+.md code{font-family:var(--mono);font-size:.88em;background:var(--surface);padding:.12em .45em;border-radius:7px;direction:ltr;unicode-bidi:embed}
+.md a{text-decoration:underline;text-underline-offset:3px}
+.md table{border-collapse:collapse;margin:.7em 0;display:block;overflow-x:auto;max-width:100%}
+.md th,.md td{border:1px solid var(--border);padding:.45em .8em;text-align:start}.md th{background:var(--surface);font-weight:800}
+.codebox{margin:.8em 0;background:var(--code);border:1px solid var(--border);border-radius:16px;overflow:hidden;direction:ltr}
+.codebox .ch{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 6px 14px;border-bottom:1px solid var(--border);color:var(--text2);font-size:.8em;font-weight:700}
+.codebox .cp{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:10px;color:var(--text2);font-weight:700}
+.codebox .cp:active{background:var(--hover)}
+.codebox pre{padding:12px 14px;overflow-x:auto;font-family:var(--mono);font-size:.84em;line-height:1.6;white-space:pre;tab-size:2}
+.cite{display:inline-grid;place-items:center;min-width:1.35em;height:1.35em;padding:0 .3em;margin:0 .15em;border-radius:99px;background:var(--accent-soft);color:var(--accent-text);font-size:.7em;font-weight:800;vertical-align:.35em;cursor:pointer;line-height:1}
+.codebox code{background:none!important;padding:0!important;border-radius:0!important;font-size:inherit!important;direction:ltr;unicode-bidi:plaintext;text-align:left}
+.codebox pre{direction:ltr;text-align:left}
+.md blockquote{border-radius:12px}

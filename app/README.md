@@ -1,12 +1,9 @@
-# Karrar AI — Android chat app (dark, DeepSeek-style layout)
+# Karrar AI — Android chat app (HTML / CSS / JS UI in a WebView)
 
-Pure-Java Android app (no external libraries). Features: dark/light theme, Arabic (RTL) / English,
-side drawer with chat history, DeepThink (visible reasoning), web search with sources, Markdown + code blocks,
-streaming replies, any OpenAI-compatible API (DeepSeek, OpenAI, OpenRouter, Groq, Ollama), large settings page.
-Without an API key the app runs in demo mode.
+* `assets/www/` — the whole interface: 14 CSS files (tokens, animations, chat, search, settings…), 16 JS files,
+  bundled fonts (Noto Sans Arabic + Inter), Lucide icons and 3.7k Twemoji SVGs (no system emoji).
+* `src/com/karrar/ai/` — native shell: `WebActivity` (WebView), `Bridge` (JS <-> Android: AI streaming, web search,
+  Google sign-in, gallery/camera/files, voice, TTS), `Api`, `Search`, `GoogleAuth`, `Accounts`.
+* Open `assets/www/index.html` in a desktop browser to develop the UI (`js/mock.js` fakes the native side).
 
-## Build
-Needs `aapt`, `zipalign`, `apksigner` (apt), a JDK, and in `tools/jars/`: `android-all.jar`
-(org.robolectric:android-all:14-robolectric-10818077) and `dx.jar` (com.jakewharton.android.repackaged:dalvik-dx:14.0.0_r21).
-
-    ./tools/build.sh   # -> Karrar-AI.apk
+Build (needs `aapt`, `zipalign`, `apksigner`, a JDK and `tools/jars/{android-all,dx}.jar`): `./tools/build.sh`

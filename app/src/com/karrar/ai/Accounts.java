@@ -72,24 +72,29 @@ public final class Accounts {
     }
 
     public static void guest() {
-        begin("", T.s("guest"), false);
+        begin("", "Guest", false);
     }
 
     private static void begin(String email, String name, boolean g) {
-        Store.save();
         Store.put("user_email", email);
         Store.put("name", name);
         Store.putBool("user_google", g);
         Store.putBool("logged", true);
         Store.put("cur", "");
-        Store.load();
+    }
+
+    public static void delete(String email) {
+        try {
+            JSONObject a = all();
+            a.remove(email.trim().toLowerCase());
+            Store.put("accounts", a.toString());
+        } catch (Exception ignored) { }
+        logout();
     }
 
     public static void logout() {
-        Store.save();
         Store.putBool("logged", false);
         Store.put("user_email", "");
         Store.put("cur", "");
-        Store.load();
     }
 }

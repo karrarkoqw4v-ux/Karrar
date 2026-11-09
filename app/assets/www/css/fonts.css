@@ -1,0 +1,18 @@
+/* Heavy Arabic (Noto Sans Arabic) + Latin (Inter / Noto Sans) — bundled locally, no network */
+@font-face{font-family:"KAr";font-weight:400;font-display:block;src:url(../fonts/ar-400.woff2) format("woff2")}
+@font-face{font-family:"KAr";font-weight:500;font-display:block;src:url(../fonts/ar-500.woff2) format("woff2")}
+@font-face{font-family:"KAr";font-weight:600;font-display:block;src:url(../fonts/ar-600.woff2) format("woff2")}
+@font-face{font-family:"KAr";font-weight:700;font-display:block;src:url(../fonts/ar-700.woff2) format("woff2")}
+@font-face{font-family:"KAr";font-weight:800;font-display:block;src:url(../fonts/ar-800.woff2) format("woff2")}
+@font-face{font-family:"KLat";font-weight:400;font-display:block;src:url(../fonts/lat-400.woff2) format("woff2")}
+@font-face{font-family:"KLat";font-weight:500;font-display:block;src:url(../fonts/lat-600.woff2) format("woff2")}
+@font-face{font-family:"KLat";font-weight:600;font-display:block;src:url(../fonts/lat-600.woff2) format("woff2")}
+@font-face{font-family:"KLat";font-weight:700;font-display:block;src:url(../fonts/lat-700.woff2) format("woff2")}
+@font-face{font-family:"KLat";font-weight:800;font-display:block;src:url(../fonts/lat-700.woff2) format("woff2")}
+@font-face{font-family:"KInter";font-weight:400;font-display:block;src:url(../fonts/en-400.woff2) format("woff2")}
+@font-face{font-family:"KInter";font-weight:500;font-display:block;src:url(../fonts/en-500.woff2) format("woff2")}
+@font-face{font-family:"KInter";font-weight:600;font-display:block;src:url(../fonts/en-600.woff2) format("woff2")}
+@font-face{font-family:"KInter";font-weight:700;font-display:block;src:url(../fonts/en-700.woff2) format("woff2")}
+@font-face{font-family:"KInter";font-weight:800;font-display:block;src:url(../fonts/en-800.woff2) format("woff2")}
+:root{--font-ar:"KAr","KLat",system-ui,sans-serif;--font-en:"KInter","KAr",system-ui,sans-serif;--font:var(--font-ar);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+html[lang=en]{--font:var(--font-en)}

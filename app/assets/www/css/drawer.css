@@ -1,0 +1,29 @@
+.scrim{position:absolute;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .3s;z-index:20}
+.scrim.show{opacity:1;pointer-events:auto}
+.drawer{position:absolute;top:0;bottom:0;inset-inline-start:0;width:86%;max-width:380px;background:var(--bg);z-index:21;display:flex;flex-direction:column;padding:10px 16px;transform:translateX(var(--dx,-105%));transition:transform .36s var(--ease);box-shadow:var(--shadow);visibility:hidden}
+html[dir=rtl] .drawer{--dx:105%}
+.drawer.open{transform:none;visibility:visible}
+.dsearch{height:56px;border-radius:28px;background:var(--field);display:flex;align-items:center;gap:12px;padding:0 18px;margin-top:6px;color:var(--text2);flex:none}
+.dsearch input{flex:1;min-width:0;font-size:1.08em;font-weight:600;color:var(--text)}
+.dlist{flex:1;overflow-y:auto;scrollbar-width:none;padding-bottom:10px}.dlist::-webkit-scrollbar{display:none}
+.dgroup{display:flex;align-items:center;justify-content:space-between;padding:18px 8px 4px;color:var(--text2);font-weight:700;font-size:.95em}
+.dgroup .icon-btn{width:36px;height:36px;color:var(--text2)}
+.ditem{height:56px;display:flex;align-items:center;gap:12px;padding:0 8px;border-radius:16px;font-weight:700;font-size:1.12em;cursor:pointer;transition:background .2s,transform .2s}
+.ditem span.t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ditem:active{background:var(--hover)}
+.ditem.cur{background:var(--surface2)}
+.ditem .ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--text3);flex:none;display:grid;place-items:center;color:#fff;transition:all .25s var(--spring)}
+.ditem.sel{background:var(--surface2)}.ditem.sel .ck{background:var(--accent);border-color:var(--accent);transform:scale(1.1)}
+.ditem .pn{color:var(--text3)}
+.dempty{text-align:center;color:var(--text3);padding-top:50px;font-weight:600}
+.dprof{display:flex;align-items:center;gap:14px;padding:10px 4px;border-radius:18px;flex:none;cursor:pointer}
+.dprof .av{width:46px;height:46px;border-radius:50%;background:#d9d9dc;overflow:hidden;position:relative;flex:none}
+.dprof .av svg{position:absolute;inset:0;width:100%;height:100%}
+.dprof b{flex:1;font-size:1.15em;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dprof .mo{color:var(--text2)}
+.delbar{height:50px;border-radius:25px;background:var(--field);color:var(--danger);font-weight:800;font-size:1.1em;flex:none}
+.ctx{position:fixed;z-index:60;width:min(260px,66vw);background:var(--surface2);border-radius:26px;box-shadow:var(--shadow);overflow:hidden;animation:pop .22s var(--spring) both;transform-origin:top center}
+.ctx button{width:100%;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-weight:700;font-size:1.15em;border-bottom:1px solid rgba(255,255,255,.1);transition:background .15s}
+html[data-theme=light] .ctx button{border-color:rgba(0,0,0,.08)}
+.ctx button:last-child{border:0;color:var(--danger)}
+.ctx button:active{background:var(--hover)}
