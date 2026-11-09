@@ -34,6 +34,7 @@ H.mount=function(){
   if(!ta.value){bar.classList.remove('multi')}else if(ta.scrollHeight>lh*1.6)bar.classList.add('multi');
   ta.style.height=Math.min(ta.scrollHeight,150)+'px';H.refreshComposer()});
  ta.addEventListener('focus',()=>H.toggleSheet(false));
+ ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&K.pref.bool('enter_send',false)){e.preventDefault();K.chat.send()}});
  $('aCam').onclick=async()=>{H.toggleSheet(false);const r=await K.native.camera();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
  $('aAlb').onclick=async()=>{H.toggleSheet(false);const r=await K.native.pickImages();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
  $('aFile').onclick=async()=>{H.toggleSheet(false);const f=await K.native.pickFile();if(f&&f.name)H.addAtt({kind:'file',name:f.name,text:f.text||''})};

@@ -28,6 +28,8 @@ K.persona=function(){
  const p=K.pref,st=+p.get('reply_style','1'),lg=p.get('reply_lang','auto'),nm=p.get('nickname','').trim(),ab=p.get('about_me','').trim(),a=[];
  if(nm)a.push('Address the user as "'+nm+'".');
  if(ab)a.push('About the user: '+ab);
+
+ try{const m=JSON.parse(p.get('memories','[]'));if(m.length)a.push('Remember these facts about the user:\n'+m.map(x=>'- '+x).join('\n'))}catch(e){}
  a.push(['Keep answers short and to the point.','','Give detailed, well-structured answers with examples.'][st]||'');
  if(lg==='ar')a.push('Always answer in Arabic.');else if(lg==='en')a.push('Always answer in English.');
  return a.filter(Boolean).join('\n');

@@ -74,6 +74,18 @@ s_autodel:["حذف المحادثات تلقائياً","Auto-delete chats"],s_a
 s_rate:["سرعة القراءة الصوتية","Speaking speed"],s_slow:["بطيئة","Slow"],s_normal:["عادية","Normal"],s_fast:["سريعة","Fast"],s_vfast:["سريعة جداً","Very fast"],
 s_motion:["تقليل الحركة","Reduce motion"],s_motion_s:["إيقاف الحركات والتأثيرات لتوفير البطارية","Turn off animations to save battery"],s_th_sys:["حسب النظام","System"],
 l_enter_pin:["أدخل رمز القفل","Enter your PIN"],l_new_pin:["اختر رمزاً من 4 أرقام","Choose a 4-digit PIN"],l_confirm_pin:["أعد إدخال الرمز","Re-enter the PIN"],l_wrong_pin:["الرمز غير صحيح","Wrong PIN"],l_pin_mismatch:["الرمزان غير متطابقين","PINs do not match"],l_pin_saved:["تم تفعيل القفل","Lock enabled"],
+app_slack:["Slack","Slack"],app_slack_s:["محادثات الفريق","Team chats"],
+s_tools:["الأدوات","Tools"],t_prompts:["قوالب الأوامر","Prompt templates"],t_prompts_s:["احفظ أوامرك المتكررة واستخدمها بضغطة","Save your frequent prompts and reuse them"],
+t_memory:["الذاكرة","Memory"],t_memory_s:["معلومات يتذكرها كرّار عنك في كل محادثة","Facts Karrar remembers about you in every chat"],
+t_stats:["الإحصائيات","Statistics"],t_stats_s:["نشاطك في التطبيق","Your activity in the app"],
+t_backup:["نسخة احتياطية","Backup"],t_export:["تصدير نسخة احتياطية","Export a backup"],t_import:["استيراد نسخة احتياطية","Import a backup"],t_import_h:["الصق نص النسخة الاحتياطية هنا","Paste the backup text here"],t_import_ok:["تم الاستيراد","Imported"],t_import_bad:["النص غير صالح","Invalid backup text"],
+t_incog:["محادثة مؤقتة","Temporary chat"],t_incog_s:["لا تُحفظ المحادثات الجديدة في السجل","New chats are not saved to history"],
+t_enter:["الإرسال بزر Enter","Send with Enter"],t_enter_s:["للوحات المفاتيح الخارجية (Shift+Enter سطر جديد)","For hardware keyboards (Shift+Enter = new line)"],
+t_maxtok:["أقصى طول للرد","Max reply length"],t_auto:["تلقائي","Auto"],t_share:["مشاركة التطبيق","Share the app"],t_share_t:["جرّب تطبيق كرّار AI للدردشة بالذكاء الاصطناعي","Try Karrar AI, a chat app powered by AI"],
+t_licenses:["التراخيص وحقوق المصادر","Licences & credits"],t_licenses_s:["الخطوط والأيقونات والإيموجي المستخدمة","Fonts, icons and emoji used"],
+t_add:["إضافة","Add"],t_new_prompt:["قالب جديد","New template"],t_prompt_title:["اسم القالب","Template name"],t_prompt_text:["نص الأمر","Prompt text"],t_use:["استخدام","Use"],t_edit:["تعديل","Edit"],t_empty:["لا يوجد شيء بعد","Nothing here yet"],
+t_new_mem:["معلومة جديدة","New fact"],t_mem_h:["مثال: أدرس في كلية الطب","Example: I study medicine"],
+st_chats:["المحادثات","Chats"],st_msgs:["رسائلك","Your messages"],st_replies:["ردود كرّار","Karrar replies"],st_words:["مجموع الكلمات","Total words"],st_first:["أول محادثة","First chat"],st_pinned:["المحادثات المثبتة","Pinned chats"],
 tl:[["مرحبًا، أنا كرّار","Hi, I'm Karrar"],["اسألني أي شيء","Ask me anything"],["اكتب لي كوداً","Write me code"],["ابحث لي في الويب","Search the web for me"]]
 };
 K.lang=function(){return K.pref?K.pref.get('lang','ar'):'ar'};

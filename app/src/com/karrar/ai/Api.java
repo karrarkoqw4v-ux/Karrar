@@ -54,6 +54,10 @@ public final class Api {
                     if (!think) {
                         try { body.put("temperature", Double.parseDouble(Store.get("temp", "0.7"))); } catch (Exception ignored) { }
                     }
+                    try {
+                        int mt = Integer.parseInt(Store.get("max_tokens", "0"));
+                        if (mt > 0) body.put("max_tokens", mt);
+                    } catch (Exception ignored) { }
                     JSONArray msgs = new JSONArray();
                     String sys = Store.get("system", "").trim();
                     if (extraCtx != null && extraCtx.length() > 0) sys = (sys.isEmpty() ? "" : sys + "\n\n") + extraCtx;

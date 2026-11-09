@@ -10,7 +10,7 @@ const stack=[];
 const S=K.settings={};
 function mask(k){if(!k)return K.t('s_not_set');return k.length<=8?'••••••••':k.slice(0,3)+'••••••••'+k.slice(-4)}
 function maskEmail(e){const a=e.indexOf('@');return a<5?e:e.slice(0,4)+'••••••'+e.slice(a-2)}
-function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title')}[p]}
+function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses')}[p]}
 
 /* ----- builders ----- */
 function sec(parent,label){if(label){const t=document.createElement('div');t.className='sec-t';t.textContent=label;parent.appendChild(t)}const c=document.createElement('div');c.className='card';parent.appendChild(c);return c}
@@ -42,7 +42,7 @@ function after(p){K.app.apply();S.rerender();if(p&&p.remount)K.app.remount()}
 function build(el,p){
  if(p==='font'){fontPage(el);return}
  const body=document.createElement('div');body.className='pbody stagger';el.appendChild(body);
- ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage})[p](body);
+ ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage})[p](body);
  K.emojifyEl(body);
 }
 
@@ -52,6 +52,14 @@ function mainPage(b){
  row(c,{icon:'database',title:K.t('s_data'),onclick:()=>S.open('data')});
  c=sec(b,K.t('s_link'));
  row(c,{icon:'plug',title:K.t('connected_apps'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('apps')});
+ c=sec(b,K.t('s_tools'));
+ row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
+ row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
+ row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
+ toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
+ toggle(c,{icon:'arrow-up',title:K.t('t_enter'),sub:K.t('t_enter_s'),key:'enter_send',def:false});
+ const MT=['0','512','1024','2048','4096'];
+ row(c,{icon:'a-large-small',title:K.t('t_maxtok'),value:K.pref.get('max_tokens','0')==='0'?K.t('t_auto'):K.pref.get('max_tokens','0'),onclick:async()=>{const i=await K.ui.choose(K.t('t_maxtok'),MT.map(x=>x==='0'?K.t('t_auto'):x),Math.max(0,MT.indexOf(K.pref.get('max_tokens','0'))));if(i!=null){K.pref.set('max_tokens',MT[i]);S.rerender()}}});
  c=sec(b,K.t('s_app'));
  row(c,{icon:'globe',title:K.t('s_lang'),value:K.lang()==='ar'?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],K.lang()==='ar'?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}});
  const thv=K.pref.get('theme','dark');
@@ -75,9 +83,14 @@ function mainPage(b){
   else K.lock.show('set',()=>S.rerender())}});
  const ADK=['0','7','30','90'];
  row(c,{icon:'clock',title:K.t('s_autodel'),value:K.t('s_ad'+K.pref.get('auto_del','0')),onclick:async()=>{const i=await K.ui.choose(K.t('s_autodel'),ADK.map(k=>K.t('s_ad'+k)),Math.max(0,ADK.indexOf(K.pref.get('auto_del','0'))));if(i!=null){K.pref.set('auto_del',ADK[i]);K.db.load();S.rerender()}}});
+ c=sec(b,K.t('t_backup'));
+ row(c,{icon:'share',title:K.t('t_export'),onclick:()=>{K.native.share(JSON.stringify({v:1,app:'karrar',convs:K.db.convs,prompts:JSON.parse(K.pref.get('prompts','[]')),memories:JSON.parse(K.pref.get('memories','[]'))}))}});
+ row(c,{icon:'database',title:K.t('t_import'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('t_import'),hint:K.t('t_import_h'),multi:true});if(!v)return;try{const o=JSON.parse(v);if(o.app!=='karrar')throw 0;(o.convs||[]).forEach(c=>{if(!K.db.find(c.id))K.db.convs.push(c)});if(o.prompts&&o.prompts.length)K.pref.set('prompts',JSON.stringify(o.prompts));if(o.memories&&o.memories.length)K.pref.set('memories',JSON.stringify(o.memories));K.db.save();K.toast(K.t('t_import_ok'))}catch(e){K.toast(K.t('t_import_bad'))}}});
  c=sec(b,K.t('s_about'));
  row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
  row(c,{icon:'file-text',title:K.t('s_terms'),onclick:()=>K.ui.info(K.t('s_terms'),K.t('s_terms_body'))});
+ row(c,{icon:'info',title:K.t('t_licenses'),sub:K.t('t_licenses_s'),onclick:()=>S.open('licenses')});
+ row(c,{icon:'share',title:K.t('t_share'),onclick:()=>K.native.share(K.t('t_share_t'))});
  c=sec(b,'');c.style.marginTop='22px';
  row(c,{icon:'circle-help',title:K.t('s_help'),onclick:()=>K.ui.info(K.t('s_help'),K.t('s_help_body'))});
  c=sec(b,'');c.style.marginTop='22px';
@@ -166,6 +179,37 @@ async function githubPage(b){
    rw.onclick=()=>{const now=K.gh.toggle(r.full_name);rw.classList.toggle('picked',now);const v=rw.querySelector('.rv');if(now){if(!v){const sp=document.createElement('span');sp.className='rv';sp.textContent=K.t('gh_attached');rw.insertBefore(sp,rw.querySelector('.rc')||null)}}else if(v)v.remove();K.home.paintPills&&K.home.paintPills();K.native.haptic()};
   });
  }catch(e){list.innerHTML='<div class="row"><span class="rt" style="color:var(--danger)">'+K.t('gh_err')+'</span></div>'}
+}
+const LIC=[['Inter','SIL Open Font License 1.1','rsms.me/inter'],['Noto Sans / Noto Sans Arabic','SIL Open Font License 1.1','Google Fonts'],['IBM Plex Sans Arabic','SIL Open Font License 1.1','IBM'],['Cairo','SIL Open Font License 1.1','Mohamed Gaber, Accademia di Belle Arti di Urbino'],['Almarai','SIL Open Font License 1.1','Boutros Fonts'],['Lucide icons','ISC License','lucide.dev'],['Twemoji','CC-BY 4.0 (graphics) / MIT (code)','Twitter, Inc. and other contributors'],['Iconify "Logos" collection','CC0 1.0 (collection data)','gilbarbara/logos — the logos are trademarks of their owners'],['Simple Icons','CC0 1.0 (icon data)','simpleicons.org — the logos are trademarks of their owners']];
+function licensesPage(b){
+ const c=sec(b,'');c.style.marginTop='6px';
+ LIC.forEach(l=>row(c,{icon:'file-text',title:l[0],sub:l[1]+' · '+l[2]}));
+ note(b,'Karrar AI — 2.0');
+}
+function statsPage(b){
+ const cv=K.db.convs.filter(c=>c.msgs.length),all=[].concat.apply([],cv.map(c=>c.msgs));
+ const um=all.filter(m=>m.role==='user').length,am=all.filter(m=>m.role==='assistant').length;
+ const words=all.reduce((n,m)=>n+((m.c||'').trim().split(/\s+/).filter(Boolean).length),0);
+ const first=cv.length?new Date(Math.min.apply(null,cv.map(c=>c.ts))).toLocaleDateString(K.lang()==='ar'?'ar':'en'):'—';
+ const c=sec(b,K.t('t_stats'));
+ [['message-square','st_chats',cv.length],['user','st_msgs',um],['sparkles','st_replies',am],['file-text','st_words',words],['pin','st_pinned',cv.filter(x=>x.pinned).length],['clock','st_first',first]].forEach(r=>row(c,{icon:r[0],title:K.t(r[1]),value:String(r[2])}));
+}
+function listOf(key){try{return JSON.parse(K.pref.get(key,'[]'))}catch(e){return []}}
+function memoryPage(b){
+ const mem=listOf('memories');const c=sec(b,K.t('t_memory'));
+ row(c,{icon:'plus',title:K.t('t_new_mem'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('t_new_mem'),hint:K.t('t_mem_h'),multi:true});if(v){mem.push(v);K.pref.set('memories',JSON.stringify(mem));S.rerender()}}});
+ mem.forEach((m,i)=>row(c,{icon:'database',title:m,onclick:async()=>{const k=await K.ui.choose(m.slice(0,40),[K.t('t_edit'),K.t('del')]);if(k===0){const v=await K.ui.prompt({title:K.t('t_edit'),value:m,multi:true});if(v){mem[i]=v;K.pref.set('memories',JSON.stringify(mem));S.rerender()}}else if(k===1){mem.splice(i,1);K.pref.set('memories',JSON.stringify(mem));S.rerender()}}}));
+ note(b,K.t('t_memory_s'));
+}
+function promptsPage(b){
+ const ps=listOf('prompts');const c=sec(b,K.t('t_prompts'));
+ const save=()=>K.pref.set('prompts',JSON.stringify(ps));
+ row(c,{icon:'plus',title:K.t('t_new_prompt'),onclick:async()=>{const t=await K.ui.prompt({title:K.t('t_prompt_title')});if(!t)return;const x=await K.ui.prompt({title:K.t('t_prompt_text'),multi:true});if(x){ps.push({t:t,x:x});save();S.rerender()}}});
+ ps.forEach((p,i)=>row(c,{icon:'sparkles',title:p.t,sub:p.x,onclick:async()=>{const k=await K.ui.choose(p.t,[K.t('t_use'),K.t('t_edit'),K.t('del')]);
+  if(k===0){while(S.depth())S.back();const ta=document.getElementById('ta');ta.value=p.x;ta.dispatchEvent(new Event('input'));ta.focus()}
+  else if(k===1){const t=await K.ui.prompt({title:K.t('t_prompt_title'),value:p.t});if(!t)return;const x=await K.ui.prompt({title:K.t('t_prompt_text'),value:p.x,multi:true});if(x){ps[i]={t:t,x:x};save();S.rerender()}}
+  else if(k===2){ps.splice(i,1);save();S.rerender()}}}));
+ if(!ps.length)note(b,K.t('t_empty'));
 }
 function fontPage(el){
  const prev=document.createElement('div');prev.className='fp-prev';
