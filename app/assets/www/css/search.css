@@ -22,3 +22,11 @@
 .scard .no{width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-weight:800;font-size:.72em;display:grid;place-items:center;flex:none;align-self:flex-start}
 .scard.flash{animation:ring 1s,pop .4s var(--spring)}
 .sk{height:62px;border-radius:20px;background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite;margin-top:10px}
+/* integrations + extra menu items */
+.appic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:#fff;flex:none}
+.row .badge{margin-inline-end:4px;flex:none}
+.row.picked{background:var(--accent-soft)}.row.picked .rv{color:var(--accent-text)}
+.row .rt small{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.badge.pro{display:inline-flex;align-items:center;gap:4px;background:rgba(255,196,0,.14);color:#ffc400;border-color:rgba(255,196,0,.5)}
+.pmenu{max-height:68vh;overflow-y:auto;scrollbar-width:none}.pmenu::-webkit-scrollbar{display:none}
+.mi .badge+.badge{margin-inline-start:-8px}

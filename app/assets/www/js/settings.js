@@ -10,13 +10,13 @@ const stack=[];
 const S=K.settings={};
 function mask(k){if(!k)return K.t('s_not_set');return k.length<=8?'••••••••':k.slice(0,3)+'••••••••'+k.slice(-4)}
 function maskEmail(e){const a=e.indexOf('@');return a<5?e:e.slice(0,4)+'••••••'+e.slice(a-2)}
-function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font')}[p]}
+function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title')}[p]}
 
 /* ----- builders ----- */
 function sec(parent,label){if(label){const t=document.createElement('div');t.className='sec-t';t.textContent=label;parent.appendChild(t)}const c=document.createElement('div');c.className='card';parent.appendChild(c);return c}
 function row(card,o){
  const b=document.createElement(o.onclick?'button':'div');b.className='row'+(o.danger?' danger':'');
- b.innerHTML='<span class="ri">'+(o.html||K.icon(o.icon,26))+'</span><span class="rt">'+esc(o.title)+(o.sub?'<small>'+esc(o.sub)+'</small>':'')+'</span>'+(o.value!=null&&o.value!==''?'<span class="rv">'+esc(o.value)+'</span>':'')+(o.onclick?'<span class="rc chev-fwd">'+K.icon('chevron-left',18)+'</span>':'');
+ b.innerHTML='<span class="ri">'+(o.html||K.icon(o.icon,26))+'</span><span class="rt">'+esc(o.title)+(o.sub?'<small>'+esc(o.sub)+'</small>':'')+'</span>'+(o.badge?o.badge:'')+(o.value!=null&&o.value!==''?'<span class="rv">'+esc(o.value)+'</span>':'')+(o.onclick?'<span class="rc chev-fwd">'+K.icon('chevron-left',18)+'</span>':'');
  if(o.onclick)b.onclick=()=>o.onclick(b);card.appendChild(b);return b}
 function toggle(card,o){
  const d=document.createElement('div');d.className='row';
@@ -31,9 +31,9 @@ S.open=function(p){
  const el=document.createElement('div');el.className='page';el.dataset.p=p;
  el.innerHTML='<div class="phead"><button class="back">'+K.icon('chevron-right',24).replace('class="ic"','class="ic flip-ltr"')+'</button><span>'+esc(titleOf(p))+'</span></div>';
  el.querySelector('.back').onclick=()=>S.back();
- $('pages').appendChild(el);stack.push(el);build(el,p);
+ $('pages').appendChild(el);stack.push(el);build(el,p);K.app.bars();
 };
-S.back=function(){const el=stack.pop();if(!el)return false;el.classList.add('out');setTimeout(()=>el.remove(),240);return true};
+S.back=function(){const el=stack.pop();if(!el)return false;el.classList.add('out');setTimeout(()=>el.remove(),240);K.app.bars();return true};
 S.depth=()=>stack.length;
 S.rerender=function(){stack.forEach(el=>{const p=el.dataset.p;const sc=el.querySelector('.pbody');const top=sc?sc.scrollTop:0;
  el.querySelector('.phead span').textContent=titleOf(p);const old=el.querySelector('.pbody,.fp');if(old)old.remove();const old2=el.querySelector('.fsheet');if(old2)old2.remove();
@@ -42,7 +42,7 @@ function after(p){K.app.apply();S.rerender();if(p&&p.remount)K.app.remount()}
 function build(el,p){
  if(p==='font'){fontPage(el);return}
  const body=document.createElement('div');body.className='pbody stagger';el.appendChild(body);
- ({main:mainPage,account:accountPage,data:dataPage,custom:customPage})[p](body);
+ ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage})[p](body);
  K.emojifyEl(body);
 }
 
@@ -50,6 +50,8 @@ function mainPage(b){
  let c=sec(b,K.t('s_profile'));
  row(c,{icon:'user',title:K.t('s_acc'),onclick:()=>S.open('account')});
  row(c,{icon:'database',title:K.t('s_data'),onclick:()=>S.open('data')});
+ c=sec(b,K.t('s_link'));
+ row(c,{icon:'plug',title:K.t('connected_apps'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('apps')});
  c=sec(b,K.t('s_app'));
  row(c,{icon:'globe',title:K.t('s_lang'),value:K.lang()==='ar'?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],K.lang()==='ar'?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}});
  row(c,{icon:'moon',title:K.t('s_theme'),value:K.pref.get('theme','dark')==='dark'?K.t('s_dark'):K.t('s_light'),onclick:async()=>{const i=await K.ui.choose(K.t('s_theme'),[K.t('s_dark'),K.t('s_light')],K.pref.get('theme','dark')==='dark'?0:1);if(i!=null){K.pref.set('theme',i===0?'dark':'light');after({remount:true})}}});
@@ -109,6 +111,44 @@ function customPage(b){
  toggle(c,{icon:'sparkles',title:K.t('s_stream'),key:'stream',def:true});
  toggle(c,{icon:'smartphone',title:K.t('s_haptic'),key:'haptic',def:true});
  toggle(c,{icon:'wand-sparkles',title:K.t('s_fx'),key:'fx',def:false,after:()=>K.app.apply()});
+}
+const SOON='';
+function appIc(bg,icon){return '<span class="appic" style="background:'+bg+'">'+K.icon(icon,20)+'</span>'}
+function appsPage(b){
+ const n=document.createElement('div');n.className='note';n.style.paddingTop='4px';n.textContent=K.t('apps_sub');b.appendChild(n);
+ let c=sec(b,K.t('apps_live'));
+ row(c,{html:appIc('#24292f','git-branch'),title:K.t('app_github'),sub:K.t('app_github_s'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('github')});
+ c=sec(b,K.t('apps_soon'));
+ const bd='<i class="badge">'+K.t('soon')+'</i>';
+ [['#1a73e8','cloud','app_drive'],['#ea4335','mail','app_gmail'],['#4285f4','calendar','app_cal'],['#4285f4','file-text','app_docs'],['#0f9d58','table','app_sheets'],['#2b2b2d','notebook-pen','app_notion'],['#611f69','hash','app_slack'],['#f24e1e','blocks','app_figma'],['#6b5cff','plug','app_api']].forEach(a=>{
+  row(c,{html:appIc(a[0],a[1]),title:K.t(a[2]),sub:K.t(a[2]+'_s'),badge:bd,onclick:()=>K.toast(K.t(a[2])+' — '+K.t('soon'))});
+ });
+}
+async function githubPage(b){
+ const connected=!!K.gh.tok();
+ if(!connected){
+  let c=sec(b,K.t('gh_title'));
+  row(c,{html:appIc('#24292f','git-branch'),title:K.t('gh_token'),value:K.t('s_not_set'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('gh_token'),hint:'ghp_...',secret:true});if(v){K.pref.set('gh_token',v);S.rerender()}}});
+  note(b,K.t('gh_help'));return;
+ }
+ let c=sec(b,K.t('gh_title'));
+ const who=row(c,{html:appIc('#24292f','git-branch'),title:K.t('gh_connect'),value:'…'});
+ row(c,{icon:'unplug',title:K.t('gh_disconnect'),danger:true,onclick:async()=>{K.pref.set('gh_token','');K.pref.set('gh_sel','[]');K.home&&K.home.paintPills&&K.home.paintPills();S.rerender()}});
+ const t=document.createElement('div');t.className='sec-t';t.textContent=K.t('gh_repos');b.appendChild(t);
+ const list=document.createElement('div');list.className='card';b.appendChild(list);
+ for(let i=0;i<4;i++){const sk=document.createElement('div');sk.className='sk';sk.style.margin='10px';list.appendChild(sk)}
+ note(b,K.t('gh_hint'));
+ try{
+  const u=await K.gh.user();who.querySelector('.rt').firstChild.textContent=K.t('gh_connected',u.login);who.querySelector('.rv')&&who.querySelector('.rv').remove();
+  const repos=await K.gh.repos();list.innerHTML='';
+  if(!repos.length){list.innerHTML='<div class="row"><span class="rt" style="color:var(--text2)">'+K.t('gh_none')+'</span></div>';return}
+  repos.forEach(r=>{
+   const on=K.gh.sel().includes(r.full_name);
+   const rw=row(list,{icon:r.private?'lock':'folder-git-2',title:r.name,sub:r.description||r.full_name,value:on?K.t('gh_attached'):''});
+   rw.classList.toggle('picked',on);
+   rw.onclick=()=>{const now=K.gh.toggle(r.full_name);rw.classList.toggle('picked',now);const v=rw.querySelector('.rv');if(now){if(!v){const sp=document.createElement('span');sp.className='rv';sp.textContent=K.t('gh_attached');rw.insertBefore(sp,rw.querySelector('.rc')||null)}}else if(v)v.remove();K.home.paintPills&&K.home.paintPills();K.native.haptic()};
+  });
+ }catch(e){list.innerHTML='<div class="row"><span class="rt" style="color:var(--danger)">'+K.t('gh_err')+'</span></div>'}
 }
 function fontPage(el){
  const prev=document.createElement('div');prev.className='fp-prev';

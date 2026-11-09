@@ -112,12 +112,18 @@ C.start=function(){
    else if(ev.t==='err'){ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m;if(t0&&!ai.s)ai.s=1;C.finish(view)}
   });
  };
+ const withRepos=function(ctx){
+  const repos=K.gh.tok()?K.gh.sel():[];if(!repos.length)return Promise.resolve(ctx);
+  view.setStatus(K.t('gh_reading'));
+  return K.gh.context(repos).then(function(t){view.setStatus('');return (ctx?ctx+'\n\n':'')+t}).catch(function(){view.setStatus('');return ctx});
+ };
  if(S.search){
   view.searching=true;view.renderSources();view.setStatus(K.t('searching'));
   K.native.search(lastUser.c||'').then(function(res){
-   if(view.finished)return;view.searching=false;ai.src=Array.isArray(res)?res:[];view.setStatus('');view.renderSources();view.render();run(buildCtx(ai.src));
+   if(view.finished)return;view.searching=false;ai.src=Array.isArray(res)?res:[];view.setStatus('');view.renderSources();view.render();
+   return withRepos(buildCtx(ai.src)).then(function(c){if(!view.finished)run(c)});
   });
- }else run('');
+ }else withRepos('').then(function(c){if(!view.finished)run(c)});
 };
 C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;

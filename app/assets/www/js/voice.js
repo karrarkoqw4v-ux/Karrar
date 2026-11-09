@@ -85,11 +85,11 @@ V.open=function(){
  const d=$('voice');d.classList.add('show');
  $('vTip').classList.remove('hide');setTimeout(()=>{const t=$('vTip');if(t)t.classList.add('hide')},4200);
  $('vTrans').classList.remove('show');$('vText').textContent='';
- startLive();fxStop();fxStart();
+ startLive();fxStop();fxStart();K.app.bars();
 };
 V.close=function(){
  if(!V.active)return;V.active=false;S().voiceMode=false;stopLive();fxStop();K.native.stopSpeak();window.__ttsDone=null;
  if(S().streaming)K.chat.stop();
- $('voice').classList.remove('show');
+ $('voice').classList.remove('show');K.app.bars();
 };
 })();

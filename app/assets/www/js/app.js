@@ -3,13 +3,17 @@ window.K=window.K||{};
 (function(){
 const $=id=>document.getElementById(id);
 const A=K.app={};
+/* status + navigation bar take the colour of whatever screen is showing (no visible bands) */
+A.bars=function(){const d=document.documentElement,dark=d.dataset.theme==='dark',vo=K.voice&&K.voice.active;
+ const c=vo?'#000000':(K.settings&&K.settings.depth()?(dark?'#1c1c1e':'#f2f2f7'):(dark?'#0f0f10':'#ffffff'));
+ K.native.setBars(c,!dark&&!vo)};
 A.apply=function(){
  const d=document.documentElement;
  d.dataset.font=K.pref.get('font_f','noto');d.dataset.weight=K.pref.get('font_w','1');d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';d.dataset.theme=K.pref.get('theme','dark')==='light'?'light':'dark';
  let sc=1;if(K.pref.bool('font_sys',false))sc=1;else sc=0.84+0.07*(+K.pref.get('font_i','2'));
  d.style.setProperty('--scale',sc.toFixed(3));
  K.native.setPref('lang',K.lang());
- K.native.setBars(d.dataset.theme==='dark'?'#0f0f10':'#ffffff',d.dataset.theme!=='dark');
+ A.bars();
  const onLogin=!$('login').classList.contains('hidden');
  const m=onLogin?2:(K.pref.bool('fx',false)?2:0);d.classList.toggle('fx-on',m>0);K.fx.start(m);
 };
