@@ -197,7 +197,7 @@ function tasksPage(b){
 function licensesPage(b){
  const c=sec(b,'');c.style.marginTop='6px';
  LIC.forEach(l=>row(c,{icon:'file-text',title:l[0],sub:l[1]+' · '+l[2]}));
- note(b,'Karrar AI — 2.0');
+ note(b,'Bawsala — 2.0');
 }
 function statsPage(b){
  const cv=K.db.convs.filter(c=>c.msgs.length),all=[].concat.apply([],cv.map(c=>c.msgs));

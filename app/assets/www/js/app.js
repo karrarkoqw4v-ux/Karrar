@@ -15,13 +15,13 @@ A.apply=function(){
  K.native.setPref('lang',K.lang());
  A.bars();
  const onLogin=!$('login').classList.contains('hidden');
- const m=onLogin?2:(K.pref.bool('fx',false)?2:0);d.classList.toggle('fx-on',m>0);K.fx.start(m);
+ const m=onLogin?0:(K.pref.bool('fx',false)?2:0);d.classList.toggle('fx-on',m>0);K.fx.start(m);
 };
 A.remount=function(){
  if(!$('home').classList.contains('hidden')){K.home.mount();K.home.start()}
  else K.login.mount();
 };
-A.toLogin=function(){while(K.settings.depth())K.settings.back();$('home').classList.add('hidden');$('login').classList.remove('hidden');K.login.signup=false;K.login.mount();K.fx.start(2)};
+A.toLogin=function(){while(K.settings.depth())K.settings.back();$('home').classList.add('hidden');$('login').classList.remove('hidden');K.login.mount();K.fx.start(0)};
 A.toHome=function(){$('login').classList.add('hidden');$('home').classList.remove('hidden');K.db.load();K.home.mount();K.home.start();K.fx.start(K.pref.bool('fx',false)?2:0);A.apply()};
 window.__back=function(){
  if(K.voice&&K.voice.active){K.voice.close();return true}
@@ -38,9 +38,9 @@ A.boot=function(){
  const def=K.native.defaults();Object.keys(def).forEach(k=>{if(K.native.getPref(k,null)===null)K.native.setPref(k,def[k])});
  A.apply();
  if(K.pref.bool('logged',false))A.toHome();else A.toLogin();
+ K.splash.show();
  if(K.lock.has())K.lock.show('unlock');
  let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(K.lock.has()&&hid&&Date.now()-hid>15000)K.lock.show('unlock')});
- setTimeout(()=>{const s=document.getElementById('splash');if(s)s.remove()},60);
 };
 document.addEventListener('DOMContentLoaded',()=>{A.boot()});
 })();

@@ -67,6 +67,28 @@ public final class Accounts {
         }
     }
 
+    public static boolean exists(String email) { return all().has(email.trim().toLowerCase()); }
+
+    public static String reset(String email, String pass, String pass2) {
+        email = email.trim().toLowerCase();
+        if (pass.length() < 6) return "e_pass_short";
+        if (!pass.equals(pass2)) return "e_pass_match";
+        try {
+            JSONObject a = all();
+            JSONObject u = a.optJSONObject(email);
+            if (u == null) return "e_nouser";
+            byte[] salt = new byte[16];
+            new SecureRandom().nextBytes(salt);
+            u.put("s", Base64.encodeToString(salt, Base64.NO_WRAP));
+            u.put("h", hash(pass, salt));
+            a.put(email, u);
+            Store.put("accounts", a.toString());
+            return null;
+        } catch (Exception e) {
+            return "e_bad";
+        }
+    }
+
     public static void google(String name, String email) {
         begin(email.toLowerCase(), name == null || name.isEmpty() ? email : name, true);
     }

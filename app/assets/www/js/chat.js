@@ -3,7 +3,7 @@ window.K=window.K||{};
 (function(){
 const S=K.state={cur:null,think:false,search:false,streaming:false,atts:[],handle:null,live:null};
 const $=id=>document.getElementById(id);
-K.LOGO='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.2 13.2C2.2 8.2 6.2 5.4 11.2 5.9 15 6.3 17.6 8.6 18.4 11.6L21.8 8.2C22.6 7.4 23.2 8 23 9 22.6 11.6 21.4 13.6 19.4 14.8 17.4 18.4 13.4 20.2 9.2 19.6 5.2 19 2.2 16.6 2.2 13.2Z"/><circle cx="7.2" cy="11.4" r="1.15" fill="#fff"/></svg>';
+K.LOGO='<svg viewBox="0 0 120 120"><defs><linearGradient id="lp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9c99a"/><stop offset="1" stop-color="#a97a46"/></linearGradient><linearGradient id="lp2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e2c2"/><stop offset="1" stop-color="#c39a64"/></linearGradient><linearGradient id="lp3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6e6"/><stop offset="1" stop-color="#d8b784"/></linearGradient></defs><ellipse class="s1" cx="60" cy="88" rx="38" ry="15" fill="url(#lp1)"/><ellipse class="s2" cx="59" cy="66" rx="28" ry="12" fill="url(#lp2)"/><ellipse class="s3" cx="60" cy="46" rx="19" ry="9.5" fill="url(#lp3)"/></svg>';
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return u}};
 function fav(s,big){const h=host(s.url),l=(h[0]||'?').toUpperCase();let n=0;for(const c of h)n=(n*31+c.charCodeAt(0))%360;

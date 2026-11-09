@@ -191,6 +191,12 @@ public class Bridge {
     public String login(String email, String pass) { return res(Accounts.login(email, pass)); }
 
     @JavascriptInterface
+    public String hasAccount(String e) { return Accounts.exists(e) ? "1" : "0"; }
+
+    @JavascriptInterface
+    public String resetPassword(String e, String p, String p2) { return res(Accounts.reset(e, p, p2)); }
+
+    @JavascriptInterface
     public String signup(String n, String e, String p, String p2) { return res(Accounts.signUp(n, e, p, p2)); }
 
     /** Native Google account picker (the same sheet every app shows). No browser involved. */

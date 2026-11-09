@@ -5,7 +5,7 @@ K.mock={
   const q=(msgs[msgs.length-1]||{}).content||'';
   const reasoning=ar?'المستخدم يسأل عن: «'+q.slice(0,60)+'». سأحلّل السؤال أولاً، ثم أرتّب الإجابة بنقاط واضحة ومختصرة.':'The user asks: "'+q.slice(0,60)+'". I will analyse it first, then structure a clear short answer.';
   const answer=ar?
-  '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("كرّار"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n':
+  '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("بوصلة"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n':
   '## Start with the basics 🚀\nHere is a short plan [1][2]:\n\n1. Pick one language such as **Python**.\n2. Practise daily with small projects.\n3. Read other people\'s code 😊\n\n```python\ndef hello(name):\n    return f"Hello {name}"\n```\n';
   const parts=[];if(think)for(let i=0;i<reasoning.length;i+=4)parts.push(['think',reasoning.slice(i,i+4)]);
   for(let i=0;i<answer.length;i+=3)parts.push(['text',answer.slice(i,i+3)]);
@@ -18,6 +18,8 @@ K.mock={
   {title:'Python for Beginners | Python.org',url:'https://www.python.org/about/gettingstarted/',snippet:'New to programming? Python is free and easy to learn if you know where to start.'},
   {title:'أساسيات البرمجة — موقع W3Schools بالعربية',url:'https://www.w3schools.com/python/',snippet:'دروس مختصرة وأمثلة تفاعلية تساعدك على فهم أساسيات بايثون بسرعة.'}]),900))},
  voiceLive(h){let on=true,t=0;const iv=setInterval(()=>{if(!on)return;t++;h({t:'rms',v:2+Math.random()*7});if(t===8)h({t:'partial',d:'مرحبا'});if(t===14){h({t:'final',d:'مرحبا كيف الحال؟'});on=false;clearInterval(iv)}},180);return{stop(){on=false;clearInterval(iv)}}},
+ has(e){return !!JSON.parse(localStorage.getItem('mock_acc')||'{}')[e.toLowerCase()]},
+ reset(e,p,p2){if(p.length<6)return{err:'e_pass_short'};if(p!==p2)return{err:'e_pass_match'};const a=JSON.parse(localStorage.getItem('mock_acc')||'{}');if(!a[e.toLowerCase()])return{err:'e_nouser'};a[e.toLowerCase()].p=p;localStorage.setItem('mock_acc',JSON.stringify(a));return{ok:1}},
  login(e,p){const a=JSON.parse(localStorage.getItem('mock_acc')||'{}');if(!/^\S+@\S+\.\S+$/.test(e))return{err:'e_email'};if(!p)return{err:'e_empty'};const u=a[e.toLowerCase()];if(!u)return{err:'e_nouser'};if(u.p!==p)return{err:'e_wrong'};
   K.native.setPref('logged','1');K.native.setPref('name',u.n);K.native.setPref('user_email',e.toLowerCase());return{ok:1}},
  signup(n,e,p,p2){if(n.trim().length<2)return{err:'e_name'};if(!/^\S+@\S+\.\S+$/.test(e))return{err:'e_email'};if(p.length<6)return{err:'e_pass_short'};if(p!==p2)return{err:'e_pass_match'};
