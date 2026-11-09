@@ -5,6 +5,8 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Typeface;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
@@ -117,15 +119,81 @@ public final class Fx {
         }
     }
 
-    /** Paints a TextView's glyphs with the accent gradient. */
+    /** Paints a TextView's glyphs with a flowing accent gradient (colour keeps moving). */
     public static void gradientText(final TextView t) {
-        t.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-            public void onLayoutChange(View v, int l, int tp, int r, int b, int ol, int ot, int or, int ob) {
-                float w = Math.max(1, r - l);
-                t.getPaint().setShader(new LinearGradient(0, 0, w, 0, new int[]{Theme.accent, Theme.accent2, 0xFF22D3EE}, null, Shader.TileMode.CLAMP));
+        final LinearGradient[] sh = {null};
+        final Matrix mx = new Matrix();
+        final ValueAnimator an = ValueAnimator.ofFloat(0f, 1f);
+        an.setDuration(3600);
+        an.setRepeatCount(ValueAnimator.INFINITE);
+        an.setInterpolator(new LinearInterpolator());
+        an.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+            public void onAnimationUpdate(ValueAnimator a) {
+                if (sh[0] == null) return;
+                mx.setTranslate((Float) a.getAnimatedValue() * t.getWidth() * 1.7f, 0);
+                sh[0].setLocalMatrix(mx);
                 t.invalidate();
             }
         });
+        t.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            public void onLayoutChange(View v, int l, int tp, int r, int b, int ol, int ot, int or, int ob) {
+                float w = Math.max(1, r - l);
+                sh[0] = new LinearGradient(0, 0, w * 0.85f, 0, new int[]{Theme.accent, Theme.accent2, 0xFF22D3EE},
+                        null, Shader.TileMode.MIRROR);
+                t.getPaint().setShader(sh[0]);
+            }
+        });
+        t.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            public void onViewAttachedToWindow(View v) { an.start(); }
+            public void onViewDetachedFromWindow(View v) { an.cancel(); }
+        });
+        if (t.isAttachedToWindow()) an.start();
+    }
+
+    /** Typewriter: types the text char by char with a cursor. */
+    public static void typeInto(final TextView tv, final String text, final long ms) {
+        Object old = tv.getTag();
+        if (old instanceof Runnable) tv.removeCallbacks((Runnable) old);
+        final int[] i = {0};
+        Runnable r = new Runnable() {
+            public void run() {
+                i[0]++;
+                tv.setText(text.substring(0, i[0]) + (i[0] < text.length() ? "▍" : ""));
+                if (i[0] < text.length()) tv.postDelayed(this, ms);
+            }
+        };
+        tv.setTag(r);
+        tv.setText("▍");
+        tv.postDelayed(r, 120);
+    }
+
+    /** Types a phrase, holds, erases it, then moves to the next one — forever. */
+    public static void typeLoop(final TextView tv, final String[] phrases) {
+        final Runnable[] step = new Runnable[1];
+        final int[] st = {0, 0, 0}; // phrase, chars, mode(0 type,1 hold,2 erase)
+        step[0] = new Runnable() {
+            public void run() {
+                if (!tv.isAttachedToWindow()) { tv.postDelayed(this, 600); return; }
+                String ph = phrases[st[0]];
+                long next;
+                if (st[2] == 0) {
+                    st[1]++;
+                    next = 62;
+                    if (st[1] >= ph.length()) { st[2] = 1; next = 2200; }
+                } else if (st[2] == 1) {
+                    st[2] = 2;
+                    next = 30;
+                } else {
+                    st[1]--;
+                    next = 26;
+                    if (st[1] <= 0) { st[1] = 0; st[2] = 0; st[0] = (st[0] + 1) % phrases.length; next = 320; }
+                }
+                tv.setText(ph.substring(0, Math.min(st[1], ph.length())) + "▍");
+                tv.postDelayed(this, next);
+            }
+        };
+        tv.setText("▍");
+        tv.postDelayed(step[0], 500);
     }
 
     // ------------------------------------------------------------------ views
@@ -268,6 +336,91 @@ public final class Fx {
         @Override protected void onMeasure(int w, int h) {
             float d = getResources().getDisplayMetrics().density;
             setMeasuredDimension((int) (d * 46), (int) (d * 26));
+        }
+    }
+
+    /** Coloured characters being "typed" from the top of the screen and falling (behind the UI). */
+    public static class Rain extends View {
+        private static final String G = "ابتثجحخدذرزسشصضطعغفقكلمنهوي01<>{}/=;AIkarrar";
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private ValueAnimator anim;
+        private float[] head, speed;
+        private int cols, rows, len = 11;
+        private float cell, time;
+        private long last;
+        private int lw, lh;
+        private final java.util.Random rnd = new java.util.Random(7);
+
+        public Rain(Context c) {
+            super(c);
+            p.setTypeface(Fonts.b);
+        }
+
+        @Override protected void onAttachedToWindow() {
+            super.onAttachedToWindow();
+            last = System.nanoTime();
+            anim = ValueAnimator.ofFloat(0f, 1f);
+            anim.setDuration(1000);
+            anim.setRepeatCount(ValueAnimator.INFINITE);
+            anim.setInterpolator(new LinearInterpolator());
+            anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                public void onAnimationUpdate(ValueAnimator a) {
+                    long now = System.nanoTime();
+                    float dt = Math.min(0.05f, (now - last) / 1e9f);
+                    last = now;
+                    time += dt;
+                    if (head != null) {
+                        for (int i = 0; i < cols; i++) {
+                            head[i] += speed[i] * dt;
+                            if (head[i] - len > rows * 0.8f) { head[i] = -rnd.nextInt(14); speed[i] = 3f + rnd.nextFloat() * 5f; }
+                        }
+                    }
+                    invalidate();
+                }
+            });
+            anim.start();
+        }
+
+        @Override protected void onDetachedFromWindow() {
+            super.onDetachedFromWindow();
+            if (anim != null) anim.cancel();
+        }
+
+        @Override protected void onDraw(Canvas c) {
+            int w = getWidth(), h = getHeight();
+            if (w == 0) return;
+            float d = getResources().getDisplayMetrics().density;
+            if (w != lw || h != lh) {
+                cell = d * 17;
+                cols = (int) (w / cell);
+                rows = (int) (h / cell);
+                head = new float[cols];
+                speed = new float[cols];
+                for (int i = 0; i < cols; i++) { head[i] = -rnd.nextInt(30); speed[i] = 3f + rnd.nextFloat() * 5f; }
+                p.setTextSize(cell * 0.78f);
+                p.setTextAlign(Paint.Align.CENTER);
+                lw = w; lh = h;
+            }
+            int[] pal = {Theme.accent, Theme.accent2, 0xFF22D3EE, 0xFF34D399};
+            float fadeH = h * 0.78f;
+            for (int i = 0; i < cols; i += 2) {
+                int base = pal[(i / 2 + (int) (time * 0.6f)) % pal.length];
+                for (int k = 0; k < len; k++) {
+                    int row = (int) head[i] - k;
+                    if (row < 0) continue;
+                    float y = row * cell + cell;
+                    float topFade = 1f - y / fadeH;
+                    if (topFade <= 0) continue;
+                    float trail = 1f - k / (float) len;
+                    int idx = (int) ((((long) i * 131 + row * 31 + (long) (time * (k == 0 ? 9 : 2))) * 2654435761L >>> 5) % G.length());
+                    int a = (int) (255 * (k == 0 ? 0.9f : 0.42f * trail) * topFade * (Theme.dark ? 1f : 0.7f));
+                    p.setColor(k == 0 ? 0xFFFFFFFF : base);
+                    p.setAlpha(Math.max(0, Math.min(255, a)));
+                    if (k == 0) p.setShadowLayer(d * 6, 0, 0, base); else p.clearShadowLayer();
+                    c.drawText(String.valueOf(G.charAt(idx)), i * cell + cell / 2, y, p);
+                }
+            }
+            p.clearShadowLayer();
         }
     }
 }

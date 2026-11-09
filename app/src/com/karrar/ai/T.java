@@ -79,6 +79,10 @@ public final class T {
         a("s_gsecret", "Google Client Secret (اختياري)", "Google client secret (optional)");
         a("s_gsecret_sub", "مطلوب إذا رفضت جوجل الطلب بدونه", "Needed if Google rejects the request without it");
 
+        a("tl2", "اسألني أي شيء…", "Ask me anything…");
+        a("tl3", "اكتب لي كوداً…", "Write me some code…");
+        a("tl4", "ابحث لي في الويب…", "Search the web for me…");
+        a("tl5", "فكّر معي بعمق…", "Think deeply with me…");
         a("sg1", "اشرح لي الذكاء الاصطناعي ببساطة", "Explain AI in simple words");
         a("sg2", "اكتب لي رسالة رسمية للعمل", "Write a formal work email");
         a("sg3", "ساعدني بكتابة كود بايثون", "Help me write Python code");

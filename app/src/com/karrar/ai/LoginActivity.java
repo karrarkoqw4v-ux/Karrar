@@ -55,6 +55,8 @@ public class LoginActivity extends Activity {
         int a3 = Theme.dark ? 0x3322D3EE : 0x1A22D3EE;
         root.addView(new Fx.Aurora(this, a1, a2, a3), new FrameLayout.LayoutParams(-1, -1));
 
+        root.addView(new Fx.Rain(this), new FrameLayout.LayoutParams(-1, -1));
+
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
         sv.setFillViewport(true);
@@ -101,6 +103,8 @@ public class LoginActivity extends Activity {
         Fx.pop(logo);
 
         title = Ui.label(this, "", 30, Theme.text, true);
+        title.setMinHeight(dp(46));
+        title.setSingleLine(true);
         Fonts.heavy(title);
         title.setGravity(Gravity.CENTER);
         Fx.gradientText(title);
@@ -214,7 +218,7 @@ public class LoginActivity extends Activity {
     private void render() {
         form.removeAllViews();
         error.setVisibility(View.GONE);
-        title.setText(signup ? T.s("l_signup") : T.s("l_welcome"));
+        Fx.typeInto(title, signup ? T.s("l_signup") : T.s("l_welcome"), 55);
         sub.setText(signup ? T.s("l_sub_up") : T.s("l_sub"));
         primary.setText(signup ? T.s("l_signup") : T.s("l_login"));
         switchLink.setText(signup ? T.s("l_to_login") : T.s("l_to_signup"));

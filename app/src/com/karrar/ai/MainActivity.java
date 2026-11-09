@@ -117,6 +117,8 @@ public class MainActivity extends Activity {
         root.addView(new Fx.Aurora(this, Theme.dark ? 0x334D6BFE : 0x1A4D6BFE, Theme.dark ? 0x288B5CF6 : 0x148B5CF6, 0x00000000),
                 new FrameLayout.LayoutParams(-1, -1));
 
+        root.addView(new Fx.Rain(this), new FrameLayout.LayoutParams(-1, -1));
+
         LinearLayout main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
         root.addView(main, new FrameLayout.LayoutParams(-1, -1));
@@ -169,7 +171,10 @@ public class MainActivity extends Activity {
         TextView hi = Ui.label(this, T.s("hi"), 28, Theme.text, true);
         Fonts.heavy(hi);
         hi.setGravity(Gravity.CENTER);
+        hi.setSingleLine(true);
+        hi.setMinHeight(dp(46));
         Fx.gradientText(hi);
+        Fx.typeLoop(hi, new String[]{T.s("hi"), T.s("tl2"), T.s("tl3"), T.s("tl4"), T.s("tl5")});
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-1, -2);
         hl.topMargin = dp(4);
         emptyBox.addView(hi, hl);
@@ -506,7 +511,7 @@ public class MainActivity extends Activity {
             public void on(int i) {
                 if (i == 0) {
                     Ui.edit(MainActivity.this, T.s("rename"), c.title, "", false, false, new Ui.Str() {
-                        public void on(String s) { if (!s.isEmpty()) { c.title = s; Store.save(); refreshHistory(); if (c == cur) title.setText(s); } }
+                        public void on(String s) { if (!s.isEmpty()) { c.title = s; Store.save(); refreshHistory(); if (c == cur) Fx.typeInto(title, s, 34); } }
                     });
                 } else if (i == 1) {
                     shareText(transcript(c));
@@ -539,7 +544,7 @@ public class MainActivity extends Activity {
 
     private void showConv() {
         list.removeAllViews();
-        title.setText(cur.title.isEmpty() ? T.s("new_chat") : cur.title);
+        Fx.typeInto(title, cur.title.isEmpty() ? T.s("new_chat") : cur.title, 34);
         int lastAi = -1;
         for (int i = 0; i < cur.msgs.size(); i++) if (cur.msgs.get(i).role.equals("assistant")) lastAi = i;
         for (int i = 0; i < cur.msgs.size(); i++) {
@@ -613,7 +618,7 @@ public class MainActivity extends Activity {
         if (cur.title.isEmpty()) {
             String t = q.replace('\n', ' ');
             cur.title = t.length() > 40 ? t.substring(0, 40) : t;
-            title.setText(cur.title);
+            Fx.typeInto(title, cur.title, 34);
         }
         cur.ts = System.currentTimeMillis();
         if (!Store.convs.contains(cur)) Store.convs.add(0, cur);
