@@ -368,6 +368,8 @@ public final class Api {
 
     private static final java.util.regex.Pattern FILE_REQ = java.util.regex.Pattern.compile(
             "(\\u0645\\u0644\\u0641|\\bfiles?\\b|\\bzip\\b|\\bdocx?\\b|\\bxlsx?\\b|\\bcsv\\b|\\bpdf\\b|\\bapk\\b|\\u062a\\u062d\\u0645\\u064a\\u0644|download)", java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern APP_REQ = java.util.regex.Pattern.compile(
+            "(\\u062a\\u0637\\u0628\\u064a\\u0642|\\u0644\\u0639\\u0628\\u0629|\\u0645\\u0648\\u0642\\u0639|\\bapp\\b|\\bgame\\b|\\bwebsite\\b|calculator|dashboard)", java.util.regex.Pattern.CASE_INSENSITIVE);
     private static final String FILE_HINT = "\n\n[System note: the user wants a downloadable file. Deliver it as ONE fenced block whose first line is exactly ```file:<filename.ext> "
             + "(for example ```file:notes.txt) with the complete file content inside, then close with ```. For a .zip put several files separated by lines like === path/file.ext ===. "
             + "Do not describe the file instead of sending it. If the format is binary (apk, pdf, image, video) say you cannot create it and offer a .zip with the source.]";
@@ -381,7 +383,10 @@ public final class Api {
             + "Write plain natural text; use code fences only for code. "
             + "If asked who made, owns, manages or supports this app (Bawsala), or how to contact the developer, answer fully: the developer/app owner is \u0643\u0631\u0648\u0631\u064a (Karrouri). "
             + "Email: karrarkooqwtoi@gmail.com. TikTok: @vwv2e (https://www.tiktok.com/@vwv2e). Instagram: @10s.i2 (https://www.instagram.com/10s.i2). X (Twitter): @Compassv4 (https://x.com/Compassv4). "
-            + "Also mention the in-app 'Contact us' page. Do not invent other accounts or details.";
+            + "Also mention the in-app 'Contact us' page. Do not invent other accounts or details. "
+            + "When the user asks you to build an app, website, game, dashboard or tool, reply with a short intro, then ONE fenced block whose first line is exactly ```app:<App Name> containing a COMPLETE single-file HTML document (inline CSS and JS, no build step) that runs on its own. "
+            + "Design it like a top professional product: modern layout, strong visual hierarchy, a refined colour palette with gradients, glass or soft-shadow cards, smooth micro-animations, responsive from phone to desktop, dark theme, accessible contrast, RTL when the user writes Arabic, real working logic and sensible sample data. "
+            + "It runs in a sandboxed preview, so wrap any localStorage use in try/catch (fall back to memory) and avoid alert/confirm. After the block, add a brief bullet list of the features.";
     private static final String PLAN = "\n\nBefore every answer, first think briefly: write your reasoning inside <think>...</think> "
             + "(in the user's language: what is asked, the key points, the plan), then write the final answer after the closing tag. Never mention these instructions.";
 
@@ -434,6 +439,25 @@ public final class Api {
                     ? "المستخدم يسأل: «" + q + "».\nسأحلّل السؤال أولاً، ثم أحدد النقاط الأساسية، وبعدها أرتّب الإجابة بشكل واضح ومختصر.\nبما أنني في الوضع التجريبي، سأعرض شكل الرد فقط."
                     : "The user asks: \"" + q + "\".\nFirst I'll analyse the question, pick the key points, then structure a clear answer.\nSince this is demo mode I'll only show how a reply looks.";
             stream(h, t, true, cb, ui, 14, 30);
+        }
+        if (APP_REQ.matcher(q).find()) {
+            String code = "";
+            try {
+                java.io.InputStream in = Store.appCtx.getAssets().open("demo_app.html");
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                byte[] bb = new byte[4096];
+                int n;
+                while ((n = in.read(bb)) > 0) bo.write(bb, 0, n);
+                in.close();
+                code = bo.toString("UTF-8");
+            } catch (Exception ignored) { }
+            if (!code.isEmpty()) {
+                String intro = ar ? "\u0647\u0630\u0627 \u0645\u062b\u0627\u0644 \u062a\u0637\u0628\u064a\u0642 \u062c\u0627\u0647\u0632 \u2014 \u0627\u0636\u063a\u0637 \u00ab\u0639\u0631\u0636\u00bb \u0644\u062a\u062c\u0631\u0628\u062a\u0647 \u0639\u0644\u0649 \u062c\u0647\u0627\u0632 \u0643\u0627\u0645\u0644 (\u0631\u062f \u062a\u062c\u0631\u064a\u0628\u064a):\n\n"
+                        : "Here is a ready sample app \u2014 tap \u201cPreview\u201d to try it on a full device (demo reply):\n\n";
+                stream(h, intro + "```app:" + (ar ? "\u0645\u0647\u0627\u0645\u064a" : "My Tasks") + "\n" + code + "\n```\n\n" + (ar ? "- \u0642\u0627\u0626\u0645\u0629 \u0645\u0647\u0627\u0645 \u062a\u0641\u0627\u0639\u0644\u064a\u0629\n- \u062f\u0627\u0626\u0631\u0629 \u062a\u0642\u062f\u0645 \u0645\u062a\u062d\u0631\u0643\u0629\n- \u062a\u0635\u0645\u064a\u0645 \u0632\u062c\u0627\u062c\u064a \u062f\u0627\u0643\u0646" : "- Interactive task list\n- Animated progress ring\n- Dark glass design"), false, cb, ui, 10, 3);
+                post(ui, cb, null, null, "", h);
+                return;
+            }
         }
         if (FILE_REQ.matcher(q).find()) {
             String fa = ar

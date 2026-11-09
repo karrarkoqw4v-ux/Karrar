@@ -16,9 +16,11 @@ public final class Store {
     }
 
     public static SharedPreferences sp;
+    public static Context appCtx;
 
     public static void init(Context c) {
         if (sp != null) return;
+        appCtx = c.getApplicationContext();
         sp = c.getApplicationContext().getSharedPreferences("karrar_ai", Context.MODE_PRIVATE);
         Theme.rtl = "ar".equals(get("lang", "ar"));
         loadDefaultProvider(c);

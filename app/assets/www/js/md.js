@@ -17,6 +17,7 @@ K.md=function(text,hasSrc){
   let l=lines[i];
   if(/^\s*```/.test(l)){flush();const lang=l.replace(/^\s*```/,'').trim();const buf=[];i++;
    while(i<lines.length&&!/^\s*```/.test(lines[i])){buf.push(lines[i]);i++}i++;
+   const am=/^app[:=]\s*(.+)$/i.exec(lang);if(am&&K.apps){out+=K.apps.card(am[1].trim(),buf.join('\n'));continue}
    const fm=/^file[:=]\s*(.+)$/i.exec(lang);
    if(fm&&K.files&&K.files.box){out+=K.files.box(fm[1].trim(),buf.join('\n'));continue}
    out+='<div class="codebox"><div class="ch"><span>'+esc(lang||'code')+'</span><span class="cpg"><button class="cp" data-save>'+K.icon('arrow-up',15).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'<span>'+(K.lang()==='ar'?'حفظ':'Save')+'</span></button><button class="cp" data-copy>'+K.icon('copy',15)+'<span>'+K.t('copy')+'</span></button></span></div><pre><code>'+(K.hl?K.hl(buf.join('\n'),lang):esc(buf.join('\n')))+'</code></pre></div>';continue}

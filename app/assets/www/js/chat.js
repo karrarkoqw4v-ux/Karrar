@@ -55,6 +55,9 @@ C.mount=function(){
  sc.addEventListener('scroll',function(){C.nearBottom=sc.scrollTop+sc.clientHeight>=sc.scrollHeight-140});
  msgs.addEventListener('click',function(e){
   const t=e.target;
+  const av=t.closest('[data-appv]');if(av){K.apps.open(av.dataset.appv);return}
+  const as=t.closest('[data-apps]');if(as){K.apps.save(as.dataset.apps);return}
+  const ac=t.closest('[data-appc]');if(ac){K.apps.copy(ac.dataset.appc);return}
   const gb=t.closest('[data-g]');if(gb){K.imggen.act(gb.closest('.msg.ai')._view,gb.dataset.g);return}
   const sv=t.closest('[data-save]');if(sv){const cb=sv.closest('.codebox');K.files.saveCode(cb.querySelector('.ch>span').textContent,cb.querySelector('pre').innerText);return}
   const dl=t.closest('[data-fid]');if(dl){K.files.save(dl.dataset.fid,dl);return}

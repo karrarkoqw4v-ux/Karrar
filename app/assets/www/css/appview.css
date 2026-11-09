@@ -1,0 +1,27 @@
+.appcard{display:flex;align-items:center;gap:12px;margin:.8em 0;padding:12px;border-radius:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 16%,var(--bubble)),var(--bubble));border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);flex-wrap:wrap;direction:ltr;box-shadow:0 8px 24px color-mix(in srgb,var(--ac) 14%,transparent)}
+.appcard .ai-tile{width:54px;height:54px;border-radius:16px;background:linear-gradient(150deg,var(--ac),color-mix(in srgb,var(--ac) 55%,#000));display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.6em;flex:none;box-shadow:0 6px 16px color-mix(in srgb,var(--ac) 45%,transparent)}
+.appcard .an{flex:1;min-width:120px;display:flex;flex-direction:column}.appcard .an b{font-weight:800;font-size:1.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.appcard .an small{color:var(--text2);font-weight:600}
+.appcard .ab{display:flex;gap:6px;width:100%}
+.appcard .ab button{display:flex;align-items:center;justify-content:center;gap:6px;height:42px;padding:0 14px;border-radius:21px;background:var(--surface2);font-weight:800;transition:transform .2s var(--spring)}.appcard .ab button:active{transform:scale(.94)}
+.appcard .ab .view{flex:1;background:var(--text);color:var(--bg)}
+/* device preview */
+.apv{position:fixed;inset:0;z-index:272;background:radial-gradient(circle at 50% 30%,#1b2140,#0a0b10 70%);display:flex;flex-direction:column;animation:lglIn .34s var(--ease) both}.apv.out{animation:lglOut .24s ease-in both}
+.apv-top{display:flex;align-items:center;gap:12px;padding:18px 16px 6px;flex:none}
+.apv-ib{width:44px;height:44px;border-radius:50%;background:#2b2b30;border:1px solid #45454a;display:grid;place-items:center;color:#fff;transition:transform .2s var(--spring)}.apv-ib:active{transform:scale(.88)}
+.apv-t{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}.apv-t b{font-weight:800;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.apv-t small{color:#9a9aa5;font-weight:600}
+.apv-devs{display:flex;gap:8px;padding:8px 16px;flex:none;overflow-x:auto;scrollbar-width:none;align-items:center;direction:ltr}.apv-devs::-webkit-scrollbar{display:none}
+.apv-devs button{display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:19px;background:#25252a;color:#c9c9d0;font-weight:700;flex:none;border:1px solid transparent;transition:all .2s var(--spring)}
+.apv-devs button.on{background:rgba(77,107,254,.22);border-color:#4d6bfe;color:#9db4ff}.apv-devs .sp{flex:1}
+.apv-stage{flex:1;position:relative;display:grid;place-items:center;overflow:hidden;min-height:0}
+.apv-dev{position:absolute;background:linear-gradient(145deg,#2a2c34,#0b0c10);box-shadow:0 0 0 2px #3a3d48,0 30px 70px rgba(0,0,0,.7),inset 0 0 0 2px #15161b;transform-origin:center;display:flex;flex-direction:column;box-sizing:border-box;animation:fade .4s both}
+.apv-dev .scr{position:relative;flex:1;background:#000;overflow:hidden;display:flex;flex-direction:column}
+.apv-dev iframe{flex:1;width:100%;border:0;background:#fff;min-height:0}
+.apv-dev .sbar{position:absolute;top:0;left:0;right:0;height:34px;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:6px 26px 0;color:#fff;font-size:13px;pointer-events:none;mix-blend-mode:difference}
+.apv-dev .sbar .hole{position:absolute;left:50%;top:10px;width:12px;height:12px;border-radius:50%;background:#000;transform:translateX(-50%);box-shadow:0 0 0 2px #16161a;mix-blend-mode:normal}
+.apv-dev .sbar em{display:flex;gap:5px;align-items:center;font-style:normal}
+.apv-dev .home{position:absolute;bottom:7px;left:50%;width:118px;height:5px;border-radius:3px;background:rgba(255,255,255,.75);transform:translateX(-50%);z-index:3;mix-blend-mode:difference;pointer-events:none}
+.apv-dev.phone:not(.land) iframe{padding-top:0}
+.apv-dev.desk{padding:0;background:#1c1d23}.apv-dev.desk .chrome{height:44px;display:flex;align-items:center;gap:7px;padding:0 14px;background:#2a2c34;flex:none;border-radius:14px 14px 0 0}
+.apv-dev .chrome i{width:12px;height:12px;border-radius:50%;background:#ff5f57}.apv-dev .chrome i:nth-child(2){background:#febc2e}.apv-dev .chrome i:nth-child(3){background:#28c840}
+.apv-dev .chrome span{flex:1;margin:0 12px;height:28px;border-radius:14px;background:#17181d;color:#9a9aa5;font-size:13px;display:grid;place-items:center;direction:ltr}
+.apv-dev.desk .scr{border-radius:0 0 14px 14px!important}

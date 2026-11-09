@@ -8,7 +8,37 @@ K.mock={
   '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("بوصلة"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n\n> 💡 نصيحة: ابدأ بمشروع صغير تحبه، فهو يبقيك متحمساً.\n\n> ⚠️ لا تنتقل بين اللغات كثيراً في البداية.\n\n> ✅ بعد شهر ستكتب برامج صغيرة بنفسك.\n\n**الخلاصة:** لغة واحدة + تدريب يومي + مشروع صغير.\n':
   '## Start with the basics 🚀\nHere is a short plan [1][2]:\n\n1. Pick one language such as **Python**.\n2. Practise daily with small projects.\n3. Read other people\'s code 😊\n\n```python\ndef hello(name):\n    return f"Hello {name}"\n```\n';
   const fileAns='سأرسل لك الملف الآن 👇\n\n```file:todo-app.zip\n=== index.html ===\n<!DOCTYPE html>\n<html><body><h1>مهامي</h1></body></html>\n=== app.js ===\nconsole.log("hi")\n```\n\nوهذا مثال كود:\n\n```javascript\n// جمع رقمين\nfunction add(a, b) {\n  const total = a + b; // 42\n  return `Sum: ${total}`;\n}\nclass User extends Base { constructor(){ super(); this.name = \"Ali\"; } }\n```\n\n```python\ndef hello(name: str) -> str:\n    # greet\n    return f\"Hello {name}\" if name else None\n```\n\n```json\n{\"name\": \"app\", \"v\": 2, \"ok\": true}\n```\n\nاستخدم `npm start` للتشغيل.';
-  const ans=/ملف|file/i.test(q)?fileAns:answer;
+  const appAns='هذا تطبيق جاهز — اضغط «عرض» لتجربته على جهاز كامل:\n\n```app:مهامي\n'+`<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مهامي</title>
+<style>
+:root{--bg:#0d1020;--card:rgba(255,255,255,.07);--line:rgba(255,255,255,.12);--ac:#6f8cff;--ac2:#b06cff;--tx:#f3f5ff;--mut:#9aa3c7}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;color:var(--tx);background:radial-gradient(900px 500px at 80% -10%,#2a2f6b,transparent),radial-gradient(700px 400px at -10% 110%,#4a2a6b,transparent),var(--bg);padding:22px 18px 40px}
+h1{font-size:1.7rem;font-weight:800;margin:10px 0 2px}p.s{color:var(--mut);margin-bottom:18px}
+.ring{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;backdrop-filter:blur(14px);margin-bottom:16px}
+.ring svg{width:74px;height:74px;transform:rotate(-90deg)}.ring circle{fill:none;stroke-width:8;stroke-linecap:round}.ring .bg{stroke:var(--line)}.ring .fg{stroke:url(#g);transition:stroke-dashoffset .6s cubic-bezier(.2,.9,.3,1)}
+.ring b{font-size:1.3rem}.ring small{display:block;color:var(--mut)}
+form{display:flex;gap:8px;margin-bottom:14px}input{flex:1;height:50px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--tx);padding:0 16px;font-size:1rem;outline:none}input:focus{border-color:var(--ac)}
+button.add{width:50px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;font-size:1.6rem;box-shadow:0 8px 20px rgba(111,140,255,.4)}
+ul{list-style:none;display:flex;flex-direction:column;gap:10px}li{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;animation:in .35s cubic-bezier(.2,.9,.3,1) both}
+@keyframes in{from{opacity:0;transform:translateY(10px) scale(.97)}}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--mut);display:grid;place-items:center;flex:none;background:none;color:#fff;transition:.25s}li.done .ck{background:linear-gradient(135deg,var(--ac),var(--ac2));border-color:transparent}
+li span{flex:1}li.done span{text-decoration:line-through;color:var(--mut)}.del{background:none;border:0;color:var(--mut);font-size:1.2rem}
+</style></head><body>
+<h1>مهامي ✨</h1><p class="s">نظّم يومك بخطوات صغيرة</p>
+<div class="ring"><svg viewBox="0 0 100 100"><defs><linearGradient id="g"><stop offset="0" stop-color="#6f8cff"/><stop offset="1" stop-color="#b06cff"/></linearGradient></defs><circle class="bg" cx="50" cy="50" r="42"/><circle class="fg" id="fg" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/></svg><div><b id="pc">0%</b><small id="ct">لا توجد مهام</small></div></div>
+<form id="f"><input id="i" placeholder="أضف مهمة جديدة…" autocomplete="off"><button class="add">+</button></form>
+<ul id="l"></ul>
+<script>
+let T=[{t:"تصميم الواجهة",d:true},{t:"كتابة الكود",d:false},{t:"اختبار التطبيق",d:false}];
+const l=document.getElementById('l');
+function R(){l.innerHTML='';T.forEach((x,k)=>{const e=document.createElement('li');if(x.d)e.className='done';e.innerHTML='<button class="ck">'+(x.d?'✓':'')+'</button><span></span><button class="del">×</button>';e.querySelector('span').textContent=x.t;e.querySelector('.ck').onclick=()=>{x.d=!x.d;R()};e.querySelector('.del').onclick=()=>{T.splice(k,1);R()};l.appendChild(e)});
+const n=T.filter(x=>x.d).length,p=T.length?Math.round(n/T.length*100):0;document.getElementById('fg').style.strokeDashoffset=264-264*p/100;document.getElementById('pc').textContent=p+'%';document.getElementById('ct').textContent=T.length?n+' من '+T.length+' منجزة':'لا توجد مهام'}
+document.getElementById('f').onsubmit=e=>{e.preventDefault();const v=document.getElementById('i').value.trim();if(v){T.unshift({t:v,d:false});document.getElementById('i').value='';R()}};R();
+</script></body></html>
+`+'\n```\n\n- قائمة مهام تفاعلية\n- دائرة تقدم متحركة\n- تصميم زجاجي داكن';
+  const ans=/تطبيق|app|لعبة|game/i.test(q)?appAns:/ملف|file/i.test(q)?fileAns:answer;
   const parts=[];for(let i=0;i<reasoning.length;i+=4)parts.push(['think',reasoning.slice(i,i+4)]);
   for(let i=0;i<ans.length;i+=3)parts.push(['text',ans.slice(i,i+3)]);
   let k=0;(function step(){if(stop)return;if(k>=parts.length){cb({t:'done'});return}const p=parts[k++];cb({t:p[0],d:p[1]});setTimeout(step,k<20?60:14)})();

@@ -23,6 +23,15 @@ const G=[
  {id:'',n:T('خلفيات','Wallpapers'),ic:'#f59e0b',it:[['خلفية هاتف','Phone wallpaper',1080,2400],['خلفية حاسوب','Desktop wallpaper',1920,1080],['خلفية تابلت','Tablet',2048,1536]]}
 ];
 const RES={1080:1080,'2k':1440,'4k':2160};
+const STY={pro:['احترافي','Professional design','professional graphic design, clean balanced composition, premium look, sharp details, harmonious colour palette, studio quality'],
+ photo:['واقعي','Photorealistic','photorealistic photograph, natural lighting, 85mm lens, ultra detailed, high dynamic range'],
+ logo:['شعار','Logo','minimal vector logo design, flat shapes, strong silhouette, centered on a clean background'],
+ poster:['بوستر / إعلان','Poster / ad','advertising poster layout, bold typography feel, strong visual hierarchy, striking colours'],
+ d3:['ثلاثي الأبعاد','3D render','3D render, soft global illumination, glossy materials, depth of field, octane render'],
+ anime:['أنمي','Anime','anime illustration, vibrant colours, clean line art, cinematic framing'],
+ art:['رسم رقمي','Digital art','detailed digital painting, concept art, rich textures, dramatic lighting'],
+ water:['ألوان مائية','Watercolor','soft watercolor painting, delicate gradients, paper texture']};
+const styKey=()=>st().imgStyle||'pro';
 const resLabel=r=>r==='1080'||r===1080?'1080':String(r).toUpperCase();
 const st=()=>K.state;
 const D={get size(){return st().img||null},get res(){return st().res||'1080'}};
@@ -84,7 +93,7 @@ K.imggen={
  /* send handler: called from chat.js when image mode is on */
  start(conv,m){
   const s=D.size,res=D.res;
-  const ai={role:'assistant',c:T('تم الحصول على تفاصيلك كاملة ✨\nنقوم بإنشاء الصورة حسب المطلوب','We have all your details ✨\nWe are creating the image as requested'),t:'',s:0,src:[],v:0,gen:{state:'run',w:s.w,h:s.h,res:res,plat:s.plat,prompt:m.c||'',seed:hash((m.c||'')+Date.now()),t0:Date.now(),base:(m.imgs||[])[0]||''}};
+  const ai={role:'assistant',c:T('تم الحصول على تفاصيلك كاملة ✨\nنقوم بإنشاء الصورة حسب المطلوب','We have all your details ✨\nWe are creating the image as requested'),t:'',s:0,src:[],v:0,gen:{state:'run',style:styKey(),w:s.w,h:s.h,res:res,plat:s.plat,prompt:m.c||'',seed:hash((m.c||'')+Date.now()),t0:Date.now(),base:(m.imgs||[])[0]||''}};
   conv.msgs.push(ai);
   const view=new K.chat.AIView(ai,{last:true,live:true});$('msgs').appendChild(view.el);K.chat.scrollEnd(true);
   K.db.save();
@@ -99,7 +108,7 @@ K.imggen={
    setTimeout(done,14000)})},
  async realImage(g){
   const k=1024/Math.max(g.w,g.h),w=Math.max(256,Math.round(g.w*k/8)*8),h=Math.max(256,Math.round(g.h*k/8)*8);
-  const prompt=(await K.imggen.enPrompt(g.prompt)).slice(0,600);const tries=[];
+  const sk=STY[g.style||'pro']?g.style||'pro':'pro';const prompt=((await K.imggen.enPrompt(g.prompt))+', '+STY[sk][2]).slice(0,700);const tries=[];
   const hf=K.pref.get('fk_hf','');
   if(hf)tries.push(['FLUX.1 (Hugging Face)',()=>K.native.fetchImage('https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell',hf,JSON.stringify({inputs:prompt,parameters:{width:w,height:h}}))]);
   if(K.pref.bool('auto',true)){
@@ -122,7 +131,7 @@ K.imggen={
     g.thumb=sc.toDataURL('image/jpeg',.85);g.src=real.model;K.imggen.full[g.seed]={b64:real.b64,mime:real.mime};
     // background save: the original file goes to Downloads/Bawsala right away
     try{const ext=real.mime.indexOf('png')>=0?'png':real.mime.indexOf('webp')>=0?'webp':'jpg';
-     const r=await K.native.saveFile('bawsala-'+Date.now().toString(36)+'.'+ext,real.mime,real.b64);if(r&&String(r).indexOf('err')!==0){g.saved=1;K.toast(T('تم إنشاء الصورة وحفظها في التنزيلات','Image created and saved to Downloads'))}}catch(e){}}
+     const r=await K.native.saveFile('bawsala-'+Date.now().toString(36)+'.'+ext,real.mime,real.b64);if(r&&String(r).indexOf('err')!==0){g.saved=1;K.toast(T('تم إنشاء الصورة وحفظها في المعرض (Pictures/Bawsala)','Image created and saved to your gallery (Pictures/Bawsala)'))}}catch(e){}}
    else real=null}
   if(!real){await draw(sc,tw,th,g,base);g.thumb=sc.toDataURL('image/jpeg',.82);g.src='';}
   g.took=Math.max(1,Math.round((Date.now()-g.t0)/1000));g.state='done';
@@ -138,7 +147,7 @@ K.imggen={
    else await draw(cv,od[0],od[1],g,await loadImg(g.base));
    const b64=cv.toDataURL('image/png').split(',')[1];
    const r=await K.native.saveFile('bawsala-'+od[0]+'x'+od[1]+'-'+Date.now().toString(36)+'.png','image/png',b64);
-   K.toast(r&&r.indexOf('err')===0?T('تعذّر الحفظ','Could not save'):T('تم الحفظ في التنزيلات','Saved to Downloads'));
+   K.toast(r&&r.indexOf('err')===0?T('تعذّر الحفظ','Could not save'):T('تم الحفظ في المعرض (Pictures/Bawsala)','Saved to your gallery (Pictures/Bawsala)'));
   }
  },
 
@@ -147,12 +156,14 @@ K.imggen={
   const sz=D.size;
   return '<button class="mchip" data-img="mode">'+K.icon('image',16)+'<span>'+K.t('create_img')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>'
    +'<button class="mchip ghost" data-img="size">'+K.icon('image',16)+'<span>'+(sz?esc(sz.plat?sz.plat+' · ':'')+sz.w+'×'+sz.h:T('حدد القياسات','Select sizes'))+'</span></button>'
+   +'<button class="mchip ghost" data-img="style"><span>'+T('النمط','Style')+' - '+T(STY[styKey()][0],STY[styKey()][1])+'</span>'+K.icon('chevron-down',15)+'</button>'
    +'<button class="mchip ghost" data-img="res"><span>'+T('الدقة','Accuracy')+' - '+resLabel(D.res)+'</span>'+K.icon('chevron-down',15)+'</button>';
  },
  onChip(kind,el){
   if(kind==='mode'){st().imgMode=false;K.home.paintPills();$('ta').placeholder=K.t('hint')}
   else if(kind==='size')K.imggen.sizes();
   else if(kind==='res')K.imggen.resMenu(el);
+  else if(kind==='style')K.imggen.styleMenu(el);
  },
  enter(){st().imgMode=true;$('ta').placeholder=T('صف الصورة التي تريدها…','Describe the image you want…');K.home.paintPills();setTimeout(()=>{if(!D.size)K.imggen.sizes()},250)},
  resMenu(el){
@@ -164,6 +175,16 @@ K.imggen={
   const off=()=>{m.classList.add('out');setTimeout(()=>m.remove(),160);document.removeEventListener('pointerdown',away,true)};
   const away=e=>{if(!m.contains(e.target))off()};setTimeout(()=>document.addEventListener('pointerdown',away,true),0);
   m.querySelectorAll('button').forEach(b=>b.onclick=()=>{st().res=b.dataset.r;K.native.haptic();off();K.home.paintPills()});
+ },
+ styleMenu(el){
+  document.querySelectorAll('.resmenu').forEach(x=>x.remove());
+  const m=document.createElement('div');m.className='resmenu';
+  m.innerHTML=Object.keys(STY).map(k=>'<button data-r="'+k+'" class="'+(styKey()===k?'on':'')+'"><span>'+T(STY[k][0],STY[k][1])+'</span>'+(styKey()===k?K.icon('check',18,2.8):'')+'</button>').join('');
+  document.body.appendChild(m);const b=el.getBoundingClientRect();
+  m.style.bottom=(innerHeight-b.top+8)+'px';m.style[document.documentElement.dir==='rtl'?'right':'left']=Math.max(10,document.documentElement.dir==='rtl'?innerWidth-b.right:b.left)+'px';
+  const off=()=>{m.classList.add('out');setTimeout(()=>m.remove(),160);document.removeEventListener('pointerdown',away,true)};
+  const away=e=>{if(!m.contains(e.target))off()};setTimeout(()=>document.addEventListener('pointerdown',away,true),0);
+  m.querySelectorAll('button').forEach(b=>b.onclick=()=>{st().imgStyle=b.dataset.r;K.native.haptic();off();K.home.paintPills()});
  },
  sizes(){
   const old=$('sizes');if(old)old.remove();

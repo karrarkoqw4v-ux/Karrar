@@ -612,13 +612,14 @@ public class Bridge {
                 android.content.ContentValues v = new android.content.ContentValues();
                 v.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
                 v.put(MediaStore.MediaColumns.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Bawsala");
-                Uri u = act.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                boolean img = mime != null && mime.startsWith("image/");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, img ? "Pictures/Bawsala" : "Download/Bawsala");
+                Uri u = act.getContentResolver().insert(img ? MediaStore.Images.Media.EXTERNAL_CONTENT_URI : MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
                 if (u == null) return "err:insert";
                 java.io.OutputStream os = act.getContentResolver().openOutputStream(u);
                 os.write(data);
                 os.close();
-                return "ok:Download/Bawsala/" + safe;
+                return "ok:" + (img ? "Pictures" : "Download") + "/Bawsala/" + safe;
             }
             java.io.File dir = act.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
             if (dir == null) return "err:nodir";
