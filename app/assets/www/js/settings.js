@@ -10,7 +10,7 @@ const stack=[];
 const S=K.settings={};
 function mask(k){if(!k)return K.t('s_not_set');return k.length<=8?'••••••••':k.slice(0,3)+'••••••••'+k.slice(-4)}
 function maskEmail(e){const a=e.indexOf('@');return a<5?e:e.slice(0,4)+'••••••'+e.slice(a-2)}
-function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses'),tasks:K.t('tk_title')}[p]}
+function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses'),oss:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),tasks:K.t('tk_title')}[p]}
 
 /* ----- builders ----- */
 function sec(parent,label){if(label){const t=document.createElement('div');t.className='sec-t';t.textContent=label;parent.appendChild(t)}const c=document.createElement('div');c.className='card';parent.appendChild(c);return c}
@@ -42,7 +42,7 @@ function after(p){K.app.apply();S.rerender();if(p&&p.remount)K.app.remount()}
 function build(el,p){
  if(p==='font'){fontPage(el);return}
  const body=document.createElement('div');body.className='pbody stagger';el.appendChild(body);
- ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage,tasks:tasksPage})[p](body);
+ ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage,oss:ossPage,tasks:tasksPage})[p](body);
  K.emojifyEl(body);
 }
 
@@ -54,6 +54,7 @@ function mainPage(b){
  row(c,{icon:'database',title:K.t('s_data'),onclick:()=>S.open('data')});
  c=sec(b,K.t('s_link'));
  row(c,{icon:'plug',title:K.t('connected_apps'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('apps')});
+ row(c,{icon:'atom',title:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),sub:(K.lang()==='ar'?'اتصال تلقائي ومفاتيح مجانية':'Auto-connect and free keys'),value:K.pref.bool('auto',true)?(K.lang()==='ar'?'تلقائي':'Auto'):'',onclick:()=>S.open('oss')});
  c=sec(b,K.t('s_tools'));
  row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
@@ -197,6 +198,25 @@ function tasksPage(b){
     else if(k===2){ts.splice(ts.indexOf(t),1);save();S.rerender()}}})};
  draw(K.t('tk_open'),ts.filter(t=>!t.d));draw(K.t('tk_done'),ts.filter(t=>t.d));
  if(!ts.length)note(b,K.t('tk_empty'));
+}
+
+function ossPage(b){
+ const ar=K.lang()==='ar',T=(x,y)=>ar?x:y;
+ const n=document.createElement('div');n.className='note';n.style.paddingTop='4px';
+ n.textContent=T('يتصل التطبيق تلقائياً بنماذج مفتوحة المصدر (Llama وQwen وGemma وMistral وDeepSeek…). إن فشل نموذج أو مزوّد ينتقل للتالي بصمت دون أن تظهر لك مشكلة.','The app connects automatically to open-source models (Llama, Qwen, Gemma, Mistral, DeepSeek…). If one model or provider fails it silently moves to the next, with no error shown.');b.appendChild(n);
+ let c=sec(b,T('الوضع التلقائي','Automatic mode'));
+ toggle(c,{icon:'sparkles',title:T('الاتصال التلقائي بنماذج مفتوحة','Auto-connect to open models'),sub:T('بوابة عامة بدون مفتاح كخيار أخير (قد تكون بطيئة أو محدودة)','A public keyless gateway as a last resort (may be slow or limited)'),key:'auto',def:true});
+ row(c,{icon:'circle-check',title:T('اختبار الاتصال الآن','Test the connection now'),onclick:async(r)=>{
+  const rv=r.querySelector('.rt');K.toast(T('جارٍ الاختبار…','Testing…'));let out='',err='';
+  await new Promise(done=>{K.native.chat([{role:'user',content:'Reply with a short friendly greeting in one sentence.',images:[]}],false,'',ev=>{if(ev.t==='text')out+=ev.d;else if(ev.t==='err'){err=ev.m;done()}else if(ev.t==='done')done()});setTimeout(done,25000)});
+  K.ui.info(err?T('تعذّر الاتصال','Could not connect'):T('الاتصال يعمل ✅','Connection works ✅'),err?(err+K.errHint(err)):out.replace(/<think>[\s\S]*?<\/think>/g,'').trim()||'—')}});
+ c=sec(b,T('مفاتيح مجانية (اختياري — تزيد الثبات)','Free keys (optional — more stable)'));
+ const L=[['groq','Groq','Llama · GPT-OSS','console.groq.com/keys'],['openrouter','OpenRouter','Llama · DeepSeek · Qwen (:free)','openrouter.ai/keys'],['hf','Hugging Face','Llama · DeepSeek · Qwen','huggingface.co/settings/tokens'],['cerebras','Cerebras','Llama · Qwen','cloud.cerebras.ai'],['mistral','Mistral','Mistral Nemo','console.mistral.ai/api-keys'],['gemini','Google AI Studio','Gemma','aistudio.google.com/apikey'],['github','GitHub Models','Llama · DeepSeek','github.com/settings/tokens']];
+ L.forEach(x=>{const has=!!K.pref.get('fk_'+x[0],'');
+  row(c,{icon:'key',title:x[1],sub:x[2]+' · '+x[3],value:has?T('مُضاف ✓','Added ✓'):'',onclick:async()=>{
+   if(has){const k=await K.ui.choose(x[1],[T('تغيير المفتاح','Change key'),T('حذف المفتاح','Remove key')]);if(k===1){K.pref.set('fk_'+x[0],'');K.pref.set('auto_model_'+x[0],'');S.rerender()}if(k!==0)return}
+   const v=await K.ui.prompt({title:x[1]+' — API key',secret:true,hint:'...'});if(v){K.pref.set('fk_'+x[0],v.trim());K.pref.set('auto_model_'+x[0],'');S.rerender()}}})});
+ const n2=document.createElement('div');n2.className='note';n2.textContent=T('تُستخدم المفاتيح بالترتيب بعد مزوّدك الأساسي (إن وُجد). المفاتيح تُحفظ على جهازك فقط.','Keys are used in order after your main provider (if any). Keys are stored on your device only.');b.appendChild(n2);
 }
 function licensesPage(b){
  const c=sec(b,'');c.style.marginTop='6px';

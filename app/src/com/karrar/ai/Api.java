@@ -11,7 +11,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /** OpenAI-compatible streaming client (works with DeepSeek, OpenAI, OpenRouter, Groq, Ollama...). */
 public final class Api {
@@ -31,33 +33,67 @@ public final class Api {
         }
     }
 
+
+    /** One place a chat request can go (OpenAI-compatible). */
+    static class Prov {
+        String name, base, url, key = "", model, think;
+        boolean keyless;
+        Prov(String name, String base, String key, String model, String think) {
+            this.name = name; this.base = base; this.key = key == null ? "" : key; this.model = model; this.think = think;
+        }
+        String endpoint() { return url != null ? url : base + "/chat/completions"; }
+        String modelsUrl() { return url != null ? "https://text.pollinations.ai/models" : base + "/models"; }
+    }
+
+    private static class Res { boolean got; }
+
+    /** Free tiers of open-model hosts; each is used automatically when the user has pasted its key (Settings). */
+    static final String[][] FREE = {
+            {"groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"},
+            {"openrouter", "https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"},
+            {"hf", "https://router.huggingface.co/v1", "meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-R1"},
+            {"cerebras", "https://api.cerebras.ai/v1", "llama-3.3-70b", "qwen-3-32b"},
+            {"mistral", "https://api.mistral.ai/v1", "open-mistral-nemo", "magistral-small-latest"},
+            {"gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemma-3-27b-it", "gemma-3-27b-it"},
+            {"github", "https://models.github.ai/inference", "meta/Llama-3.3-70B-Instruct", "deepseek/DeepSeek-R1"}};
+
+    private static final Pattern REPAIR = Pattern.compile("decommission|deprecat|no longer supported|not found|does not exist|unknown model|invalid model|not supported",
+            Pattern.CASE_INSENSITIVE);
+
+    static List<Prov> chain() {
+        List<Prov> l = new ArrayList<Prov>();
+        String key = Store.get("api_key", "").trim();
+        String base = Store.baseUrl();
+        boolean local = base.contains("localhost") || base.contains("127.0.0.1") || base.contains("192.168.");
+        if (!key.isEmpty() || local)
+            l.add(new Prov("manual", base, key, Store.get("model", "deepseek-chat"), Store.get("think_model", "deepseek-reasoner")));
+        for (String[] f : FREE) {
+            String k = Store.get("fk_" + f[0], "").trim();
+            if (k.isEmpty()) continue;
+            String cached = Store.get("auto_model_" + f[0], "").trim();
+            l.add(new Prov(f[0], f[1], k, cached.isEmpty() ? f[2] : cached, f[3]));
+        }
+        if (Store.bool("auto", true)) {
+            Prov p = new Prov("pollinations", "https://text.pollinations.ai", "", null, null);
+            p.url = "https://text.pollinations.ai/openai";
+            p.keyless = true;
+            l.add(p);
+        }
+        return l;
+    }
+
     public static boolean hasKey() {
-        String k = Store.get("api_key", "").trim();
-        if (!k.isEmpty()) return true;
-        // local servers (Ollama / LM Studio) don't need a key
-        String u = Store.baseUrl();
-        return u.contains("localhost") || u.contains("127.0.0.1") || u.contains("192.168.");
+        return !chain().isEmpty();
     }
 
     public static Handle chat(final List<Store.Msg> history, final boolean think, final String extraCtx,
                               final Cb cb, final Handler ui) {
         final Handle h = new Handle();
-        final boolean stream = Store.bool("stream", true);
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    if (!hasKey()) { demo(h, think, history, cb, ui); return; }
-                    String model = think ? Store.get("think_model", "deepseek-reasoner") : Store.get("model", "deepseek-chat");
-                    JSONObject body = new JSONObject();
-                    body.put("model", model);
-                    body.put("stream", true);
-                    if (!think) {
-                        try { body.put("temperature", Double.parseDouble(Store.get("temp", "0.7"))); } catch (Exception ignored) { }
-                    }
-                    try {
-                        int mt = Integer.parseInt(Store.get("max_tokens", "0"));
-                        if (mt > 0) body.put("max_tokens", mt);
-                    } catch (Exception ignored) { }
+                    List<Prov> ch = chain();
+                    if (ch.isEmpty()) { demo(h, think, history, cb, ui); return; }
                     JSONArray msgs = new JSONArray();
                     final boolean plan = !think && Store.bool("plan", true);
                     String sys = Store.get("system", "").trim();
@@ -82,92 +118,19 @@ public final class Api {
                             msgs.put(new JSONObject().put("role", m.role).put("content", m.content));
                         }
                     }
-                    body.put("messages", msgs);
-
-                    URL u = new URL(Store.baseUrl() + "/chat/completions");
-                    HttpURLConnection c = (HttpURLConnection) u.openConnection();
-                    h.conn = c;
-                    c.setRequestMethod("POST");
-                    c.setConnectTimeout(20000);
-                    c.setReadTimeout(120000);
-                    c.setDoOutput(true);
-                    c.setRequestProperty("Content-Type", "application/json");
-                    c.setRequestProperty("Accept", "text/event-stream");
-                    String key = Store.get("api_key", "").trim();
-                    if (!key.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + key);
-                    OutputStream os = c.getOutputStream();
-                    os.write(body.toString().getBytes("UTF-8"));
-                    os.close();
-
-                    int code = c.getResponseCode();
-                    if (code >= 400) {
-                        String err = readAll(c.getErrorStream());
-                        String msg = "HTTP " + code;
-                        try { msg += ": " + new JSONObject(err).getJSONObject("error").getString("message"); }
-                        catch (Exception e) { if (err.length() > 0) msg += ": " + err; }
-                        post(ui, cb, null, null, msg, h);
-                        return;
+                    String firstErr = null, lastErr = null;
+                    for (Prov p : ch) {
+                        if (h.cancelled) { post(ui, cb, null, null, "", h); return; }
+                        String model = think ? p.think : p.model;
+                        if (model == null || model.isEmpty()) model = pickOpenModel(p, "", think);
+                        if (model == null) { lastErr = "no model"; continue; }
+                        Res r = new Res();
+                        String err = attempt(p, model, msgs, think, plan, ui, cb, h, true, r);
+                        if (err == null || r.got || h.cancelled) { post(ui, cb, null, null, "", h); return; }
+                        if (firstErr == null) firstErr = err;
+                        lastErr = err;
                     }
-                    BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
-                    final ThinkSplit split = new ThinkSplit();
-                    String line;
-                    boolean got = false;
-                    StringBuilder raw = new StringBuilder();
-                    while ((line = r.readLine()) != null) {
-                        if (h.cancelled) break;
-                        if (!line.startsWith("data:")) { if (raw.length() < 200000) raw.append(line).append('\n'); continue; }
-                        String d = line.substring(5).trim();
-                        if (d.equals("[DONE]")) break;
-                        try {
-                            JSONObject j = new JSONObject(d);
-                            JSONArray ch = j.optJSONArray("choices");
-                            if (ch == null || ch.length() == 0) continue;
-                            JSONObject delta = ch.getJSONObject(0).optJSONObject("delta");
-                            if (delta == null) continue;
-                            String rc = delta.optString("reasoning_content", "");
-                            if (rc.equals("null")) rc = "";
-                            String ct = delta.optString("content", "");
-                            if (ct.equals("null")) ct = "";
-                            if (!rc.isEmpty() || !ct.isEmpty()) got = true;
-                            if (!rc.isEmpty()) post(ui, cb, rc, null, null, h);
-                            if (!ct.isEmpty()) { if (plan) split.feed(ct, ui, cb, h); else post(ui, cb, null, ct, null, h); }
-                        } catch (Exception ignored) { }
-                    }
-                    r.close();
-                    if (plan) split.flush(ui, cb, h);
-                    if (!got && !h.cancelled) {
-                        // Some providers ignore stream=true and answer with one plain JSON body (or answer nothing): handle both.
-                        if (!jsonReply(raw.toString(), plan, ui, cb, h)) {
-                            body.put("stream", false);
-                            HttpURLConnection c2 = (HttpURLConnection) u.openConnection();
-                            h.conn = c2;
-                            c2.setRequestMethod("POST");
-                            c2.setConnectTimeout(20000);
-                            c2.setReadTimeout(120000);
-                            c2.setDoOutput(true);
-                            c2.setRequestProperty("Content-Type", "application/json");
-                            c2.setRequestProperty("Accept", "application/json");
-                            if (!key.isEmpty()) c2.setRequestProperty("Authorization", "Bearer " + key);
-                            OutputStream os2 = c2.getOutputStream();
-                            os2.write(body.toString().getBytes("UTF-8"));
-                            os2.close();
-                            int code2 = c2.getResponseCode();
-                            String txt = readAll(code2 >= 400 ? c2.getErrorStream() : c2.getInputStream());
-                            if (code2 >= 400) {
-                                String msg = "HTTP " + code2;
-                                try { msg += ": " + new JSONObject(txt).getJSONObject("error").getString("message"); }
-                                catch (Exception e) { if (txt.length() > 0) msg += ": " + txt; }
-                                post(ui, cb, null, null, msg, h);
-                                return;
-                            }
-                            if (!jsonReply(txt, plan, ui, cb, h)) {
-                                String peek = txt.length() > 240 ? txt.substring(0, 240) : txt;
-                                post(ui, cb, null, null, "\u0627\u0644\u062e\u062f\u0645\u0629 \u0644\u0645 \u062a\u0631\u062c\u0639 \u0646\u0635\u0627\u064b / The service returned no text. " + (peek.isEmpty() ? "" : "Reply: " + peek), h);
-                                return;
-                            }
-                        }
-                    }
-                    post(ui, cb, null, null, "", h);
+                    post(ui, cb, null, null, firstErr != null ? firstErr : lastErr, h);
                 } catch (Exception e) {
                     if (!h.cancelled) post(ui, cb, null, null, e.getClass().getSimpleName() + ": " + e.getMessage(), h);
                     else post(ui, cb, null, null, "", h);
@@ -177,17 +140,156 @@ public final class Api {
         return h;
     }
 
+    private static HttpURLConnection open(Prov p, JSONObject body, boolean sse, Handle h) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(p.endpoint()).openConnection();
+        h.conn = c;
+        c.setRequestMethod("POST");
+        c.setConnectTimeout(15000);
+        c.setReadTimeout(90000);
+        c.setDoOutput(true);
+        c.setRequestProperty("Content-Type", "application/json");
+        c.setRequestProperty("Accept", sse ? "text/event-stream" : "application/json");
+        if (!p.key.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + p.key);
+        OutputStream os = c.getOutputStream();
+        os.write(body.toString().getBytes("UTF-8"));
+        os.close();
+        return c;
+    }
+
+    private static String errText(int code, String body) {
+        String msg = "HTTP " + code;
+        try { msg += ": " + new JSONObject(body).getJSONObject("error").getString("message"); }
+        catch (Exception e) { if (body.length() > 0) msg += ": " + (body.length() > 300 ? body.substring(0, 300) : body); }
+        return msg;
+    }
+
+    /** Returns null when the provider answered (or the user cancelled), otherwise the error text. */
+    private static String attempt(Prov p, String model, JSONArray msgs, boolean think, boolean plan, Handler ui, Cb cb, Handle h,
+                                  boolean allowRepair, Res res) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("model", model);
+            body.put("stream", true);
+            if (!think) {
+                try { body.put("temperature", Double.parseDouble(Store.get("temp", "0.7"))); } catch (Exception ignored) { }
+            }
+            try {
+                int mt = Integer.parseInt(Store.get("max_tokens", "0"));
+                if (mt > 0) body.put("max_tokens", mt);
+            } catch (Exception ignored) { }
+            body.put("messages", msgs);
+            HttpURLConnection c = open(p, body, true, h);
+            int code = c.getResponseCode();
+            if (code >= 400) {
+                String msg = errText(code, readAll(c.getErrorStream()));
+                if (allowRepair && (code == 400 || code == 404 || code == 422) && REPAIR.matcher(msg).find()) {
+                    String alt = pickOpenModel(p, model, think);
+                    if (alt != null && !alt.equals(model)) {
+                        String r2 = attempt(p, alt, msgs, think, plan, ui, cb, h, false, res);
+                        if (r2 == null) {
+                            if (!p.keyless && !p.name.equals("manual")) Store.put("auto_model_" + p.name, alt);
+                            else if (p.name.equals("manual")) { if (think) Store.put("think_model", alt); else Store.put("model", alt); }
+                            return null;
+                        }
+                    }
+                }
+                return msg;
+            }
+            BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+            final ThinkSplit split = new ThinkSplit();
+            String line;
+            StringBuilder raw = new StringBuilder();
+            while ((line = r.readLine()) != null) {
+                if (h.cancelled) break;
+                if (!line.startsWith("data:")) { if (raw.length() < 200000) raw.append(line).append('\n'); continue; }
+                String d = line.substring(5).trim();
+                if (d.equals("[DONE]")) break;
+                try {
+                    JSONObject j = new JSONObject(d);
+                    JSONArray chs = j.optJSONArray("choices");
+                    if (chs == null || chs.length() == 0) continue;
+                    JSONObject delta = chs.getJSONObject(0).optJSONObject("delta");
+                    if (delta == null) continue;
+                    String rc = delta.optString("reasoning_content", delta.optString("reasoning", ""));
+                    if (rc.equals("null")) rc = "";
+                    String ct = delta.optString("content", "");
+                    if (ct.equals("null")) ct = "";
+                    if (!rc.isEmpty() || !ct.isEmpty()) res.got = true;
+                    if (!rc.isEmpty()) post(ui, cb, rc, null, null, h);
+                    if (!ct.isEmpty()) { if (plan) split.feed(ct, ui, cb, h); else post(ui, cb, null, ct, null, h); }
+                } catch (Exception ignored) { }
+            }
+            r.close();
+            if (plan) split.flush(ui, cb, h);
+            if (res.got || h.cancelled) return null;
+            // The provider ignored streaming: read a plain JSON body, or ask again without streaming.
+            StringBuilder jerr = new StringBuilder();
+            if (jsonReply(raw.toString(), plan, ui, cb, h, jerr)) { res.got = true; return null; }
+            if (jerr.length() > 0) return jerr.toString();
+            body.put("stream", false);
+            HttpURLConnection c2 = open(p, body, false, h);
+            int code2 = c2.getResponseCode();
+            String txt = readAll(code2 >= 400 ? c2.getErrorStream() : c2.getInputStream());
+            if (code2 >= 400) return errText(code2, txt);
+            if (jsonReply(txt, plan, ui, cb, h, jerr)) { res.got = true; return null; }
+            if (jerr.length() > 0) return jerr.toString();
+            return "empty reply" + (txt.isEmpty() ? "" : ": " + (txt.length() > 200 ? txt.substring(0, 200) : txt));
+        } catch (Exception e) {
+            if (h.cancelled) return null;
+            return e.getClass().getSimpleName() + ": " + e.getMessage();
+        }
+    }
+
+    /** Picks an open-weights chat model from the provider's own model list (used when a model is retired). */
+    private static String pickOpenModel(Prov p, String bad, boolean think) {
+        try {
+            HttpURLConnection c = (HttpURLConnection) new URL(p.modelsUrl()).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(10000);
+            if (!p.key.isEmpty()) c.setRequestProperty("Authorization", "Bearer " + p.key);
+            if (c.getResponseCode() >= 400) return null;
+            String txt = readAll(c.getInputStream()).trim();
+            List<String> ids = new ArrayList<String>();
+            if (txt.startsWith("[")) {
+                JSONArray a = new JSONArray(txt);
+                for (int i = 0; i < a.length(); i++) {
+                    Object o = a.get(i);
+                    if (o instanceof JSONObject) { JSONObject jo = (JSONObject) o; ids.add(jo.optString("id", jo.optString("name", ""))); }
+                    else ids.add(String.valueOf(o));
+                }
+            } else {
+                JSONObject j = new JSONObject(txt);
+                JSONArray a = j.optJSONArray("data");
+                if (a == null) a = j.optJSONArray("models");
+                if (a != null) for (int i = 0; i < a.length(); i++) {
+                    Object o = a.get(i);
+                    if (o instanceof JSONObject) { JSONObject jo = (JSONObject) o; ids.add(jo.optString("id", jo.optString("name", ""))); }
+                    else ids.add(String.valueOf(o));
+                }
+            }
+            Pattern skip = Pattern.compile("whisper|tts|embed|guard|image|audio|moderation|orpheus|prompt|vision-only|rerank|transcri|speech|safeguard",
+                    Pattern.CASE_INSENSITIVE);
+            String[] pref = think
+                    ? new String[]{"gpt-oss", "r1", "qwen3|qwen-3", "qwq|reasoning|magistral", "deepseek"}
+                    : new String[]{"llama-?3\\.3.*70b", "llama-?3\\.1.*(70|8)b", "llama", "gpt-oss", "qwen", "gemma", "mistral", "deepseek"};
+            for (String pt : pref) {
+                Pattern q = Pattern.compile(pt, Pattern.CASE_INSENSITIVE);
+                for (String id : ids) if (!id.isEmpty() && !id.equals(bad) && q.matcher(id).find() && !skip.matcher(id).find()) return id;
+            }
+        } catch (Exception ignored) { }
+        return null;
+    }
+
     /** Parses a non-streaming chat completion (or an error body). Returns true when it posted text or an error. */
-    private static boolean jsonReply(String body, boolean plan, Handler ui, Cb cb, Handle h) {
+    private static boolean jsonReply(String body, boolean plan, Handler ui, Cb cb, Handle h, StringBuilder errOut) {
         try {
             String t = body.trim();
             if (t.isEmpty() || t.charAt(0) != '{') return false;
             JSONObject j = new JSONObject(t);
             if (j.has("error")) {
                 Object e = j.get("error");
-                String m = e instanceof JSONObject ? ((JSONObject) e).optString("message", e.toString()) : String.valueOf(e);
-                post(ui, cb, null, null, m, h);
-                return true;
+                errOut.append(e instanceof JSONObject ? ((JSONObject) e).optString("message", e.toString()) : String.valueOf(e));
+                return false;
             }
             JSONArray ch = j.optJSONArray("choices");
             if (ch == null || ch.length() == 0) return false;
