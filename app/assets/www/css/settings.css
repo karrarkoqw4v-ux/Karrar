@@ -38,3 +38,7 @@ html[dir=ltr] .page{--from:-40px}
 .tk{width:26px;height:26px;border-radius:50%;border:2px solid var(--text3);display:grid;place-items:center;color:transparent;transition:all .25s var(--spring)}
 .tk.on{background:var(--green);border-color:var(--green);color:#fff}
 .row.tdone .rt{text-decoration:line-through;color:var(--text3)}
+
+.card.upg-card{background:linear-gradient(135deg,#2f5bff,#6b8cff 60%,#8b5cf6);border:0;box-shadow:0 10px 28px rgba(77,107,254,.35);overflow:hidden}
+.row.upg{color:#fff}.row.upg .ri{color:#fff}.row.upg small{color:rgba(255,255,255,.82)}.row.upg .rt{font-weight:800}.row.upg .rc,.row.upg svg{color:#fff}
+.row.upg:active{background:rgba(255,255,255,.12)}
