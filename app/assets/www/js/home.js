@@ -116,13 +116,13 @@ H.buildProjects=function(){
 
 H.buildNav=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;
- const it=[['image',T('الصور','Images'),'img'],['file',T('المكتبة','Library'),'lib',1],['folder-git-2',T('المشروعات','Projects'),'proj'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['plug',T('المكونات الإضافية','Plugins'),'plug']];
+ const it=[['image',T('الصور','Images'),'img'],['file',T('المكتبة','Library'),'lib',1],['folder-git-2',T('المشروعات','Projects'),'proj'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['shield-check',T('الأمان والفحص','Security & Scan'),'scan'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['plug',T('المكونات الإضافية','Plugins'),'plug']];
  const n=$('dnav');n.innerHTML=it.map((x,i)=>'<button class="dn" data-k="'+x[2]+'" style="--i:'+i+'">'+K.icon(x[0],26)+'<span>'+x[1]+'</span>'+(x[3]?'<i class="badge">'+K.t('soon')+'</i>':'')+'</button>').join('');
  n.querySelectorAll('.dn').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
   if(k==='proj'){$('dproj').classList.toggle('open');b.classList.toggle('open');return}
   if(k==='lib'){K.toast(T('قريباً','Coming soon'));return}
   H.closeDrawer();
-  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
+  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='scan')K.scan.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
 };
 H.buildSugg=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;

@@ -20,6 +20,7 @@ K.native={
  login(e,p){return A?JSON.parse(A.login(e,p)):K.mock.login(e,p)},
  signup(n,e,p,p2){return A?JSON.parse(A.signup(n,e,p,p2)):K.mock.signup(n,e,p,p2)},
  google(){return new Promise(r=>{if(!A)return setTimeout(()=>r({name:'Bawsala',email:'karrar@gmail.com'}),900);const id=reg(r);A.google(id)})},
+ googleAccounts(){try{return A&&A.googleAccounts?JSON.parse(A.googleAccounts()):K.mock.googleAccounts()}catch(e){return[]}},
  hasAccount(e){return A?A.hasAccount(e)==='1':K.mock.has(e)},
  resetPassword(e,p,p2){return A?JSON.parse(A.resetPassword(e,p,p2)):K.mock.reset(e,p,p2)},
  guest(){A?A.guest():(K.native.setPref('logged','1'),K.native.setPref('name','مستخدم'),K.native.setPref('user_email',''))},
@@ -38,6 +39,7 @@ K.native={
    const id=reg(handler,false);A.voiceStart(id);
    return {stop(){A.voiceStop();delete cbs[id]}};
  },
+ scanUrl(url,deep){return new Promise(r=>{if(!A||!A.scanUrl)return r(K.mock.scanUrl(url,deep));const id=reg(r);A.scanUrl(id,url,!!deep)})},
  saveFile(name,mime,b64){return new Promise(r=>{if(A&&A.saveFile){r(A.saveFile(name,mime,b64));return}try{const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);r('ok')}catch(e){r('err')}})},
  copy(t){if(A)A.copy(t);else{try{navigator.clipboard.writeText(t)}catch(e){}}K.toast(K.t('copied'))},
  share(t){if(A)A.share(t)},

@@ -24,6 +24,8 @@ A.remount=function(){
 A.toLogin=function(){while(K.settings.depth())K.settings.back();$('home').classList.add('hidden');$('login').classList.remove('hidden');K.login.mount();K.fx.start(0)};
 A.toHome=function(){$('login').classList.add('hidden');$('home').classList.remove('hidden');K.db.load();K.home.mount();K.home.start();K.fx.start(K.pref.bool('fx',false)?2:0);A.apply()};
 window.__back=function(){
+ if(K.gsheet&&K.gsheet.closeIfOpen())return true;
+ if(K.scan&&(K.scan.runner&&K.scan.runner.active||K.scan.isOpen()||document.getElementById('scanres'))&&K.scan.back())return true;
  if(K.dictate&&K.dictate.active()){K.dictate.stop(false);return true}
  if(K.models&&K.models.closeIfOpen())return true;
  if(K.gallery&&K.gallery.closeIfOpen())return true;

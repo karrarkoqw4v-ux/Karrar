@@ -172,6 +172,15 @@ public class Bridge {
     }
 
     @JavascriptInterface
+    public void scanUrl(final int id, final String url, final boolean deep) {
+        new Thread(new Runnable() {
+            public void run() {
+                cb(id, Scan.url(url, deep));
+            }
+        }).start();
+    }
+
+    @JavascriptInterface
     public void test(final int id) {
         new Thread(new Runnable() {
             public void run() {
@@ -200,6 +209,19 @@ public class Bridge {
     public String signup(String n, String e, String p, String p2) { return res(Accounts.signUp(n, e, p, p2)); }
 
     /** Native Google account picker (the same sheet every app shows). No browser involved. */
+    /** Google accounts this app is allowed to see (Android 8+: those the user picked before). */
+    @JavascriptInterface
+    public String googleAccounts() {
+        try {
+            android.accounts.Account[] a = android.accounts.AccountManager.get(act).getAccountsByType("com.google");
+            JSONArray r = new JSONArray();
+            for (android.accounts.Account x : a) r.put(new JSONObject().put("email", x.name).put("name", nameFromEmail(x.name)));
+            return r.toString();
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
     @JavascriptInterface
     public void google(int id) {
         idGoogle = id;

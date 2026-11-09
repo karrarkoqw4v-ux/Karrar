@@ -68,10 +68,13 @@ function bind(v){
   $('go').onclick=()=>{const r=K.native.resetPassword(L.email,val('fP'),val('fP2'));if(r&&r.err)fail(r.err);else{L.code='';K.toast(K.t('l_reset_ok'));L.go('password')}};
  }
 }
-L.google=function(){
+L.google=async function(){
  if(L.busy)return;L.busy=true;
- K.native.google().then(function(r){L.busy=false;
-  if(!r||r.err){if(r&&r.err!=='cancel')K.toast(r.err);return}
-  K.native.setPref('name',r.name||r.email);K.native.setPref('user_email',(r.email||'').toLowerCase());K.native.setPref('user_google','1');K.native.setPref('logged','1');K.app.toHome()});
+ const btn=$('bG'),ic=btn.querySelector('svg');if(ic)ic.style.display='none';const sp=document.createElement('i');sp.className='gsp';btn.insertBefore(sp,btn.firstChild);btn.classList.add('busy');
+ await new Promise(r=>setTimeout(r,450));
+ const r=await K.gsheet.pick();
+ sp.remove();if(ic)ic.style.display='';btn.classList.remove('busy');L.busy=false;
+ if(!r||r.err){K.gsheet.done();if(r&&r.err&&r.err!=='cancel')K.toast(r.err);return}
+ K.native.setPref('name',r.name||r.email);K.native.setPref('user_email',(r.email||'').toLowerCase());K.native.setPref('user_google','1');K.native.setPref('logged','1');K.app.toHome();K.gsheet.done();
 };
 })();
