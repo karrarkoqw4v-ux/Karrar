@@ -21,6 +21,24 @@ public final class Store {
         if (sp != null) return;
         sp = c.getApplicationContext().getSharedPreferences("karrar_ai", Context.MODE_PRIVATE);
         Theme.rtl = "ar".equals(get("lang", "ar"));
+        loadDefaultProvider(c);
+    }
+
+    /** Optional private-build defaults (assets/default_provider.json): only fills settings the user has not set. */
+    private static void loadDefaultProvider(Context c) {
+        try {
+            java.io.InputStream in = c.getAssets().open("default_provider.json");
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] b = new byte[2048];
+            int n;
+            while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+            in.close();
+            org.json.JSONObject j = new org.json.JSONObject(bo.toString("UTF-8"));
+            String[] keys = {"api_key", "base_url", "model", "think_model"};
+            for (String k : keys) {
+                if (j.has(k) && get(k, "").trim().isEmpty()) put(k, j.getString(k));
+            }
+        } catch (Exception ignored) { }
     }
 
     public static String get(String k, String d) {
