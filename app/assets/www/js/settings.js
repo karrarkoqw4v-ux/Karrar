@@ -54,6 +54,9 @@ function mainPage(b){
  row(c,{icon:'globe',title:K.t('s_lang'),value:K.lang()==='ar'?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],K.lang()==='ar'?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}});
  row(c,{icon:'moon',title:K.t('s_theme'),value:K.pref.get('theme','dark')==='dark'?K.t('s_dark'):K.t('s_light'),onclick:async()=>{const i=await K.ui.choose(K.t('s_theme'),[K.t('s_dark'),K.t('s_light')],K.pref.get('theme','dark')==='dark'?0:1);if(i!=null){K.pref.set('theme',i===0?'dark':'light');after({remount:true})}}});
  row(c,{icon:'a-large-small',title:K.t('s_font'),onclick:()=>S.open('font')});
+ const FF=['noto','plex','cairo','almarai'];
+ row(c,{icon:'sparkles',title:K.t('s_fontface'),value:K.t('f_'+K.pref.get('font_f','noto')).replace(/ \(.*\)/,''),onclick:async()=>{const i=await K.ui.choose(K.t('s_fontface'),FF.map(f=>K.t('f_'+f)),Math.max(0,FF.indexOf(K.pref.get('font_f','noto'))));if(i!=null){K.pref.set('font_f',FF[i]);after()}}});
+ row(c,{icon:'pencil',title:K.t('s_weight'),value:K.t('s_w'+K.pref.get('font_w','1')),onclick:async()=>{const i=await K.ui.choose(K.t('s_weight'),[K.t('s_w0'),K.t('s_w1'),K.t('s_w2')],+K.pref.get('font_w','1'));if(i!=null){K.pref.set('font_w',String(i));after()}}});
  row(c,{icon:'wand-sparkles',title:K.t('s_custom'),onclick:()=>S.open('custom')});
  c=sec(b,K.t('s_audio'));
  row(c,{icon:'mic',title:K.t('s_main_lang'),value:K.pref.get('voice_lang','ar')==='en'?'English':'العربية',onclick:async()=>{const i=await K.ui.choose(K.t('s_main_lang'),['العربية','English'],K.pref.get('voice_lang','ar')==='en'?1:0);if(i!=null){K.pref.set('voice_lang',i===0?'ar':'en');S.rerender()}}});

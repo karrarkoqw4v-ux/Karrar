@@ -5,7 +5,7 @@ const $=id=>document.getElementById(id);
 const A=K.app={};
 A.apply=function(){
  const d=document.documentElement;
- d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';d.dataset.theme=K.pref.get('theme','dark')==='light'?'light':'dark';
+ d.dataset.font=K.pref.get('font_f','noto');d.dataset.weight=K.pref.get('font_w','1');d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';d.dataset.theme=K.pref.get('theme','dark')==='light'?'light':'dark';
  let sc=1;if(K.pref.bool('font_sys',false))sc=1;else sc=0.84+0.07*(+K.pref.get('font_i','2'));
  d.style.setProperty('--scale',sc.toFixed(3));
  K.native.setPref('lang',K.lang());

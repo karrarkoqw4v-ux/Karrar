@@ -1,5 +1,5 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:var(--fs);font-weight:500;line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior:none;touch-action:manipulation}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);font-size:var(--fs);line-height:1.5;-webkit-font-smoothing:antialiased;overscroll-behavior:none;touch-action:manipulation}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;outline:0}
 input,textarea{font:inherit;color:inherit;background:none;border:0;outline:0}
 ::placeholder{color:var(--text3);opacity:1}
