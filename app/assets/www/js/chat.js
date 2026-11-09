@@ -117,7 +117,7 @@ C.start=function(){
    if(ev.t==='think'){if(!t0)t0=Date.now();ai.t+=ev.d;view.open=true;view.thinking=true;view.dirty()}
    else if(ev.t==='text'){if(!ai.c&&t0&&!ai.s){ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));view.open=false;view.thinking=false}ai.c+=ev.d;view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c)}
    else if(ev.t==='done'){if(t0&&!ai.s)ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));C.finish(view)}
-   else if(ev.t==='err'){ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m;if(t0&&!ai.s)ai.s=1;C.finish(view)}
+   else if(ev.t==='err'){ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m+K.errHint(ev.m);if(t0&&!ai.s)ai.s=1;C.finish(view)}
   });
  };
  const withRepos=function(ctx){
@@ -140,6 +140,12 @@ C.finish=function(view){
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
 };
 C.AIView=AIView;
+K.errHint=function(m){m=String(m||'');const ar=K.lang()==='ar';let h='';
+ if(/HTTP 401|Missing Authentication|invalid.*api.?key|incorrect api key/i.test(m))h=ar?'المفتاح غير موجود أو غير صالح. افتح الإعدادات ← التطبيقات الموصولة وأضف مفتاح API ثم اضغط «اختبار الاتصال».':'The API key is missing or invalid. Open Settings → Connected apps, add the key and run “Test connection”.';
+ else if(/decommission|deprecat|no longer supported|model.*not found|does not exist|HTTP 404/i.test(m))h=ar?'اسم النموذج لم يعد متاحاً عند هذا المزوّد. غيّره من الإعدادات ← التطبيقات الموصولة ← النموذج (وإذا كنت في وضع «تفكير» غيّر نموذج التفكير أيضاً).':'This model is no longer available from the provider. Change it in Settings → Connected apps → Model (and the thinking model if you use Think).';
+ else if(/HTTP 429|quota|rate.?limit/i.test(m))h=ar?'وصلت لحدّ الطلبات أو الرصيد. انتظر قليلاً أو بدّل المزوّد.':'You hit the rate or credit limit. Wait a bit or switch provider.';
+ else if(/HTTP 402|insufficient|credit|billing/i.test(m))h=ar?'الحساب يحتاج رصيداً عند هذا المزوّد. جرّب مزوّداً بخطة مجانية.':'This provider account needs credit. Try a provider with a free tier.';
+ return h?'\n\n💡 '+h:''};
 C.stop=function(){if(S.handle)S.handle.cancel();K.native.stopSpeak();if(S.live){if(!S.live.m.s&&S.live.m.t)S.live.m.s=1;C.finish(S.live)}};
 C.action=function(v,a){
  if(a==='copy'){K.native.copy(v.m.c)}

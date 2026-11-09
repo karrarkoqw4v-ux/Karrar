@@ -35,9 +35,13 @@ public final class Store {
             in.close();
             org.json.JSONObject j = new org.json.JSONObject(bo.toString("UTF-8"));
             String[] keys = {"api_key", "base_url", "model", "think_model"};
+            int rev = j.optInt("rev", 0);
+            boolean apply = rev > 0 && !String.valueOf(rev).equals(get("defaults_rev", "0"));
             for (String k : keys) {
-                if (j.has(k) && get(k, "").trim().isEmpty()) put(k, j.getString(k));
+                if (!j.has(k)) continue;
+                if (apply || get(k, "").trim().isEmpty()) put(k, j.getString(k));
             }
+            if (apply) put("defaults_rev", String.valueOf(rev));
         } catch (Exception ignored) { }
     }
 
