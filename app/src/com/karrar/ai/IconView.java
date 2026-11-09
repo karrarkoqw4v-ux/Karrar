@@ -274,6 +274,7 @@ public class IconView extends View {
             case LOGO:
                 // Original whale-style mark (not a copy of any brand logo).
                 p.setStyle(Paint.Style.FILL);
+                if (color == Theme.accent) p.setShader(new android.graphics.LinearGradient(2, 6, 23, 20, Theme.accent, Theme.accent2, android.graphics.Shader.TileMode.CLAMP));
                 path.reset();
                 path.moveTo(2.2f, 13.2f);
                 path.cubicTo(2.2f, 8.2f, 6.2f, 5.4f, 11.2f, 5.9f);
@@ -285,6 +286,7 @@ public class IconView extends View {
                 path.cubicTo(5.2f, 19.0f, 2.2f, 16.6f, 2.2f, 13.2f);
                 path.close();
                 c.drawPath(path, p);
+                p.setShader(null);
                 p.setColor(0xFFFFFFFF);
                 c.drawCircle(7.2f, 11.4f, 1.15f, p);
                 p.setStyle(Paint.Style.STROKE);

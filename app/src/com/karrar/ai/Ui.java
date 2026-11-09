@@ -31,6 +31,7 @@ public final class Ui {
         f.addView(iv, lp);
         f.setLayoutParams(new LinearLayout.LayoutParams(Theme.dp(a, sizeDp), Theme.dp(a, sizeDp)));
         if (l != null) f.setOnClickListener(l);
+        Fx.press(f);
         return f;
     }
 
@@ -41,7 +42,7 @@ public final class Ui {
         tv.setText(t);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, sp * 0.86f * Theme.font);
         tv.setTextColor(color);
-        if (bold) tv.setTypeface(Typeface.DEFAULT_BOLD);
+        tv.setTypeface(bold ? Fonts.b : Fonts.m);
         return tv;
     }
 

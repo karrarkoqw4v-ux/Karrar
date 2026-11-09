@@ -48,6 +48,9 @@ public class MainActivity extends Activity {
     private IconView sendIcon;
     private TextView title, profileName;
     private Pill pillThink, pillSearch;
+    private LinearLayout inputCard;
+    private int sendState = -1;
+    private final List<View> emptyItems = new ArrayList<View>();
 
     private Store.Conv cur;
     private boolean think, search, streaming, drawerOpen;
@@ -111,6 +114,9 @@ public class MainActivity extends Activity {
         root.setFitsSystemWindows(true);
         root.setLayoutDirection(Theme.rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
 
+        root.addView(new Fx.Aurora(this, Theme.dark ? 0x334D6BFE : 0x1A4D6BFE, Theme.dark ? 0x288B5CF6 : 0x148B5CF6, 0x00000000),
+                new FrameLayout.LayoutParams(-1, -1));
+
         LinearLayout main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
         root.addView(main, new FrameLayout.LayoutParams(-1, -1));
@@ -146,20 +152,65 @@ public class MainActivity extends Activity {
         emptyBox = new LinearLayout(this);
         emptyBox.setOrientation(LinearLayout.VERTICAL);
         emptyBox.setGravity(Gravity.CENTER);
-        IconView logo = new IconView(this, IconView.LOGO, Theme.accent);
-        emptyBox.addView(logo, new LinearLayout.LayoutParams(dp(68), dp(68)));
-        TextView hi = Ui.label(this, T.s("hi"), 26, Theme.text, true);
+        emptyBox.setPadding(dp(14), 0, dp(14), 0);
+        FrameLayout lg = new FrameLayout(this);
+        View glow = new View(this);
+        android.graphics.drawable.GradientDrawable gg = new android.graphics.drawable.GradientDrawable();
+        gg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        gg.setGradientType(android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT);
+        gg.setGradientRadius(dp(64));
+        gg.setColors(new int[]{Theme.alpha(Theme.accent, 110), 0x00000000});
+        glow.setBackground(gg);
+        lg.addView(glow, new FrameLayout.LayoutParams(dp(130), dp(130), Gravity.CENTER));
+        Fx.breathe(glow, 1.2f);
+        lg.addView(new IconView(this, IconView.LOGO, Theme.accent), new FrameLayout.LayoutParams(dp(64), dp(64), Gravity.CENTER));
+        emptyBox.addView(lg, new LinearLayout.LayoutParams(dp(130), dp(130)));
+        emptyItems.add(lg);
+        TextView hi = Ui.label(this, T.s("hi"), 28, Theme.text, true);
+        Fonts.heavy(hi);
         hi.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-2, -2);
-        hl.topMargin = dp(18);
+        Fx.gradientText(hi);
+        LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-1, -2);
+        hl.topMargin = dp(4);
         emptyBox.addView(hi, hl);
-        TextView help = Ui.label(this, T.s("help"), 15, Theme.text2, false);
+        emptyItems.add(hi);
+        TextView help = Ui.label(this, T.s("help"), 16, Theme.text2, false);
         help.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hl2 = new LinearLayout.LayoutParams(-2, -2);
+        LinearLayout.LayoutParams hl2 = new LinearLayout.LayoutParams(-1, -2);
         hl2.topMargin = dp(6);
+        hl2.bottomMargin = dp(22);
         emptyBox.addView(help, hl2);
+        emptyItems.add(help);
+        String[] sgs = {"sg1", "sg2", "sg3", "sg4"};
+        for (int r = 0; r < 2; r++) {
+            LinearLayout rowL = new LinearLayout(this);
+            for (int k = 0; k < 2; k++) {
+                final String txt = T.s(sgs[r * 2 + k]);
+                LinearLayout cardS = new LinearLayout(this);
+                cardS.setOrientation(LinearLayout.VERTICAL);
+                cardS.setPadding(dp(14), dp(12), dp(14), dp(12));
+                cardS.setBackground(Theme.ripple(Theme.rect(this, Theme.alpha(Theme.surface, 220), 18, Theme.border, 1)));
+                cardS.addView(new IconView(this, k == 0 ? IconView.SPARK : IconView.CHAT, k == 0 ? Theme.accent2 : Theme.accent),
+                        new LinearLayout.LayoutParams(dp(18), dp(18)));
+                TextView st = Ui.label(this, txt, 13.5f, Theme.text, true);
+                st.setLineSpacing(0, 1.1f);
+                st.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+                LinearLayout.LayoutParams stl = new LinearLayout.LayoutParams(-1, -2);
+                stl.topMargin = dp(8);
+                cardS.addView(st, stl);
+                cardS.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) { input.setText(txt); send(); }
+                });
+                Fx.press(cardS);
+                LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -2, 1);
+                cl.setMargins(dp(4), dp(4), dp(4), dp(4));
+                rowL.addView(cardS, cl);
+                emptyItems.add(cardS);
+            }
+            emptyBox.addView(rowL, new LinearLayout.LayoutParams(-1, -2));
+        }
         FrameLayout.LayoutParams ep = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
-        ep.bottomMargin = dp(40);
+        ep.bottomMargin = dp(10);
         mid.addView(emptyBox, ep);
         main.addView(mid, new LinearLayout.LayoutParams(-1, 0, 1));
 
@@ -168,9 +219,11 @@ public class MainActivity extends Activity {
         area.setOrientation(LinearLayout.VERTICAL);
         area.setPadding(dp(12), dp(4), dp(12), dp(6));
 
-        LinearLayout card = new LinearLayout(this);
+        inputCard = new LinearLayout(this);
+        LinearLayout card = inputCard;
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Theme.rect(this, Theme.surface, 26));
+        card.setBackground(Theme.rect(this, Theme.surface, 26, Theme.border, 1));
+        card.setElevation(dp(3));
         card.setPadding(dp(16), dp(8), dp(10), dp(10));
 
         input = new EditText(this);
@@ -179,6 +232,12 @@ public class MainActivity extends Activity {
         input.setTextColor(Theme.text);
         input.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         input.setBackground(null);
+        input.setTypeface(Fonts.m);
+        input.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            public void onFocusChange(View v, boolean f) {
+                inputCard.setBackground(Theme.rect(MainActivity.this, Theme.surface, 26, f ? Theme.accent : Theme.border, f ? 1.5f : 1));
+            }
+        });
         input.setMinHeight(dp(44));
         input.setMaxLines(6);
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -230,6 +289,8 @@ public class MainActivity extends Activity {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { send(); }
         });
+        Fx.press(sendBtn);
+        Fx.press(plus);
         row.addView(sendBtn, new LinearLayout.LayoutParams(dp(38), dp(38)));
         card.addView(row, new LinearLayout.LayoutParams(-1, -2));
         area.addView(card, new LinearLayout.LayoutParams(-1, -2));
@@ -311,7 +372,8 @@ public class MainActivity extends Activity {
 
         LinearLayout nb = new LinearLayout(this);
         nb.setGravity(Gravity.CENTER);
-        nb.setBackground(Theme.ripple(Theme.rect(this, Theme.accent, 16)));
+        nb.setBackground(Theme.ripple(Theme.gradRect(this, 16)));
+        Fx.press(nb);
         nb.addView(new IconView(this, IconView.NEWCHAT, 0xFFFFFFFF), new LinearLayout.LayoutParams(dp(20), dp(20)));
         TextView nt = Ui.label(this, T.s("new_chat"), 15.5f, 0xFFFFFFFF, true);
         LinearLayout.LayoutParams ntl = new LinearLayout.LayoutParams(-2, -2);
@@ -344,7 +406,7 @@ public class MainActivity extends Activity {
         prof.setBackground(Theme.rippleRect(this, 0x00000000, 14));
         TextView av = Ui.label(this, "", 16, 0xFFFFFFFF, true);
         av.setGravity(Gravity.CENTER);
-        av.setBackground(Theme.circle(Theme.accent));
+        av.setBackground(Theme.gradCircle());
         String n = userName();
         av.setText(n.substring(0, 1).toUpperCase());
         prof.addView(av, new LinearLayout.LayoutParams(dp(38), dp(38)));
@@ -377,6 +439,7 @@ public class MainActivity extends Activity {
 
     private void openDrawer() {
         refreshHistory();
+        for (int i = 0; i < histBox.getChildCount() && i < 14; i++) Fx.enter(histBox.getChildAt(i), 60 + i * 35L);
         drawerOpen = true;
         scrim.setVisibility(View.VISIBLE);
         drawer.setVisibility(View.VISIBLE);
@@ -485,6 +548,7 @@ public class MainActivity extends Activity {
             else { AiRow r = new AiRow(m, true, i == lastAi); list.addView(r.root); }
         }
         emptyBox.setVisibility(cur.msgs.isEmpty() ? View.VISIBLE : View.GONE);
+        if (cur.msgs.isEmpty()) for (int i = 0; i < emptyItems.size(); i++) Fx.enter(emptyItems.get(i), 80L + i * 70L);
         scrollToEnd(false);
     }
 
@@ -497,10 +561,11 @@ public class MainActivity extends Activity {
         t.setTextColor(Theme.text);
         t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         t.setLineSpacing(0, 1.2f);
+        t.setTypeface(Fonts.m);
         t.setTextIsSelectable(true);
         t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         t.setPadding(dp(16), dp(11), dp(16), dp(11));
-        t.setBackground(Theme.rect(this, Theme.userBubble, 20));
+        t.setBackground(Theme.rect(this, Theme.userBubble, 20, Theme.border, 1));
         t.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.82f));
         wrap.addView(t, new LinearLayout.LayoutParams(-2, -2));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
@@ -509,18 +574,23 @@ public class MainActivity extends Activity {
         wrap.setAlpha(0f);
         wrap.setTranslationY(dp(10));
         list.addView(wrap, lp);
-        wrap.animate().alpha(1f).translationY(0).setDuration(220).start();
+        wrap.animate().alpha(1f).translationY(0).setDuration(380).setInterpolator(new android.view.animation.OvershootInterpolator(1.1f)).start();
     }
 
     // ------------------------------------------------------------------ sending
     private void updateSend() {
         boolean has = input != null && input.getText().toString().trim().length() > 0;
+        int st = streaming ? 2 : (has ? 1 : 0);
+        if (st != sendState) {
+            if (sendState != -1) Fx.pop(sendBtn);
+            sendState = st;
+        }
         if (streaming) {
-            sendBtn.setBackground(Theme.ripple(Theme.circle(Theme.accent)));
+            sendBtn.setBackground(Theme.ripple(Theme.gradCircle()));
             sendIcon.setType(IconView.STOP);
             sendIcon.setColor(0xFFFFFFFF);
         } else {
-            sendBtn.setBackground(Theme.ripple(Theme.circle(has ? Theme.accent : Theme.surface2)));
+            sendBtn.setBackground(Theme.ripple(has ? Theme.gradCircle() : Theme.circle(Theme.surface2)));
             sendIcon.setType(IconView.SEND);
             sendIcon.setColor(has ? 0xFFFFFFFF : Theme.text3);
         }
@@ -779,7 +849,10 @@ public class MainActivity extends Activity {
         final Store.Msg m;
         LinearLayout root, thinkBox, thinkBodyWrap, content, actions, srcBox, srcList;
         TextView thinkTitle, thinkBody, status, demoNote;
-        IconView thinkIcon, thinkChev, like, dislike;
+        IconView thinkIcon, thinkChev, like, dislike, logoV;
+        Fx.Dots dots;
+        boolean thinkShown, actionsShown;
+        android.animation.ObjectAnimator breathe;
         FrameLayout regenBtn;
         boolean thinkOpen, thinkingNow, done, finished, isLast, pending;
         android.animation.ObjectAnimator pulse;
@@ -796,7 +869,8 @@ public class MainActivity extends Activity {
             // avatar line
             LinearLayout who = new LinearLayout(MainActivity.this);
             who.setGravity(Gravity.CENTER_VERTICAL);
-            who.addView(new IconView(MainActivity.this, IconView.LOGO, Theme.accent), new LinearLayout.LayoutParams(dp(24), dp(24)));
+            logoV = new IconView(MainActivity.this, IconView.LOGO, Theme.accent);
+            who.addView(logoV, new LinearLayout.LayoutParams(dp(26), dp(26)));
             root.addView(who, new LinearLayout.LayoutParams(-2, -2));
 
             // sources chip
@@ -807,7 +881,13 @@ public class MainActivity extends Activity {
             sl.topMargin = dp(8);
             root.addView(srcBox, sl);
 
-            status = Ui.label(MainActivity.this, "", 14, Theme.text2, false);
+            Fx.Shimmer sh = new Fx.Shimmer(MainActivity.this, Theme.text2, Theme.text);
+            sh.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f * Theme.font);
+            sh.setTypeface(Fonts.b);
+            status = sh;
+            dots = new Fx.Dots(MainActivity.this);
+            dots.setVisibility(View.GONE);
+            root.addView(dots, new LinearLayout.LayoutParams(-2, -2));
             status.setVisibility(View.GONE);
             LinearLayout.LayoutParams stl = new LinearLayout.LayoutParams(-2, -2);
             stl.topMargin = dp(10);
@@ -822,7 +902,11 @@ public class MainActivity extends Activity {
             hdr.setBackground(Theme.ripple(Theme.rect(MainActivity.this, Theme.surface, 16)));
             thinkIcon = new IconView(MainActivity.this, IconView.ATOM, Theme.text2);
             hdr.addView(thinkIcon, new LinearLayout.LayoutParams(dp(18), dp(18)));
-            thinkTitle = Ui.label(MainActivity.this, "", 13.5f, Theme.text2, false);
+            Fx.Shimmer tsh = new Fx.Shimmer(MainActivity.this, Theme.text2, Theme.accent);
+            tsh.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12.5f * Theme.font);
+            tsh.setTypeface(Fonts.b);
+            tsh.setActive(false);
+            thinkTitle = tsh;
             LinearLayout.LayoutParams ttl = new LinearLayout.LayoutParams(-2, -2);
             ttl.setMarginStart(dp(8));
             hdr.addView(thinkTitle, ttl);
@@ -836,6 +920,7 @@ public class MainActivity extends Activity {
             thinkBox.addView(hdr, new LinearLayout.LayoutParams(-2, -2));
 
             thinkBodyWrap = new LinearLayout(MainActivity.this);
+            thinkBodyWrap.setVisibility(View.GONE);
             View bar = new View(MainActivity.this);
             bar.setBackgroundColor(Theme.border);
             thinkBodyWrap.addView(bar, new LinearLayout.LayoutParams(dp(2), -1));
@@ -871,13 +956,8 @@ public class MainActivity extends Activity {
             buildSources();
             refresh();
             if (!done) {
-                status.setVisibility(View.VISIBLE);
-                status.setText("●");
-                pulse = android.animation.ObjectAnimator.ofFloat(status, "alpha", 1f, 0.2f);
-                pulse.setDuration(650);
-                pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
-                pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE);
-                pulse.start();
+                dots.setVisibility(View.VISIBLE);
+                breathe = Fx.breathe(logoV, 1.2f);
             }
         }
 
@@ -931,15 +1011,10 @@ public class MainActivity extends Activity {
         }
 
         void statusText(String s) {
-            if (pulse != null) { pulse.cancel(); pulse = null; status.setAlpha(1f); }
             if (s == null) { status.setVisibility(View.GONE); return; }
+            dots.setVisibility(View.GONE);
             status.setVisibility(View.VISIBLE);
             status.setText(s);
-            pulse = android.animation.ObjectAnimator.ofFloat(status, "alpha", 1f, 0.35f);
-            pulse.setDuration(700);
-            pulse.setRepeatMode(android.animation.ValueAnimator.REVERSE);
-            pulse.setRepeatCount(android.animation.ValueAnimator.INFINITE);
-            pulse.start();
         }
 
         void buildSources() {
@@ -1001,14 +1076,21 @@ public class MainActivity extends Activity {
             srcBox.addView(listBox, ll);
         }
 
+        void applyThink() {
+            if (thinkShown == thinkOpen) return;
+            thinkShown = thinkOpen;
+            Fx.expand(thinkBodyWrap, thinkOpen);
+        }
+
         void refreshThink() {
             boolean has = !m.reasoning.isEmpty();
             thinkBox.setVisibility(has ? View.VISIBLE : View.GONE);
             if (!has) return;
             thinkBody.setText(m.reasoning);
-            thinkBodyWrap.setVisibility(thinkOpen ? View.VISIBLE : View.GONE);
-            thinkChev.setRotation(thinkOpen ? 180 : 0);
+            applyThink();
+            thinkChev.animate().rotation(thinkOpen ? 180 : 0).setDuration(220).start();
             thinkTitle.setText(thinkingNow ? T.s("thinking") : String.format(T.s("thought_for"), Math.max(1, m.thinkSecs)));
+            ((Fx.Shimmer) thinkTitle).setActive(thinkingNow);
             thinkIcon.setColor(thinkingNow ? Theme.accent : Theme.text2);
         }
 
@@ -1032,14 +1114,20 @@ public class MainActivity extends Activity {
 
         void refresh() {
             lastRender = System.currentTimeMillis();
-            if (pulse != null && (!m.content.isEmpty() || !m.reasoning.isEmpty()) && status.getText().toString().equals("●")) {
-                statusText(null);
-            }
+            if (!m.content.isEmpty() || !m.reasoning.isEmpty() || done) dots.setVisibility(View.GONE);
             refreshThink();
             String txt = m.content;
             if (!done && !txt.isEmpty()) txt += " ▍";
             Md.render(MainActivity.this, content, txt, done);
-            actions.setVisibility(done ? View.VISIBLE : View.GONE);
+            if (done && !actionsShown) {
+                actionsShown = true;
+                actions.setVisibility(View.VISIBLE);
+                actions.setAlpha(0f);
+                actions.animate().alpha(1f).setDuration(350).start();
+                if (breathe != null) { breathe.cancel(); breathe = null; logoV.setScaleX(1f); logoV.setScaleY(1f); }
+            } else if (!done) {
+                actions.setVisibility(View.GONE);
+            }
             demoNote.setVisibility(done && m.demo ? View.VISIBLE : View.GONE);
             regenBtn.setVisibility(done && isLast ? View.VISIBLE : View.GONE);
             paintVote();

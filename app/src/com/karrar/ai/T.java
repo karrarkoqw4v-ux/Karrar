@@ -47,7 +47,7 @@ public final class T {
         a("l_welcome", "أهلاً بك في كرّار", "Welcome to Karrar");
         a("l_sub", "سجّل الدخول لمتابعة محادثاتك", "Sign in to continue your chats");
         a("l_sub_up", "أنشئ حسابك في ثوانٍ", "Create your account in seconds");
-        a("l_google", "المتابعة باستخدام Google", "Continue with Google");
+        a("l_google", "تسجيل الدخول باستخدام Google", "Sign in with Google");
         a("l_or", "أو", "or");
         a("l_email", "البريد الإلكتروني", "Email");
         a("l_pass", "كلمة المرور", "Password");
@@ -78,6 +78,11 @@ public final class T {
         a("s_google", "تسجيل الدخول بجوجل", "Google sign-in");
         a("s_gsecret", "Google Client Secret (اختياري)", "Google client secret (optional)");
         a("s_gsecret_sub", "مطلوب إذا رفضت جوجل الطلب بدونه", "Needed if Google rejects the request without it");
+
+        a("sg1", "اشرح لي الذكاء الاصطناعي ببساطة", "Explain AI in simple words");
+        a("sg2", "اكتب لي رسالة رسمية للعمل", "Write a formal work email");
+        a("sg3", "ساعدني بكتابة كود بايثون", "Help me write Python code");
+        a("sg4", "لخّص لي أهم أخبار التقنية اليوم", "Summarize today's tech news");
 
         // settings
         a("s_account", "الحساب", "Account");

@@ -7,7 +7,7 @@ TOOLS="${TOOLS:-$APP/tools/jars}"
 OUT="$APP/build"
 rm -rf "$OUT"; mkdir -p "$OUT/classes" "$OUT/dex"
 
-aapt package -f -M "$APP/AndroidManifest.xml" -S "$APP/res" -I "$TOOLS/android-all.jar" \
+aapt package -f -M "$APP/AndroidManifest.xml" -S "$APP/res" -A "$APP/assets" -I "$TOOLS/android-all.jar" \
      --min-sdk-version 24 --target-sdk-version 34 -F "$OUT/unsigned.apk"
 javac --release 8 -Xlint:-options -cp "$TOOLS/android-all.jar" -d "$OUT/classes" $(find "$APP/src" -name '*.java') 2>&1
 java -cp "$TOOLS/dx.jar" com.android.dx.command.Main --dex --min-sdk-version=24 --output="$OUT/dex/classes.dex" "$OUT/classes"

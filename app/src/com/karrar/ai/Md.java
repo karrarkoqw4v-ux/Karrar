@@ -65,6 +65,7 @@ public final class Md {
         if (s.trim().isEmpty()) return;
         TextView tv = new TextView(a);
         tv.setText(block(s));
+        tv.setTypeface(Fonts.m);
         tv.setTextColor(Theme.text);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
         tv.setLineSpacing(0, 1.28f);
@@ -92,7 +93,7 @@ public final class Md {
             else if (ln.trim().equals("---")) { ln = ""; }
             inline(out, ln);
             int end = out.length();
-            if (bold) out.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (bold) out.setSpan(new Fonts.Span(Fonts.x), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (size != 1f) out.setSpan(new RelativeSizeSpan(size), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             if (quote) {
                 out.setSpan(new ForegroundColorSpan(Theme.text2), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -111,7 +112,7 @@ public final class Md {
                 if (e > 0) {
                     int s = out.length();
                     out.append(ln.substring(i + 2, e));
-                    out.setSpan(new StyleSpan(Typeface.BOLD), s, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    out.setSpan(new Fonts.Span(Fonts.b), s, out.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     i = e + 2;
                     continue;
                 }
@@ -142,11 +143,13 @@ public final class Md {
         head.setPadding(Theme.dp(a, 14), Theme.dp(a, 6), Theme.dp(a, 8), Theme.dp(a, 6));
         TextView l = new TextView(a);
         l.setText(lang.isEmpty() ? "code" : lang);
+        l.setTypeface(Fonts.b);
         l.setTextColor(Theme.text2);
         l.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
         head.addView(l, new LinearLayout.LayoutParams(0, -2, 1));
         TextView cp = new TextView(a);
         cp.setText(T.s("copy"));
+        cp.setTypeface(Fonts.b);
         cp.setTextColor(Theme.text2);
         cp.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
         cp.setPadding(Theme.dp(a, 10), Theme.dp(a, 6), Theme.dp(a, 10), Theme.dp(a, 6));

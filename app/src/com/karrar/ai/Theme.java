@@ -18,11 +18,12 @@ public final class Theme {
     public static float font = 1f;
 
     public static int bg, surface, surface2, text, text2, text3, accent, accentSoft,
-            border, userBubble, codeBg, danger, scrim, onAccent;
+            border, userBubble, codeBg, danger, scrim, onAccent, accent2;
 
     public static void apply(boolean d) {
         dark = d;
         accent = 0xFF4D6BFE;
+        accent2 = 0xFF8B5CF6;
         danger = 0xFFEF5350;
         onAccent = 0xFFFFFFFF;
         if (d) {
@@ -68,6 +69,18 @@ public final class Theme {
         return rect(c, color, radiusDp, 0, 0);
     }
 
+    public static GradientDrawable gradRect(Context c, float radiusDp) {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{accent, accent2});
+        g.setCornerRadius(dp(c, radiusDp));
+        return g;
+    }
+
+    public static GradientDrawable gradCircle() {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{accent, accent2});
+        g.setShape(GradientDrawable.OVAL);
+        return g;
+    }
+
     public static GradientDrawable circle(int color) {
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
@@ -86,6 +99,7 @@ public final class Theme {
     }
 
     public static void styleWindow(Activity a) {
+        Fonts.init(a);
         Window w = a.getWindow();
         w.setStatusBarColor(bg);
         w.setNavigationBarColor(bg);

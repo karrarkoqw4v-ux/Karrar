@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 public class SettingsActivity extends Activity {
     private LinearLayout page;
+    private int secIdx = 0;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     private static final String[][] PRESETS = {
@@ -80,8 +81,11 @@ public class SettingsActivity extends Activity {
         page.addView(h, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Theme.rect(this, Theme.surface, 18));
+        card.setBackground(Theme.rect(this, Theme.surface, 18, Theme.border, 1));
         page.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        Fx.enter(h, secIdx * 90L);
+        Fx.enter(card, secIdx * 90L + 40);
+        secIdx++;
         return card;
     }
 
