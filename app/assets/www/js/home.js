@@ -47,6 +47,7 @@ ta.addEventListener('focus',()=>{H.toggleSheet(false);$('composer').classList.ad
   H.addAtt({kind:'file',name:f.name,ext:K.files.ext(f.name),size:f.size,text:r.text,pages:r.pages})};
  H.buildProjects();H.buildNav();H.buildSugg();K.models.paint();
  $('bModel').onclick=()=>K.models.open();
+ $('bSend').addEventListener('pointerdown',()=>{const b=$('bSend');['','r2'].forEach(c=>{const r=document.createElement('i');r.className='bb-rp '+c;b.appendChild(r);setTimeout(()=>r.remove(),1200)})});
  $('dSr').onclick=()=>{const on=!$('dsb').classList.contains('open');$('dsb').classList.toggle('open',on);$('drawer').classList.toggle('searching',on);if(on)setTimeout(()=>$('dq').focus(),200);else{$('dq').value='';H.q='';H.renderList()}};
  $('scrim').onclick=()=>H.closeDrawer();
  $('dq').oninput=e=>{H.q=e.target.value.trim().toLowerCase();H.renderList()};
