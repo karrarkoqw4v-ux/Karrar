@@ -6,7 +6,7 @@ const L=K.login={view:'welcome',agree:true,busy:false,code:'',email:''};
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 L.mount=function(){
  $('login').innerHTML='<div class="lg"><div class="lg-top"><button class="lg-back" id="lgBack"></button><button class="lg-cu" id="lgCu"></button></div><div class="lg-body" id="lgBody"></div></div>';
- $('lgCu').textContent=K.t('l_contact');$('lgCu').onclick=()=>K.ui.info(K.t('l_contact'),K.t('s_help_body'));
+ $('lgCu').textContent=K.t('l_contact');$('lgCu').onclick=()=>K.legal.open('contact');
  $('lgBack').innerHTML=K.icon('chevron-right',24);
  $('lgBack').onclick=()=>L.go({reset2:'reset1',reset1:'password',signup:'password',password:'welcome'}[L.view]||'welcome');
  L.go('welcome');
@@ -48,7 +48,7 @@ function needAgree(){if(L.agree)return false;const t=$('terms');t.classList.remo
 function bind(v){
  if(v==='welcome'){
   $('ck').onclick=()=>{L.agree=!L.agree;$('ck').classList.toggle('on',L.agree)};
-  $('tT').onclick=()=>K.ui.info(K.t('l_terms'),K.t('s_terms_body'));$('tP').onclick=()=>K.ui.info(K.t('l_privacy'),K.t('s_terms_body'));
+  $('tT').onclick=e=>{e.stopPropagation();K.legal.open('terms')};$('tP').onclick=e=>{e.stopPropagation();K.legal.open('privacy')};
   $('bP').onclick=()=>{if(!needAgree())L.go('password')};
   $('bS').onclick=()=>{if(needAgree())return;K.native.guest();K.app.toHome()};
   $('bG').onclick=()=>{if(needAgree())return;L.google()};

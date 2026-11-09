@@ -26,6 +26,4 @@
 @keyframes spStar{0%,100%{opacity:0;transform:scale(.3) rotate(-30deg)}50%{opacity:1;transform:scale(1.15) rotate(15deg)}}
 .sp-fall{position:absolute;inset:0;overflow:hidden}.sp-fall i{position:absolute;top:-180px;width:4px;height:150px;border-radius:3px;background:linear-gradient(to bottom,transparent,var(--c));filter:drop-shadow(0 0 8px var(--c));opacity:0;animation:spFall 2s linear both}
 @keyframes spFall{0%{opacity:0;transform:translateY(0)}12%{opacity:.85}to{opacity:0;transform:translateY(760px)}}
-.sp-bar{position:absolute;bottom:9vh;left:50%;width:150px;height:4px;margin-left:-75px;border-radius:2px;background:#232326;overflow:hidden}
-.sp-bar i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,#4d6bfe,#22d3ee);animation:spBar 3.6s .1s ease-in-out both}
 @keyframes spBar{to{width:100%}}

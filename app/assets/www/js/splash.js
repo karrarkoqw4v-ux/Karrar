@@ -12,7 +12,7 @@ K.splash={
   d.innerHTML='<div class="sp-fall">'+fall+'</div><div class="sp-pt">'+pts+'</div><div class="sp-burst"></div><div class="sp-burst b2"></div>'
    +'<div class="sp-c"><div class="sp-mk">'+K.LOGO+'</div><div class="sp-nm">'+K.t('app')+'</div><div class="sp-lat">'+K.t('app_latin')+'</div><div class="sp-tag">'+K.t('l_tagline')+'</div></div>'
    +'<img class="sp-e compass" src="'+E+'1f9ed.svg" width="46"><img class="sp-e sp1" src="'+E+'2728.svg" width="30"><img class="sp-e sp2" src="'+E+'2728.svg" width="22"><img class="sp-e sp3" src="'+E+'1f4ab.svg" width="26">'
-   +'<div class="sp-bar"><i></i></div>';
+   ;
   document.body.appendChild(d);
   let ended=false;const end=()=>{if(ended)return;ended=true;d.classList.add('out');setTimeout(()=>{d.remove();done&&done()},520)};
   d.onclick=end;setTimeout(end,3900);
