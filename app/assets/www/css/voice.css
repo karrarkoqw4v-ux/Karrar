@@ -40,3 +40,11 @@
 .orbbox .orb{position:relative}
 .voice.muted .halo{opacity:.25;animation:none}
 @keyframes haloBreath{0%,100%{transform:scale(.92);opacity:.75}50%{transform:scale(1.08);opacity:1}}
+.vfx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.vtop,.stage,.vbar,.vtip,.vtrans{position:relative;z-index:1}
+.vtop{position:absolute}.vtip{position:absolute}.vtrans{position:absolute}
+.aura{position:absolute;width:150%;aspect-ratio:1;border-radius:50%;background:conic-gradient(from 0deg,#34c759,#4d6bfe,#ff453a,#ffd60a,#34c759);filter:blur(34px);opacity:0;transition:opacity .6s;animation:spin 7s linear infinite;pointer-events:none}
+.voice.speaking .aura,.voice.thinking .aura{opacity:.55}
+.voice.listening .aura{opacity:.22}
+.voice.muted .aura{opacity:0}
+.vtop{z-index:5}.vtip{z-index:4}.vtrans{z-index:4}.vbar{z-index:3}
