@@ -111,9 +111,11 @@ public final class Api {
                     BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
                     final ThinkSplit split = new ThinkSplit();
                     String line;
+                    boolean got = false;
+                    StringBuilder raw = new StringBuilder();
                     while ((line = r.readLine()) != null) {
                         if (h.cancelled) break;
-                        if (!line.startsWith("data:")) continue;
+                        if (!line.startsWith("data:")) { if (raw.length() < 200000) raw.append(line).append('\n'); continue; }
                         String d = line.substring(5).trim();
                         if (d.equals("[DONE]")) break;
                         try {
@@ -126,12 +128,45 @@ public final class Api {
                             if (rc.equals("null")) rc = "";
                             String ct = delta.optString("content", "");
                             if (ct.equals("null")) ct = "";
+                            if (!rc.isEmpty() || !ct.isEmpty()) got = true;
                             if (!rc.isEmpty()) post(ui, cb, rc, null, null, h);
                             if (!ct.isEmpty()) { if (plan) split.feed(ct, ui, cb, h); else post(ui, cb, null, ct, null, h); }
                         } catch (Exception ignored) { }
                     }
                     r.close();
                     if (plan) split.flush(ui, cb, h);
+                    if (!got && !h.cancelled) {
+                        // Some providers ignore stream=true and answer with one plain JSON body (or answer nothing): handle both.
+                        if (!jsonReply(raw.toString(), plan, ui, cb, h)) {
+                            body.put("stream", false);
+                            HttpURLConnection c2 = (HttpURLConnection) u.openConnection();
+                            h.conn = c2;
+                            c2.setRequestMethod("POST");
+                            c2.setConnectTimeout(20000);
+                            c2.setReadTimeout(120000);
+                            c2.setDoOutput(true);
+                            c2.setRequestProperty("Content-Type", "application/json");
+                            c2.setRequestProperty("Accept", "application/json");
+                            if (!key.isEmpty()) c2.setRequestProperty("Authorization", "Bearer " + key);
+                            OutputStream os2 = c2.getOutputStream();
+                            os2.write(body.toString().getBytes("UTF-8"));
+                            os2.close();
+                            int code2 = c2.getResponseCode();
+                            String txt = readAll(code2 >= 400 ? c2.getErrorStream() : c2.getInputStream());
+                            if (code2 >= 400) {
+                                String msg = "HTTP " + code2;
+                                try { msg += ": " + new JSONObject(txt).getJSONObject("error").getString("message"); }
+                                catch (Exception e) { if (txt.length() > 0) msg += ": " + txt; }
+                                post(ui, cb, null, null, msg, h);
+                                return;
+                            }
+                            if (!jsonReply(txt, plan, ui, cb, h)) {
+                                String peek = txt.length() > 240 ? txt.substring(0, 240) : txt;
+                                post(ui, cb, null, null, "\u0627\u0644\u062e\u062f\u0645\u0629 \u0644\u0645 \u062a\u0631\u062c\u0639 \u0646\u0635\u0627\u064b / The service returned no text. " + (peek.isEmpty() ? "" : "Reply: " + peek), h);
+                                return;
+                            }
+                        }
+                    }
                     post(ui, cb, null, null, "", h);
                 } catch (Exception e) {
                     if (!h.cancelled) post(ui, cb, null, null, e.getClass().getSimpleName() + ": " + e.getMessage(), h);
@@ -140,6 +175,38 @@ public final class Api {
             }
         }).start();
         return h;
+    }
+
+    /** Parses a non-streaming chat completion (or an error body). Returns true when it posted text or an error. */
+    private static boolean jsonReply(String body, boolean plan, Handler ui, Cb cb, Handle h) {
+        try {
+            String t = body.trim();
+            if (t.isEmpty() || t.charAt(0) != '{') return false;
+            JSONObject j = new JSONObject(t);
+            if (j.has("error")) {
+                Object e = j.get("error");
+                String m = e instanceof JSONObject ? ((JSONObject) e).optString("message", e.toString()) : String.valueOf(e);
+                post(ui, cb, null, null, m, h);
+                return true;
+            }
+            JSONArray ch = j.optJSONArray("choices");
+            if (ch == null || ch.length() == 0) return false;
+            JSONObject m = ch.getJSONObject(0).optJSONObject("message");
+            if (m == null) return false;
+            String rc = m.optString("reasoning_content", m.optString("reasoning", ""));
+            if (rc.equals("null")) rc = "";
+            String ct = m.optString("content", "");
+            if (ct.equals("null")) ct = "";
+            if (rc.isEmpty() && ct.isEmpty()) return false;
+            if (!rc.isEmpty()) post(ui, cb, rc, null, null, h);
+            if (!ct.isEmpty()) {
+                if (plan) { ThinkSplit sp = new ThinkSplit(); sp.feed(ct, ui, cb, h); sp.flush(ui, cb, h); }
+                else post(ui, cb, null, ct, null, h);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** err == null -> chunk, err == "" -> done, otherwise error text */
