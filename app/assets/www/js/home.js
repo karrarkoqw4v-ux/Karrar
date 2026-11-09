@@ -8,10 +8,10 @@ const H=K.home={sel:[],selMode:false,drawerOpen:false,sheetOpen:false,q:''};
 H.mount=function(){
  const root=$('home');root.innerHTML=
  '<div class="home" id="main">'
- +'<header class="topbar"><button class="icon-btn" id="bMenu"><svg class="ic flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h10"/></svg></button><div class="title" id="title"></div><button class="icon-btn" id="bSound"></button><button class="icon-btn" id="bNew">'+K.icon('message-circle-plus',27)+'</button></header>'
+ +'<header class="topbar"><button class="icon-btn" id="bMenu"><svg class="ic flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h10"/></svg></button><div class="title" id="title"></div><button class="icon-btn" id="bSound"></button><button class="icon-btn" id="bNew">'+K.icon('message-circle-plus',22)+'</button></header>'
  +'<div class="scroll chat" id="scroll"><div class="empty" id="empty"><div class="logo-big">'+K.LOGO+'</div><h2>'+K.t('hi')+'</h2></div><div class="msgs" id="msgs"></div></div>'
  +'<div class="composer-wrap"><div class="composer" id="composer"><div class="previews" id="previews"></div><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea>'
- +'<div class="crow"><button class="pill" id="pThink">'+K.icon('atom',21)+'<span>'+K.t('think')+'</span></button><button class="pill" id="pSearch">'+K.icon('globe',21)+'<span>'+K.t('search')+'</span></button><span class="sp"></span><button class="ring-btn" id="bPlus">'+K.icon('plus',22)+'</button><button class="ring-btn" id="bSend">'+K.icon('audio-lines',22)+'</button></div></div>'
+ +'<div class="crow"><button class="pill" id="pThink">'+K.icon('atom',15)+'<span>'+K.t('think')+'</span></button><button class="pill" id="pSearch">'+K.icon('globe',15)+'<span>'+K.t('search')+'</span></button><span class="sp"></span><button class="ring-btn" id="bPlus">'+K.icon('plus',14)+'</button><button class="ring-btn" id="bSend">'+K.icon('audio-lines',14)+'</button></div></div>'
  +'<div class="sheet" id="sheet"><div class="gal" id="gal"></div><div class="big3"><button id="aCam">'+K.icon('camera',32)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',32)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',32)+'<span>'+K.t('file')+'</span></button></div></div></div></div>'
  +'<div class="scrim" id="scrim"></div>'
  +'<aside class="drawer" id="drawer"><div class="dsearch">'+K.icon('search',24)+'<input id="dq" placeholder="'+esc(K.t('search_chats'))+'"></div><div class="dlist" id="dlist"></div>'
@@ -40,13 +40,13 @@ H.mount=function(){
   if(!H.drawerOpen&&opening&&edge)H.openDrawer();else if(H.drawerOpen&&!opening)H.closeDrawer()},{passive:true});
  H.paintSound();H.paintPills();H.refreshComposer();
 };
-H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',26)};
+H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',22)};
 H.paintPills=function(){$('pThink').classList.toggle('on',S().think);$('pSearch').classList.toggle('on',S().search)};
 H.refreshComposer=function(){
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
  let icon='audio-lines',cls='ring-btn';
  if(S().streaming){icon='square';cls+=' stop'}else if(has){icon='arrow-up';cls+=' send'}
- if(b.dataset.s!==cls){b.className=cls;b.innerHTML=K.icon(icon,icon==='square'?18:22);b.dataset.s=cls;if(icon!=='audio-lines'){b.classList.remove('pop');void b.offsetWidth}}
+ if(b.dataset.s!==cls){b.className=cls;b.innerHTML=K.icon(icon,icon==='square'?11:14);b.dataset.s=cls;if(icon!=='audio-lines'){b.classList.remove('pop');void b.offsetWidth}}
  const pv=$('previews');pv.innerHTML=S().atts.map((a,i)=>'<div class="pv">'+(a.kind==='img'?'<img src="'+a.th+'">':'<div class="fchip">'+K.icon('file-text',22)+'<span>'+esc(a.name)+'</span></div>')+'<button class="x" data-i="'+i+'">'+K.icon('x',13,3)+'</button></div>').join('');
  pv.querySelectorAll('.x').forEach(x=>x.onclick=()=>{S().atts.splice(+x.dataset.i,1);H.refreshComposer();H.markGallery()});
 };
@@ -59,7 +59,7 @@ H.sendOrVoice=async function(){
 /* ---- attach sheet ---- */
 H.toggleSheet=function(open){
  H.sheetOpen=open;$('sheet').classList.toggle('open',open);
- $('bPlus').innerHTML=K.icon(open?'x':'plus',22);
+ $('bPlus').innerHTML=K.icon(open?'x':'plus',14);
  if(open){document.activeElement&&document.activeElement.blur();H.loadGallery()}
 };
 H.closeSheet=()=>H.toggleSheet(false);

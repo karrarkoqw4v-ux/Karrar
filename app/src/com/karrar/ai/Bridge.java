@@ -37,13 +37,13 @@ import java.util.Locale;
 
 /** Native services exposed to the HTML/JS UI as window.Android. */
 public class Bridge {
-    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5;
+    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6;
 
     private final Activity act;
     private final WebView wv;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final HashMap<Integer, Api.Handle> handles = new HashMap<Integer, Api.Handle>();
-    private int idAlbum, idCamera, idFile, idVoice, idGallery;
+    private int idAlbum, idCamera, idFile, idVoice, idGallery, idGoogle;
     private TextToSpeech tts;
     private boolean ttsReady;
 
@@ -187,21 +187,29 @@ public class Bridge {
     @JavascriptInterface
     public String signup(String n, String e, String p, String p2) { return res(Accounts.signUp(n, e, p, p2)); }
 
+    /** Native Google account picker (the same sheet every app shows). No browser involved. */
     @JavascriptInterface
-    public void google(final int id) {
-        ui.post(new Runnable() {
-            public void run() {
-                GoogleAuth.start(act, new GoogleAuth.Cb() {
-                    public void done(String err, String name, String email) {
-                        try {
-                            JSONObject o = new JSONObject();
-                            if (err != null) o.put("err", err); else o.put("name", name == null ? "" : name).put("email", email);
-                            cb(id, o.toString());
-                        } catch (Exception ignored) { }
-                    }
-                });
-            }
-        });
+    public void google(int id) {
+        idGoogle = id;
+        Intent it;
+        if (Build.VERSION.SDK_INT >= 26) {
+            it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, null, null, null, null);
+        } else {
+            it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, true, null, null, null, null);
+        }
+        start(it, REQ_GOOGLE, id);
+    }
+
+    private static String nameFromEmail(String email) {
+        String n = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
+        n = n.replaceAll("[._\\-]+", " ").replaceAll("\\d+$", "").trim();
+        if (n.isEmpty()) return email;
+        StringBuilder sb = new StringBuilder();
+        for (String w : n.split(" ")) {
+            if (w.isEmpty()) continue;
+            sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(' ');
+        }
+        return sb.toString().trim();
     }
 
     @JavascriptInterface public void guest() { Accounts.guest(); }
@@ -358,6 +366,11 @@ public class Bridge {
                         }
                     }
                 }).start();
+            } else if (req == REQ_GOOGLE) {
+                int id = idGoogle;
+                String email = data == null ? null : data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
+                if (res != ok || email == null) { cb(id, "{\"err\":\"cancel\"}"); return; }
+                cb(id, new JSONObject().put("name", nameFromEmail(email)).put("email", email).toString());
             } else if (req == REQ_VOICE) {
                 int id = idVoice;
                 String t = "";

@@ -35,9 +35,9 @@ L.submit=function(){
  if(r&&r.err){L.error(r.err);return}K.app.toHome();
 };
 L.google=function(){
- if(L.busy)return;L.busy=true;$('lSub').textContent=K.t('l_wait');$('lErr').textContent='';
+ if(L.busy)return;L.busy=true;$('lErr').textContent='';
  K.native.google().then(function(r){L.busy=false;$('lSub').textContent=K.t(L.signup?'l_sub_up':'l_sub');
-  if(!r||r.err){$('lErr').textContent=(r&&r.err)||'error';return}
+  if(!r||r.err){if(r&&r.err!=='cancel')$('lErr').textContent=r.err;return}
   K.native.setPref('name',r.name||r.email);K.native.setPref('user_email',(r.email||'').toLowerCase());K.native.setPref('user_google','1');K.native.setPref('logged','1');K.app.toHome()});
 };
 })();

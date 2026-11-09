@@ -106,9 +106,6 @@ function customPage(b){
  toggle(c,{icon:'sparkles',title:K.t('s_stream'),key:'stream',def:true});
  toggle(c,{icon:'smartphone',title:K.t('s_haptic'),key:'haptic',def:true});
  toggle(c,{icon:'wand-sparkles',title:K.t('s_fx'),key:'fx',def:false,after:()=>K.app.apply()});
- c=sec(b,K.t('s_google'));
- row(c,{icon:'key',title:'Client ID',value:'243958943928…'});
- row(c,{icon:'link',title:K.t('s_gsecret'),value:K.pref.get('google_secret','')?mask(K.pref.get('google_secret','')):K.t('s_none'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('s_gsecret'),value:K.pref.get('google_secret',''),secret:true,hint:'GOCSPX-...'});if(v!=null){K.pref.set('google_secret',v);S.rerender()}}});
 }
 function fontPage(el){
  const prev=document.createElement('div');prev.className='fp-prev';
