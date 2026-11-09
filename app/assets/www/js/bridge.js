@@ -29,7 +29,13 @@ K.native={
  gallery(){return new Promise(r=>{if(!A)return r(K.mock.gallery());const id=reg(r);A.gallery(id)})},
  imageData(uri){return new Promise(r=>{if(!A)return r({b64:''});const id=reg(r);A.imageData(id,uri)})},
  voice(){return new Promise(r=>{if(!A)return r('');const id=reg(r);A.voice(id)})},
- speak(t){if(A)A.speak(t)},stopSpeak(){if(A)A.stopSpeak()},
+ speak(t){if(A)A.speak(t);else if(window.__ttsDone)setTimeout(window.__ttsDone,2600)},stopSpeak(){if(A)A.stopSpeak()},
+ /* continuous speech recognition with live level (voice mode). handler gets {t:'rms'|'partial'|'final'|'err'} */
+ voiceLive(handler){
+   if(!A)return K.mock.voiceLive(handler);
+   const id=reg(handler,false);A.voiceStart(id);
+   return {stop(){A.voiceStop();delete cbs[id]}};
+ },
  copy(t){if(A)A.copy(t);else{try{navigator.clipboard.writeText(t)}catch(e){}}K.toast(K.t('copied'))},
  share(t){if(A)A.share(t)},
  open(u){if(A)A.open(u);else window.open(u,'_blank')},

@@ -12,11 +12,15 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.TextToSpeech;
 import android.util.Base64;
 import android.view.HapticFeedbackConstants;
@@ -37,13 +41,15 @@ import java.util.Locale;
 
 /** Native services exposed to the HTML/JS UI as window.Android. */
 public class Bridge {
-    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6;
+    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6, REQ_AUDIO = 7;
 
     private final Activity act;
     private final WebView wv;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final HashMap<Integer, Api.Handle> handles = new HashMap<Integer, Api.Handle>();
     private int idAlbum, idCamera, idFile, idVoice, idGallery, idGoogle;
+    private SpeechRecognizer sr;
+    private int idLive;
     private TextToSpeech tts;
     private boolean ttsReady;
 
@@ -308,6 +314,67 @@ public class Bridge {
         start(it, REQ_VOICE, id);
     }
 
+    // ------------------------------------------------------------------ live voice (voice conversation screen)
+    @JavascriptInterface
+    public void voiceStart(final int id) {
+        idLive = id;
+        ui.post(new Runnable() {
+            public void run() {
+                if (!SpeechRecognizer.isRecognitionAvailable(act)) { ev(id, "err", "m", "unavailable"); return; }
+                if (act.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    act.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+                    return;
+                }
+                startRec();
+            }
+        });
+    }
+
+    private void startRec() {
+        destroyRec();
+        final int id = idLive;
+        sr = SpeechRecognizer.createSpeechRecognizer(act);
+        sr.setRecognitionListener(new RecognitionListener() {
+            public void onReadyForSpeech(Bundle p) { }
+            public void onBeginningOfSpeech() { }
+            public void onBufferReceived(byte[] b) { }
+            public void onEndOfSpeech() { }
+            public void onEvent(int t, Bundle p) { }
+            public void onRmsChanged(float v) {
+                try { cb(id, new JSONObject().put("t", "rms").put("v", (double) v).toString()); } catch (Exception ignored) { }
+            }
+            public void onPartialResults(Bundle b) {
+                ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (r != null && !r.isEmpty()) ev(id, "partial", "d", r.get(0));
+            }
+            public void onResults(Bundle b) {
+                ArrayList<String> r = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                ev(id, "final", "d", r != null && !r.isEmpty() ? r.get(0) : "");
+            }
+            public void onError(int code) {
+                try { cb(id, new JSONObject().put("t", "err").put("c", code).toString()); } catch (Exception ignored) { }
+            }
+        });
+        Intent it = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en".equals(Store.get("voice_lang", "ar")) ? "en-US" : "ar-SA");
+        it.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        it.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        sr.startListening(it);
+    }
+
+    private void destroyRec() {
+        if (sr != null) {
+            try { sr.cancel(); sr.destroy(); } catch (Exception ignored) { }
+            sr = null;
+        }
+    }
+
+    @JavascriptInterface
+    public void voiceStop() {
+        ui.post(new Runnable() { public void run() { destroyRec(); } });
+    }
+
     /** Called by the activity. */
     public void onResult(int req, int res, final Intent data) {
         final int ok = Activity.RESULT_OK;
@@ -384,6 +451,11 @@ public class Bridge {
     }
 
     public void onPermission(int req, int[] res) {
+        if (req == REQ_AUDIO) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) startRec();
+            else ev(idLive, "err", "m", "denied");
+            return;
+        }
         if (req != REQ_PERM) return;
         if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) loadGallery(idGallery);
         else cb(idGallery, "{\"perm\":false,\"items\":[]}");
@@ -398,7 +470,15 @@ public class Bridge {
                     tts = new TextToSpeech(act, new TextToSpeech.OnInitListener() {
                         public void onInit(int status) {
                             ttsReady = status == TextToSpeech.SUCCESS;
-                            if (ttsReady) { tts.setLanguage(Theme.rtl ? new Locale("ar") : Locale.US); doSpeak(text); }
+                            if (ttsReady) {
+                                tts.setLanguage(Theme.rtl ? new Locale("ar") : Locale.US);
+                                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                                    public void onStart(String id) { }
+                                    public void onDone(String id) { js("window.__ttsDone&&window.__ttsDone()"); }
+                                    public void onError(String id) { js("window.__ttsDone&&window.__ttsDone()"); }
+                                });
+                                doSpeak(text);
+                            }
                         }
                     });
                 } else if (ttsReady) doSpeak(text);
@@ -417,7 +497,10 @@ public class Bridge {
         ui.post(new Runnable() { public void run() { if (tts != null) tts.stop(); } });
     }
 
-    public void destroy() { if (tts != null) { tts.stop(); tts.shutdown(); } }
+    public void destroy() {
+        destroyRec();
+        if (tts != null) { tts.stop(); tts.shutdown(); }
+    }
 
     @JavascriptInterface
     public void copy(final String t) {

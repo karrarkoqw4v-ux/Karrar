@@ -1,0 +1,42 @@
+/* Voice conversation screen: black stage, animated blue sphere, close / mute / status bar */
+.voice{position:fixed;inset:0;background:#000;z-index:70;display:flex;flex-direction:column;align-items:center;visibility:hidden;opacity:0;transform:scale(1.04);transition:opacity .35s,transform .4s var(--ease),visibility 0s .4s}
+.voice.show{visibility:visible;opacity:1;transform:none;transition:opacity .35s,transform .4s var(--ease)}
+.vtop{position:absolute;top:14px;width:46px;height:46px;border-radius:50%;background:#2b2b2d;display:grid;place-items:center;color:#fff;transition:transform .25s var(--spring)}
+.vtop:active{transform:scale(.88)}
+.vtop.vl{inset-inline-start:16px}.vtop.vr{inset-inline-end:16px}
+.stage{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px 24px 0;min-height:0}
+.orb{width:min(58vw,250px);aspect-ratio:1;border-radius:50%;position:relative;overflow:hidden;background:linear-gradient(180deg,#2457f0 0%,#5f93ff 40%,#bcd4ff 72%,#eef4ff 100%);box-shadow:inset 0 -14px 40px rgba(255,255,255,.25);transform:scale(var(--s,1));transition:transform .12s linear,filter .5s}
+.orb i{position:absolute;border-radius:50%;background:rgba(255,255,255,.88);filter:blur(15px)}
+.orb .c1{width:78%;height:34%;left:-14%;top:46%;animation:cl1 7s ease-in-out infinite alternate}
+.orb .c2{width:70%;height:30%;right:-16%;top:30%;background:rgba(255,255,255,.7);animation:cl2 9s ease-in-out infinite alternate}
+.orb .c3{width:90%;height:36%;left:6%;bottom:-14%;background:rgba(255,255,255,.95);animation:cl3 8s ease-in-out infinite alternate}
+.orb .c4{width:46%;height:22%;left:30%;top:14%;background:rgba(120,170,255,.6);animation:cl4 6s ease-in-out infinite alternate}
+.orb .shine{inset:0;border-radius:50%;background:radial-gradient(circle at 34% 24%,rgba(255,255,255,.38),transparent 52%);filter:none}
+@keyframes cl1{to{transform:translate(32%,-10%) scale(1.15)}}
+@keyframes cl2{to{transform:translate(-36%,12%) scale(.9)}}
+@keyframes cl3{to{transform:translate(-18%,-16%) scale(1.1)}}
+@keyframes cl4{to{transform:translate(22%,40%) scale(1.3)}}
+.voice.thinking .orb .c1,.voice.thinking .orb .c2,.voice.thinking .orb .c3{animation-duration:2.2s}
+.voice.thinking .orb{animation:orbPulse 1.2s ease-in-out infinite}
+.voice.speaking .halo{animation-duration:.9s;opacity:1}
+.voice.speaking .orb .c1,.voice.speaking .orb .c2,.voice.speaking .orb .c3{animation-duration:3s}
+.voice.muted .orb{filter:grayscale(.85) brightness(.75)}
+@keyframes orbPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18) saturate(1.2)}}
+.vtext{margin-top:26px;max-width:100%;text-align:center;color:#d4d4d8;font-size:1.05em;line-height:1.55;font-weight:600;min-height:3.2em;max-height:5.2em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.vtip{position:absolute;bottom:92px;inset-inline-start:22px;max-width:260px;background:#2b2b2d;color:#d4d4d8;padding:11px 14px;border-radius:16px;font-size:.84em;line-height:1.5;font-weight:600;animation:fadeUp .5s var(--ease) both;transition:opacity .5s}
+.vtip.hide{opacity:0;pointer-events:none}
+.vbar{flex:none;width:100%;display:flex;align-items:center;gap:10px;padding:0 16px 26px}
+.vpill{flex:1;height:46px;border-radius:99px;background:#303030;border:1px solid #454545;display:flex;align-items:center;padding:0 16px;color:#9a9a9f;font-weight:600;gap:8px}
+.vpill span:first-child{flex:1}
+.vx,.vmic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;transition:transform .25s var(--spring),background .25s}
+.vx{background:#fff;color:#000}.vmic{background:#3a3a3c;color:#fff}
+.vx:active,.vmic:active{transform:scale(.88)}
+.vmic.off{background:#d92d3a}
+.vtrans{position:absolute;inset:70px 0 90px;background:rgba(0,0,0,.92);padding:10px 20px;overflow-y:auto;display:none}
+.vtrans.show{display:block;animation:fadeIn .25s both}
+.vtrans p{margin:0 0 14px;line-height:1.6;font-weight:600}.vtrans b{display:block;color:var(--accent-text);font-size:.8em;margin-bottom:2px}
+.orbbox{position:relative;display:grid;place-items:center}
+.halo{position:absolute;width:210%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(70,120,255,.46) 0,rgba(70,120,255,.2) 28%,rgba(70,120,255,0) 60%);animation:haloBreath 3.4s ease-in-out infinite;pointer-events:none}
+.orbbox .orb{position:relative}
+.voice.muted .halo{opacity:.25;animation:none}
+@keyframes haloBreath{0%,100%{transform:scale(.92);opacity:.75}50%{transform:scale(1.08);opacity:1}}

@@ -57,7 +57,7 @@ e_name:["اكتب اسماً من حرفين على الأقل","Enter a name (2
 e_pass_short:["كلمة المرور يجب ألا تقل عن 6 أحرف","Password must be at least 6 characters"],e_pass_match:["كلمتا المرور غير متطابقتين","Passwords do not match"],
 e_exists:["هذا البريد مسجّل مسبقاً","This email is already registered"],e_nouser:["لا يوجد حساب بهذا البريد","No account with this email"],
 e_wrong:["كلمة المرور غير صحيحة","Wrong password"],e_empty:["اكتب كلمة المرور","Enter your password"],e_bad:["حدث خطأ، حاول مرة أخرى","Something went wrong, try again"],
-tl:[["مرحبًا، أنا كرّار","Hi, I'm Karrar"],["اسألني أي شيء","Ask me anything"],["اكتب لي كوداً","Write me code"],["ابحث لي في الويب","Search the web for me"]]
+v_listen:["أستمع إليك…","Listening…"],v_think:["أفكّر…","Thinking…"],v_speak:["أتحدث…","Speaking…"],v_muted:["الميكروفون مكتوم","Microphone muted"],v_tip:["المحادثة الصوتية: يُحوَّل كلامك إلى نص ويُرسل لمزوّد الذكاء الاصطناعي الذي اخترته.","Voice chat: your speech is turned into text and sent to the AI provider you chose."],v_lang:["لغة الكلام","Speech language"],v_you:["أنت","You"],v_ai:["كرّار","Karrar"],v_denied:["اسمح باستخدام الميكروفون من إعدادات الهاتف","Allow microphone access in phone settings"],tl:[["مرحبًا، أنا كرّار","Hi, I'm Karrar"],["اسألني أي شيء","Ask me anything"],["اكتب لي كوداً","Write me code"],["ابحث لي في الويب","Search the web for me"]]
 };
 K.lang=function(){return K.pref?K.pref.get('lang','ar'):'ar'};
 K.t=function(k){const e=D[k];if(!e)return k;let s=e[K.lang()==='ar'?0:1];for(let i=1;i<arguments.length;i++)s=s.replace('{'+(i-1)+'}',arguments[i]);return s};

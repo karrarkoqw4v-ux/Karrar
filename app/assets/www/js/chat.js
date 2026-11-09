@@ -107,7 +107,7 @@ C.start=function(){
   S.handle=K.native.chat(hist,S.think,ctx,function(ev){
    if(view.finished)return;
    if(ev.t==='think'){if(!t0)t0=Date.now();ai.t+=ev.d;view.open=true;view.thinking=true;view.dirty()}
-   else if(ev.t==='text'){if(!ai.c&&t0&&!ai.s){ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));view.open=false;view.thinking=false}ai.c+=ev.d;view.dirty()}
+   else if(ev.t==='text'){if(!ai.c&&t0&&!ai.s){ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));view.open=false;view.thinking=false}ai.c+=ev.d;view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c)}
    else if(ev.t==='done'){if(t0&&!ai.s)ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));C.finish(view)}
    else if(ev.t==='err'){ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m;if(t0&&!ai.s)ai.s=1;C.finish(view)}
   });
@@ -123,7 +123,7 @@ C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
  if(!view.m.c&&!view.m.t)view.m.c='—';
  view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
- if(K.pref.bool('sound',false)||S.voiceReply)K.native.speak(view.m.c);S.voiceReply=false;
+ if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
 };
 C.stop=function(){if(S.handle)S.handle.cancel();K.native.stopSpeak();if(S.live){if(!S.live.m.s&&S.live.m.t)S.live.m.s=1;C.finish(S.live)}};
 C.action=function(v,a){

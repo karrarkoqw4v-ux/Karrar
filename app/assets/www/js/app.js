@@ -20,6 +20,7 @@ A.remount=function(){
 A.toLogin=function(){while(K.settings.depth())K.settings.back();$('home').classList.add('hidden');$('login').classList.remove('hidden');K.login.signup=false;K.login.mount();K.fx.start(2)};
 A.toHome=function(){$('login').classList.add('hidden');$('home').classList.remove('hidden');K.db.load();K.home.mount();K.home.start();K.fx.start(K.pref.bool('fx',false)?2:0);A.apply()};
 window.__back=function(){
+ if(K.voice&&K.voice.active){K.voice.close();return true}
  if(K.ui.hasOpen()){K.ui.close();return true}
  if(document.getElementById('ctx')){K.home.closeCtx();return true}
  if(K.settings.depth()){K.settings.back();return true}

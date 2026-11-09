@@ -61,11 +61,10 @@ H.refreshComposer=function(){
 };
 H.addAtt=function(a){S().atts.push(a);H.refreshComposer()};
 /* empty bar: blue wave button = voice conversation (speak, then the answer is read aloud) */
-H.sendOrVoice=async function(){
+H.sendOrVoice=function(){
  const has=$('ta').value.trim().length>0||S().atts.length>0;
  if(S().streaming||has){K.chat.send();return}
- const t=await K.native.voice();
- if(t){$('ta').value=t;S().voiceReply=true;$('ta').dispatchEvent(new Event('input'));K.chat.send()}else if(K.native.real)K.toast(K.t('voice_fail'));
+ K.voice.open();
 };
 /* ---- attach sheet ---- */
 H.toggleSheet=function(open){

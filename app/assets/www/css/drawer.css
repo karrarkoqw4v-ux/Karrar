@@ -1,7 +1,7 @@
-.scrim{position:absolute;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .3s;z-index:20}
+.scrim{position:fixed;inset:0;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .3s;z-index:20}
 .scrim.show{opacity:1;pointer-events:auto}
-.drawer{position:absolute;top:0;bottom:0;inset-inline-start:0;width:86%;max-width:380px;background:var(--bg);z-index:21;display:flex;flex-direction:column;padding:10px 16px;transform:translateX(var(--dx,-105%));transition:transform .36s var(--ease);box-shadow:var(--shadow);visibility:hidden}
-html[dir=rtl] .drawer{--dx:105%}
+.drawer{position:fixed;top:0;bottom:0;width:86vw;max-width:400px;background:var(--bg);z-index:21;display:flex;flex-direction:column;padding:10px 16px;transform:translateX(var(--dx,-105%));transition:transform .36s var(--ease);box-shadow:var(--shadow);visibility:hidden;left:0;right:auto}
+html[dir=rtl] .drawer{--dx:105%;left:auto;right:0}
 .drawer.open{transform:none;visibility:visible}
 .dsearch{height:56px;border-radius:28px;background:var(--field);display:flex;align-items:center;gap:12px;padding:0 18px;margin-top:6px;color:var(--text2);flex:none}
 .dsearch input{flex:1;min-width:0;font-size:1.08em;font-weight:600;color:var(--text)}
