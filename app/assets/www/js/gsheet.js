@@ -13,6 +13,10 @@ const ADD='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="c
 K.gsheet={
  /* resolves {name,email} or {err:'cancel'}; keeps a black loading screen up after a choice until done() */
  async pick(){
+  if(K.native.real){ /* real device: Google's own account sheet lists the accounts that are really on the phone */
+   const r=await K.native.google();
+   if(!r||r.err)return r||{err:'cancel'};
+   K.gsheet.loading();await new Promise(x=>setTimeout(x,1100));return r}
   let vis=[];try{vis=K.native.googleAccounts()||[]}catch(e){}
   const list=[];[...vis,...known()].forEach(a=>{if(a.email&&!list.some(x=>x.email.toLowerCase()===a.email.toLowerCase()))list.push({name:a.name||nm(a.email),email:a.email})});
   return new Promise(res=>{

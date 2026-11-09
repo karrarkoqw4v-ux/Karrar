@@ -225,11 +225,17 @@ public class Bridge {
     @JavascriptInterface
     public void google(int id) {
         idGoogle = id;
-        Intent it;
-        if (Build.VERSION.SDK_INT >= 26) {
-            it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, null, null, null, null);
-        } else {
-            it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, true, null, null, null, null);
+        Intent it = new Intent("com.google.android.gms.common.account.CHOOSE_ACCOUNT");
+        it.setPackage("com.google.android.gms");
+        it.putExtra("allowableAccountTypes", new String[]{"com.google"});
+        it.putExtra("alwaysPromptForAccount", true);
+        it.putExtra("descriptionTextOverride", Theme.rtl ? "\u0644\u0644\u0645\u062a\u0627\u0628\u0639\u0629 \u0625\u0644\u0649 \u0628\u0648\u0635\u0644\u0629" : "to continue to Bawsala");
+        if (it.resolveActivity(act.getPackageManager()) == null) {
+            if (Build.VERSION.SDK_INT >= 26) {
+                it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, null, null, null, null);
+            } else {
+                it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, true, null, null, null, null);
+            }
         }
         start(it, REQ_GOOGLE, id);
     }
