@@ -18,6 +18,22 @@ public class IconView extends View {
             CAMERA = 39, IMAGE = 40, CLIP = 41, MORE = 42, MOON = 43, TEXTSIZE = 44, WAND = 45, MIC = 46,
             HELP = 47, LOGOUT = 48, PHONE = 49, DOC = 50, MAIL = 51, AVATAR = 52;
 
+    private static final String[] NAMES = new String[64];
+    private static final java.util.HashMap<String, android.graphics.Bitmap> CACHE = new java.util.HashMap<String, android.graphics.Bitmap>();
+    static {
+        NAMES[NEWCHAT] = "message-circle-plus"; NAMES[SEND] = "arrow-up"; NAMES[COPY] = "copy"; NAMES[REFRESH] = "refresh-cw";
+        NAMES[LIKE] = "thumbs-up"; NAMES[DISLIKE] = "thumbs-down"; NAMES[GLOBE] = "globe"; NAMES[ATOM] = "atom";
+        NAMES[SETTINGS] = "settings"; NAMES[TRASH] = "trash-2"; NAMES[CHEV_DOWN] = "chevron-down"; NAMES[CHEV_RIGHT] = "chevron-right";
+        NAMES[CLOSE] = "x"; NAMES[PLUS] = "plus"; NAMES[USER] = "user"; NAMES[CHECK] = "check"; NAMES[SHARE] = "share";
+        NAMES[KEY] = "key"; NAMES[LINK] = "link"; NAMES[LANG] = "globe"; NAMES[INFO] = "info"; NAMES[DATABASE] = "database";
+        NAMES[EDIT] = "pencil"; NAMES[CHEV_LEFT] = "chevron-left"; NAMES[CHAT] = "message-square"; NAMES[SPARK] = "sparkles";
+        NAMES[FILE] = "file-text"; NAMES[NEWCHAT2] = "message-circle-plus"; NAMES[SOUND_OFF] = "volume-x"; NAMES[SOUND_ON] = "volume-2";
+        NAMES[VOICE] = "audio-lines"; NAMES[SEARCH] = "search"; NAMES[PIN] = "pin"; NAMES[MULTI] = "list-checks";
+        NAMES[CAMERA] = "camera"; NAMES[IMAGE] = "image"; NAMES[CLIP] = "paperclip"; NAMES[MORE] = "ellipsis"; NAMES[MOON] = "moon";
+        NAMES[TEXTSIZE] = "a-large-small"; NAMES[WAND] = "wand-sparkles"; NAMES[MIC] = "mic"; NAMES[HELP] = "circle-help";
+        NAMES[LOGOUT] = "log-out"; NAMES[PHONE] = "smartphone"; NAMES[DOC] = "file-text"; NAMES[MAIL] = "mail";
+    }
+    private final Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private int type;
     private int color = 0xFFFFFFFF;
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -48,6 +64,25 @@ public class IconView extends View {
         c.save();
         c.translate((getWidth() - 24 * s) / 2f, (getHeight() - 24 * s) / 2f);
         c.scale(s, s);
+        String nm = type >= 0 && type < NAMES.length ? NAMES[type] : null;
+        if (nm != null) {
+            android.graphics.Bitmap bm = CACHE.get(nm);
+            if (bm == null) {
+                try {
+                    java.io.InputStream in = getContext().getAssets().open("icons/" + nm + ".png");
+                    bm = android.graphics.BitmapFactory.decodeStream(in);
+                    in.close();
+                    CACHE.put(nm, bm);
+                } catch (Exception ignored) { }
+            }
+            if (bm != null) {
+                bp.setColorFilter(new android.graphics.PorterDuffColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN));
+                r.set(0, 0, 24, 24);
+                c.drawBitmap(bm, null, r, bp);
+                c.restore();
+                return;
+            }
+        }
         p.setColor(color);
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(1.9f);
