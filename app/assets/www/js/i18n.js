@@ -86,6 +86,9 @@ t_licenses:["التراخيص وحقوق المصادر","Licences & credits"],t
 t_add:["إضافة","Add"],t_new_prompt:["قالب جديد","New template"],t_prompt_title:["اسم القالب","Template name"],t_prompt_text:["نص الأمر","Prompt text"],t_use:["استخدام","Use"],t_edit:["تعديل","Edit"],t_empty:["لا يوجد شيء بعد","Nothing here yet"],
 t_new_mem:["معلومة جديدة","New fact"],t_mem_h:["مثال: أدرس في كلية الطب","Example: I study medicine"],
 st_chats:["المحادثات","Chats"],st_msgs:["رسائلك","Your messages"],st_replies:["ردود كرّار","Karrar replies"],st_words:["مجموع الكلمات","Total words"],st_first:["أول محادثة","First chat"],st_pinned:["المحادثات المثبتة","Pinned chats"],
+f_reading:["جارٍ قراءة الملف…","Reading the file…"],f_unsupported:["نوع الملف غير مدعوم للقراءة","This file type can't be read"],f_toobig:["الملف كبير جداً (الحد 6 ميغابايت)","File too large (limit 6 MB)"],f_notext:["لم أجد نصاً في الملف (قد يكون صوراً ممسوحة)","No text found (it may be a scanned image)"],f_pages:["{0} صفحة","{0} pages"],
+proj_title:["المشاريع","Projects"],proj_task:["إضافة مهمة","Add a task"],proj_apps:["برمجة تطبيقات","App development"],proj_biz:["إضافة مشروع تجاري","Business project"],proj_web:["تطوير مواقع الويب","Web development"],
+tk_title:["المهام","Tasks"],tk_new:["مهمة جديدة","New task"],tk_hint:["اكتب المهمة","Write the task"],tk_empty:["لا توجد مهام بعد","No tasks yet"],tk_done:["منجزة","Done"],tk_open:["قيد الإنجاز","To do"],
 tl:[["مرحبًا، أنا كرّار","Hi, I'm Karrar"],["اسألني أي شيء","Ask me anything"],["اكتب لي كوداً","Write me code"],["ابحث لي في الويب","Search the web for me"]]
 };
 K.lang=function(){return K.pref?K.pref.get('lang','ar'):'ar'};

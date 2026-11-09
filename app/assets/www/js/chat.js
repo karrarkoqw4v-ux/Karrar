@@ -68,7 +68,7 @@ C.addUser=function(m){
  $('empty').classList.add('hidden');
  const d=document.createElement('div');d.className='msg user';
  let h='';
- if((m.imgs&&m.imgs.length)||(m.files&&m.files.length)){h+='<div class="att-row">'+(m.imgs||[]).map(s=>'<img class="att-img" src="'+s+'">').join('')+(m.files||[]).map(f=>'<div class="att-file"><span class="fi">'+K.icon('file-text',19)+'</span><span>'+esc(f.n)+'</span></div>').join('')+'</div>'}
+ if((m.imgs&&m.imgs.length)||(m.files&&m.files.length)){h+='<div class="att-row">'+(m.imgs||[]).map(s=>'<img class="att-img" src="'+s+'">').join('')+(m.files||[]).map(f=>K.files.card(f)).join('')+'</div>'}
  if(m.c)h+='<div class="bubble">'+K.emojify(esc(m.c))+'</div>';
  d.innerHTML=h;$('msgs').appendChild(d);return d};
 C.show=function(conv){
@@ -76,6 +76,7 @@ C.show=function(conv){
  const lastAi=conv.msgs.map(m=>m.role).lastIndexOf('assistant');
  conv.msgs.forEach(function(m,i){if(m.role==='user')C.addUser(m);else{const v=new AIView(m,{last:i===lastAi,live:false});box.appendChild(v.el)}});
  $('empty').classList.toggle('hidden',conv.msgs.length>0);
+ if(K.home&&K.home.paintPills)K.home.paintPills();
  const tt=$('title');tt.textContent=conv.title||'';C.scrollEnd();
 };
 function toApi(msgs){return msgs.map(m=>({role:m.role==='assistant'?'assistant':'user',content:((m.ft?m.ft+'\n\n':'')+(m.c||'')),images:m._b64||[]})).filter(x=>x.content||x.images.length)}
@@ -86,7 +87,7 @@ C.send=function(){
  if(!text&&!atts.length)return;
  K.native.haptic();
  const files=atts.filter(a=>a.kind==='file');
- const m={role:'user',c:text,imgs:atts.filter(a=>a.kind==='img').map(a=>a.th),files:files.map(f=>({n:f.name})),ft:files.map(f=>'['+f.name+']\n```\n'+f.text+'\n```').join('\n\n')};
+ const m={role:'user',c:text,imgs:atts.filter(a=>a.kind==='img').map(a=>a.th),files:files.map(f=>({n:f.name,size:f.size,pages:f.pages})),ft:files.map(f=>'[File: '+f.name+']\n```\n'+f.text+'\n```').join('\n\n')};
  m._b64=atts.filter(a=>a.kind==='img'&&a.b64).map(a=>a.b64);
  ta.value='';ta.style.height='';S.atts=[];K.home.refreshComposer();K.home.closeSheet();
  const conv=S.cur;conv.msgs.push(m);

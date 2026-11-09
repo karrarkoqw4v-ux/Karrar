@@ -25,7 +25,7 @@ K.native={
  deleteAccount(email){A?A.deleteAccount(email):0},
  pickImages(){return new Promise(r=>{if(!A)return r(K.mock.images(2));const id=reg(r);A.pickImages(id)})},
  camera(){return new Promise(r=>{if(!A)return r(K.mock.images(1));const id=reg(r);A.camera(id)})},
- pickFile(){return new Promise(r=>{if(!A)return r({name:'notes.txt',text:'hello'});const id=reg(r);A.pickFile(id)})},
+ pickFile(){return new Promise(r=>{if(!A)return r(window.__mockFile||{name:'notes.txt',size:11,b64:btoa('hello world')});const id=reg(r);A.pickFile(id)})},
  gallery(){return new Promise(r=>{if(!A)return r(K.mock.gallery());const id=reg(r);A.gallery(id)})},
  imageData(uri){return new Promise(r=>{if(!A)return r({b64:''});const id=reg(r);A.imageData(id,uri)})},
  voice(){return new Promise(r=>{if(!A)return r('');const id=reg(r);A.voice(id)})},

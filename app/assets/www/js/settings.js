@@ -10,7 +10,7 @@ const stack=[];
 const S=K.settings={};
 function mask(k){if(!k)return K.t('s_not_set');return k.length<=8?'••••••••':k.slice(0,3)+'••••••••'+k.slice(-4)}
 function maskEmail(e){const a=e.indexOf('@');return a<5?e:e.slice(0,4)+'••••••'+e.slice(a-2)}
-function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses')}[p]}
+function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses'),tasks:K.t('tk_title')}[p]}
 
 /* ----- builders ----- */
 function sec(parent,label){if(label){const t=document.createElement('div');t.className='sec-t';t.textContent=label;parent.appendChild(t)}const c=document.createElement('div');c.className='card';parent.appendChild(c);return c}
@@ -42,7 +42,7 @@ function after(p){K.app.apply();S.rerender();if(p&&p.remount)K.app.remount()}
 function build(el,p){
  if(p==='font'){fontPage(el);return}
  const body=document.createElement('div');body.className='pbody stagger';el.appendChild(body);
- ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage})[p](body);
+ ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage,tasks:tasksPage})[p](body);
  K.emojifyEl(body);
 }
 
@@ -181,6 +181,19 @@ async function githubPage(b){
  }catch(e){list.innerHTML='<div class="row"><span class="rt" style="color:var(--danger)">'+K.t('gh_err')+'</span></div>'}
 }
 const LIC=[['Inter','SIL Open Font License 1.1','rsms.me/inter'],['Noto Sans / Noto Sans Arabic','SIL Open Font License 1.1','Google Fonts'],['IBM Plex Sans Arabic','SIL Open Font License 1.1','IBM'],['Cairo','SIL Open Font License 1.1','Mohamed Gaber, Accademia di Belle Arti di Urbino'],['Almarai','SIL Open Font License 1.1','Boutros Fonts'],['Lucide icons','ISC License','lucide.dev'],['Twemoji','CC-BY 4.0 (graphics) / MIT (code)','Twitter, Inc. and other contributors'],['Iconify "Logos" collection','CC0 1.0 (collection data)','gilbarbara/logos — the logos are trademarks of their owners'],['Simple Icons','CC0 1.0 (icon data)','simpleicons.org — the logos are trademarks of their owners']];
+function tasksPage(b){
+ const ts=listOf('tasks');const save=()=>K.pref.set('tasks',JSON.stringify(ts));
+ let c=sec(b,K.t('tk_title'));
+ row(c,{icon:'plus',title:K.t('tk_new'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('tk_new'),hint:K.t('tk_hint')});if(v){ts.unshift({t:v,d:0,ts:Date.now()});save();S.rerender()}}});
+ const draw=(label,list)=>{if(!list.length)return;const h=document.createElement('div');h.className='sec-t';h.textContent=label;b.appendChild(h);const cc=document.createElement('div');cc.className='card';b.appendChild(cc);
+  list.forEach(t=>{const r=row(cc,{html:'<span class="tk '+(t.d?'on':'')+'">'+K.icon('check',16,3)+'</span>',title:t.t});r.classList.toggle('tdone',!!t.d);
+   r.onclick=async()=>{const k=await K.ui.choose(t.t.slice(0,40),[t.d?K.t('tk_open'):K.t('tk_done'),K.t('t_edit'),K.t('del')]);
+    if(k===0){t.d=t.d?0:1;save();S.rerender()}
+    else if(k===1){const v=await K.ui.prompt({title:K.t('t_edit'),value:t.t});if(v){t.t=v;save();S.rerender()}}
+    else if(k===2){ts.splice(ts.indexOf(t),1);save();S.rerender()}}})};
+ draw(K.t('tk_open'),ts.filter(t=>!t.d));draw(K.t('tk_done'),ts.filter(t=>t.d));
+ if(!ts.length)note(b,K.t('tk_empty'));
+}
 function licensesPage(b){
  const c=sec(b,'');c.style.marginTop='6px';
  LIC.forEach(l=>row(c,{icon:'file-text',title:l[0],sub:l[1]+' · '+l[2]}));

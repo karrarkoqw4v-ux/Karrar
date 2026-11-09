@@ -35,3 +35,6 @@ html[dir=ltr] .page{--from:-40px}
 .ticks i{width:2px;height:14px;background:var(--text3)}
 .slider:disabled,.fsheet.dis .slider{opacity:.4}
 .delete-acc{display:block;margin:48px auto 0;color:var(--danger);font-weight:700;font-size:1.25em}
+.tk{width:26px;height:26px;border-radius:50%;border:2px solid var(--text3);display:grid;place-items:center;color:transparent;transition:all .25s var(--spring)}
+.tk.on{background:var(--green);border-color:var(--green);color:#fff}
+.row.tdone .rt{text-decoration:line-through;color:var(--text3)}

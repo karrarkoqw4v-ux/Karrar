@@ -17,7 +17,7 @@ H.mount=function(){
  +'<div class="mchips" id="mchips"></div>'
  +'<div class="bar" id="composer"><div class="previews" id="previews"></div><div class="brow"><button class="bplus" id="bPlus">'+K.icon('plus',27)+'</button><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea><button class="bmic" id="bMic">'+K.icon('mic',23)+'</button><button class="bblue" id="bSend"></button></div></div></div>'
  +'<div class="scrim" id="scrim"></div>'
- +'<aside class="drawer" id="drawer"><div class="dsearch">'+K.icon('search',24)+'<input id="dq" placeholder="'+esc(K.t('search_chats'))+'"></div><div class="dlist" id="dlist"></div>'
+ +'<aside class="drawer" id="drawer"><div class="dsearch">'+K.icon('search',24)+'<input id="dq" placeholder="'+esc(K.t('search_chats'))+'"></div><div class="dproj" id="dproj"></div><div class="dlist" id="dlist"></div>'
  +'<button class="delbar hidden" id="delbar"></button><div class="dprof press" id="dprof"><div class="av"><svg viewBox="0 0 24 24"><circle cx="12" cy="9.4" r="3.9" fill="#8e8e93"/><path d="M4.6 20Q5.5 14 12 14t7.400 6Q16 23 12 23T4.600 20z" fill="#8e8e93"/></svg></div><b id="pname"></b><span class="mo">'+K.icon('ellipsis',26)+'</span></div></aside>';
  K.chat.mount();
  $('bMenu').onclick=()=>H.openDrawer();
@@ -37,7 +37,13 @@ H.mount=function(){
  ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&K.pref.bool('enter_send',false)){e.preventDefault();K.chat.send()}});
  $('aCam').onclick=async()=>{H.toggleSheet(false);const r=await K.native.camera();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
  $('aAlb').onclick=async()=>{H.toggleSheet(false);const r=await K.native.pickImages();(r||[]).forEach(i=>H.addAtt({kind:'img',th:i.th,b64:i.b64}))};
- $('aFile').onclick=async()=>{H.toggleSheet(false);const f=await K.native.pickFile();if(f&&f.name)H.addAtt({kind:'file',name:f.name,text:f.text||''})};
+ $('aFile').onclick=async()=>{H.toggleSheet(false);const f=await K.native.pickFile();if(!f||!f.name)return;
+  if(f.tooBig){K.toast(K.t('f_toobig'));return}
+  const rd=document.createElement('div');rd.className='reading';rd.innerHTML='<i></i><span>'+K.t('f_reading')+'</span>';$('previews').appendChild(rd);
+  const r=await K.files.parse(f);rd.remove();
+  if(r.err){K.toast(K.t(r.err));H.refreshComposer();return}
+  H.addAtt({kind:'file',name:f.name,ext:K.files.ext(f.name),size:f.size,text:r.text,pages:r.pages})};
+ H.buildProjects();
  $('scrim').onclick=()=>H.closeDrawer();
  $('dq').oninput=e=>{H.q=e.target.value.trim().toLowerCase();H.renderList()};
  $('dprof').onclick=()=>{H.closeDrawer();K.settings.open('main')};
@@ -53,16 +59,17 @@ H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?
 H.paintPills=function(){
  $('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
  const c=$('mchips');c.innerHTML=(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
+ const md=S().cur&&S().cur.mode;if(md&&MODES[md])c.insertAdjacentHTML('afterbegin','<button class="mchip" data-md="1">'+K.icon(MODES[md][0],16)+'<span>'+K.t(MODES[md][1])+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>');
  const repos=K.gh.tok()?K.gh.sel():[];
  c.insertAdjacentHTML('beforeend',repos.map(r=>'<button class="mchip" data-r="'+r.replace(/"/g,'')+'">'+K.icon('git-branch',16)+'<span>'+r.split('/').pop()+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>').join(''));
- c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
+ c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
 };
 H.refreshComposer=function(){
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
  let icon='audio-lines';if(S().streaming)icon='square';else if(has)icon='arrow-up';
  if(b.dataset.s!==icon){b.dataset.s=icon;b.innerHTML=K.icon(icon,icon==='square'?15:21);b.classList.remove('pulse');void b.offsetWidth;if(icon!=='audio-lines')b.classList.add('pulse')}
- if(!ta.value)$('composer').classList.remove('multi');
- const pv=$('previews');pv.innerHTML=S().atts.map((a,i)=>'<div class="pv">'+(a.kind==='img'?'<img src="'+a.th+'">':'<div class="fchip">'+K.icon('file-text',22)+'<span>'+esc(a.name)+'</span></div>')+'<button class="x" data-i="'+i+'">'+K.icon('x',13,3)+'</button></div>').join('');
+ if(!ta.value&&!S().atts.length)$('composer').classList.remove('multi');else if(S().atts.length)$('composer').classList.add('multi');
+ const pv=$('previews');pv.innerHTML=S().atts.map((a,i)=>'<div class="pv">'+(a.kind==='img'?'<img src="'+a.th+'">':K.files.card(a,'sm'))+'<button class="x" data-i="'+i+'">'+K.icon('x',13,3)+'</button></div>').join('');
  pv.querySelectorAll('.x').forEach(x=>x.onclick=()=>{S().atts.splice(+x.dataset.i,1);H.refreshComposer();H.markGallery()});
 };
 H.addAtt=function(a){S().atts.push(a);H.refreshComposer()};
@@ -91,6 +98,16 @@ H.loadGallery=async function(){
 };
 H.markGallery=function(){document.querySelectorAll('#gal .g').forEach(g=>g.classList.toggle('sel',S().atts.some(a=>a.uri===g.dataset.uri)))};
 /* ---- drawer ---- */
+const MODES={apps:['code-xml','proj_apps','#2563eb'],biz:['rocket','proj_biz','#16a34a'],web:['globe','proj_web','#ea580c']};
+K.MODES=MODES;
+H.buildProjects=function(){
+ const d=$('dproj');d.innerHTML='<div class="dgroup" style="padding-top:14px"><span>'+K.t('proj_title')+'</span><span style="width:36px"></span></div>'
+  +'<button class="pj" data-p="tasks"><span class="pji" style="--c:#f59e0b">'+K.icon('list-checks',20)+'</span><span>'+K.t('proj_task')+'</span></button>'
+  +Object.keys(MODES).map(k=>'<button class="pj" data-p="'+k+'"><span class="pji" style="--c:'+MODES[k][2]+'">'+K.icon(MODES[k][0],20)+'</span><span>'+K.t(MODES[k][1])+'</span></button>').join('');
+ d.querySelectorAll('.pj').forEach(b=>b.onclick=()=>{const p=b.dataset.p;
+  if(p==='tasks'){H.closeDrawer();K.settings.open('tasks')}
+  else{H.newChat();S().cur.mode=p;H.paintPills();$('ta').focus()}});
+};
 H.openDrawer=function(){H.renderList();$('pname').textContent=K.pref.get('name','')||K.t('guest');
  H.drawerOpen=true;$('drawer').classList.add('open');$('scrim').classList.add('show');$('main').classList.add('shift');document.activeElement&&document.activeElement.blur()};
 H.closeDrawer=function(){if(!H.drawerOpen)return;H.drawerOpen=false;if(H.selMode)H.exitSel();$('drawer').classList.remove('open');$('scrim').classList.remove('show');$('main').classList.remove('shift')};

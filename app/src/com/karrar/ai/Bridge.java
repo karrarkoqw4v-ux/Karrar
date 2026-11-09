@@ -413,21 +413,32 @@ public class Bridge {
                     public void run() {
                         try {
                             String name = "file";
+                            long size = -1;
                             Cursor c = act.getContentResolver().query(u, null, null, null, null);
                             if (c != null) {
                                 if (c.moveToFirst()) {
                                     int ix = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                                     if (ix >= 0) name = c.getString(ix);
+                                    int sx = c.getColumnIndex(OpenableColumns.SIZE);
+                                    if (sx >= 0 && !c.isNull(sx)) size = c.getLong(sx);
                                 }
                                 c.close();
                             }
+                            final int LIMIT = 6 * 1024 * 1024;
+                            if (size > LIMIT) { cb(id, new JSONObject().put("name", name).put("size", size).put("tooBig", true).toString()); return; }
                             InputStream in = act.getContentResolver().openInputStream(u);
                             ByteArrayOutputStream bo = new ByteArrayOutputStream();
-                            byte[] buf = new byte[4096];
+                            byte[] buf = new byte[8192];
                             int n, total = 0;
-                            while ((n = in.read(buf)) > 0 && total < 40000) { bo.write(buf, 0, n); total += n; }
+                            while ((n = in.read(buf)) > 0) {
+                                total += n;
+                                if (total > LIMIT) { in.close(); cb(id, new JSONObject().put("name", name).put("size", (long) total).put("tooBig", true).toString()); return; }
+                                bo.write(buf, 0, n);
+                            }
                             in.close();
-                            cb(id, new JSONObject().put("name", name).put("text", new String(bo.toByteArray(), "UTF-8")).toString());
+                            byte[] all = bo.toByteArray();
+                            cb(id, new JSONObject().put("name", name).put("size", (long) all.length)
+                                    .put("b64", Base64.encodeToString(all, Base64.NO_WRAP)).toString());
                         } catch (Exception e) {
                             cb(id, "{}");
                         }
