@@ -12,7 +12,7 @@ H.mount=function(){
  +'<div class="scroll chat" id="scroll"><div class="empty" id="empty"><div class="logo-big">'+K.LOGO+'</div><h2>'+K.t('hi')+'</h2></div><div class="msgs" id="msgs"></div></div>'
  +'<div class="composer-wrap" id="cwrap"><div class="pmenu" id="pmenu"><div class="gal" id="gal"></div><div class="attrow"><button id="aCam">'+K.icon('camera',22)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',22)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',22)+'<span>'+K.t('file')+'</span></button></div>'
  +'<div class="mlist"><button class="mi soon" id="mImg">'+K.icon('image',24)+'<span>'+K.t('create_img')+'</span><i class="badge">'+K.t('soon')+'</i></button>'
- +[['video','create_video'],['gamepad-2','create_game'],['code-xml','dev_apps'],['clapperboard','create_edit'],['graduation-cap','student_tools'],['rocket','dev_project',1]].map(x=>'<button class="mi soon">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span>'+(x[2]?'<i class="badge pro">'+K.icon('crown',12,2.4)+'Pro</i>':'')+'<i class="badge">'+K.t('soon')+'</i></button>').join('')
+ +[['video','create_video'],['gamepad-2','create_game'],['code-xml','dev_apps'],['clapperboard','create_edit'],['graduation-cap','student_tools'],['rocket','dev_project',1]].map(x=>x[1]==='dev_apps'?'<button class="mi" data-act="code">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':'<button class="mi soon">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span>'+(x[2]?'<i class="badge pro">'+K.icon('crown',12,2.4)+'Pro</i>':'')+'<i class="badge">'+K.t('soon')+'</i></button>').join('')
  +'<button class="mi" id="mThink">'+K.icon('atom',24)+'<span>'+K.t('think')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mSearch">'+K.icon('globe',24)+'<span>'+K.t('web_search')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mApps">'+K.icon('plug',24)+'<span>'+K.t('connected_apps')+'</span></button></div></div>'
  +'<div class="mchips" id="mchips"></div>'
  +'<div class="bar" id="composer"><div class="previews" id="previews"></div><div class="brow"><button class="bplus" id="bPlus">'+K.icon('plus',27)+'</button><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea><button class="bmic" id="bMic">'+K.icon('mic',23)+'</button><button class="bblue" id="bSend"></button></div></div></div>'
@@ -123,8 +123,11 @@ H.renderList=function(){
    if(first){gh.querySelector('[data-ms]').onclick=()=>H.enterSel(null)}first=false;frag.appendChild(gh)}
   const it=document.createElement('div');const sel=H.sel.includes(c);
   it.className='ditem'+(sel?' sel':'')+(c===S().cur&&!H.selMode?' cur':'');it.style.animation='fadeUp .4s '+Math.min(idx++,10)*30+'ms var(--ease) both';
-  it.innerHTML=(H.selMode?'<span class="ck">'+(sel?K.icon('check',14,3.5):'')+'</span>':'')+'<span class="t"></span>'+(c.pinned?'<span class="pn">'+K.icon('pin',17)+'</span>':'');
-  it.querySelector('.t').textContent=c.title||K.t('new_chat');
+  it.innerHTML=(H.selMode?'<span class="ck">'+(sel?K.icon('check',14,3.5):'')+'</span>':'')+'<span class="t"><b></b><small></small></span>'+(c.code?'<span class="pn cdb">'+K.icon('code-xml',17)+'</span>':'')+(c.pinned?'<span class="pn">'+K.icon('pin',17)+'</span>':'');
+  it.querySelector('.t b').textContent=c.title||K.t('new_chat');
+  {const lm=[...c.msgs].reverse().find(m=>m.role==='assistant'&&m.c)||c.msgs[c.msgs.length-1]||{};const pv=(lm.c||'').replace(/```[\s\S]*?```/g,' ⟨code⟩ ').replace(/[#*`>|_\[\]]/g,'').replace(/\s+/g,' ').trim().slice(0,70);
+   const d=new Date(c.ts),tm=age<864e5?d.toLocaleTimeString(K.lang()==='ar'?'ar':'en',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString(K.lang()==='ar'?'ar':'en',{day:'numeric',month:'short'});
+   it.querySelector('.t small').textContent=tm+(pv?' · '+pv:'')}
   it.onclick=()=>{if(H.selMode){const i=H.sel.indexOf(c);if(i>=0)H.sel.splice(i,1);else H.sel.push(c);H.updSel();H.renderList()}else H.openConv(c)};
   let tm=0,moved=false;it.addEventListener('touchstart',e=>{moved=false;tm=setTimeout(()=>{if(!moved&&!H.selMode){K.native.haptic();H.ctxMenu(it,c)}},480)},{passive:true});
   it.addEventListener('touchmove',()=>{moved=true;clearTimeout(tm)},{passive:true});it.addEventListener('touchend',()=>clearTimeout(tm));

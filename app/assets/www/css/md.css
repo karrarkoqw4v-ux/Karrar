@@ -44,3 +44,6 @@
 .codebox .ch{background:linear-gradient(180deg,var(--surface),var(--code));padding-block:7px}
 .codebox .ch>span:first-child{display:flex;align-items:center;gap:6px;text-transform:lowercase;letter-spacing:.3px}
 .codebox .ch>span:first-child::before{content:"";width:9px;height:9px;border-radius:50%;background:#ff5f57;box-shadow:14px 0 #febc2e,28px 0 #28c840;margin-inline-end:34px}
+.codebox .ln{font-style:normal;color:var(--text3);font-weight:600;margin-inline-start:8px;text-transform:none}
+.codebox .cp.done{color:#34c759;background:rgba(52,199,89,.12)}
+.codebox pre{counter-reset:ln}
