@@ -1,16 +1,27 @@
 package com.karrar.ai;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
+import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -21,7 +32,10 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,22 +49,27 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
+    private static final int REQ_FILE = 77, REQ_ALBUM = 78, REQ_CAMERA = 79, REQ_VOICE = 80, REQ_PERM = 81;
     private final Handler ui = new Handler(Looper.getMainLooper());
 
     private FrameLayout root;
-    private LinearLayout drawer, list, emptyBox, histBox;
+    private LinearLayout drawer, list, emptyBox, histBox, main, attachPanel, galleryRow, previewRow, bottomBar;
     private View scrim;
     private ScrollView scroll;
-    private EditText input;
-    private FrameLayout sendBtn;
-    private IconView sendIcon;
-    private TextView title, profileName;
+    private HorizontalScrollView previewScroll;
+    private EditText input, searchBox;
+    private FrameLayout sendBtn, plusBtn;
+    private IconView sendIcon, plusIcon, soundIcon;
+    private TextView title, profileName, delCount;
     private Pill pillThink, pillSearch;
     private LinearLayout inputCard;
-    private int sendState = -1;
     private final List<View> emptyItems = new ArrayList<View>();
+    private final List<Att> atts = new ArrayList<Att>();
+    private final List<Store.Conv> selected = new ArrayList<Store.Conv>();
+    private boolean selectMode = false, panelOpen = false;
 
     private Store.Conv cur;
     private boolean think, search, streaming, drawerOpen;
@@ -59,6 +78,10 @@ public class MainActivity extends Activity {
     private int seenVersion;
     private float downX, downY;
     private boolean trackSwipe;
+    private TextToSpeech tts;
+    private boolean ttsReady;
+
+    private static class Att { Bitmap thumb; String b64; Uri uri; }
 
     // ------------------------------------------------------------------ lifecycle
     @Override
@@ -87,6 +110,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (Store.version != seenVersion) { recreate(); return; }
         if (profileName != null) profileName.setText(userName());
+        if (soundIcon != null) soundIcon.setType(Store.bool("sound", false) ? IconView.SOUND_ON : IconView.SOUND_OFF);
     }
 
     @Override
@@ -96,7 +120,15 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (tts != null) { tts.stop(); tts.shutdown(); }
+    }
+
+    @Override
     public void onBackPressed() {
+        if (panelOpen) { togglePanel(false); return; }
+        if (selectMode) { exitSelect(); return; }
         if (drawerOpen) closeDrawer(); else super.onBackPressed();
     }
 
@@ -107,6 +139,21 @@ public class MainActivity extends Activity {
         return n.isEmpty() ? T.s("guest") : n;
     }
 
+    /** Round outlined button (as in the reference input bar). */
+    private FrameLayout ringBtn(int icon, int sizeDp, View.OnClickListener l) {
+        FrameLayout f = new FrameLayout(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(0x00000000);
+        g.setStroke(dp(1.6f), Theme.text);
+        f.setBackground(Theme.ripple(g));
+        f.addView(new IconView(this, icon, Theme.text), new FrameLayout.LayoutParams(dp(22), dp(22), Gravity.CENTER));
+        f.setOnClickListener(l);
+        Fx.press(f);
+        f.setLayoutParams(new LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp)));
+        return f;
+    }
+
     // ------------------------------------------------------------------ UI construction
     private void build() {
         root = new FrameLayout(this);
@@ -114,31 +161,39 @@ public class MainActivity extends Activity {
         root.setFitsSystemWindows(true);
         root.setLayoutDirection(Theme.rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
 
-        root.addView(new Fx.Aurora(this, Theme.dark ? 0x334D6BFE : 0x1A4D6BFE, Theme.dark ? 0x288B5CF6 : 0x148B5CF6, 0x00000000),
-                new FrameLayout.LayoutParams(-1, -1));
+        if (Store.bool("fx", false)) {
+            root.addView(new Fx.Aurora(this, 0x334D6BFE, 0x288B5CF6, 0x00000000), new FrameLayout.LayoutParams(-1, -1));
+            root.addView(new Fx.Rain(this), new FrameLayout.LayoutParams(-1, -1));
+        }
 
-        root.addView(new Fx.Rain(this), new FrameLayout.LayoutParams(-1, -1));
-
-        LinearLayout main = new LinearLayout(this);
+        main = new LinearLayout(this);
         main.setOrientation(LinearLayout.VERTICAL);
+        main.setBackgroundColor(Theme.bg);
         root.addView(main, new FrameLayout.LayoutParams(-1, -1));
 
-        // top bar
+        // top bar: menu (start) ... sound, new chat (end)
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        top.setPadding(dp(6), 0, dp(6), 0);
-        top.addView(Ui.iconBtn(this, IconView.MENU, 46, 26, Theme.text, new View.OnClickListener() {
+        top.setPadding(dp(10), 0, dp(10), 0);
+        View menu = Ui.iconBtn(this, IconView.MENU, 48, 28, Theme.text, new View.OnClickListener() {
             public void onClick(View v) { hideKeyboard(); openDrawer(); }
-        }));
-        title = Ui.label(this, T.s("new_chat"), 17, Theme.text, true);
+        });
+        if (Theme.rtl) Ui.iconOf(menu).setScaleX(-1f);
+        top.addView(menu);
+        title = Ui.label(this, "", 15, Theme.text2, true);
         title.setGravity(Gravity.CENTER);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         top.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        top.addView(Ui.iconBtn(this, IconView.NEWCHAT, 46, 24, Theme.text, new View.OnClickListener() {
+        View snd = Ui.iconBtn(this, Store.bool("sound", false) ? IconView.SOUND_ON : IconView.SOUND_OFF, 48, 26, Theme.text, new View.OnClickListener() {
+            public void onClick(View v) { toggleSound(); }
+        });
+        soundIcon = Ui.iconOf(snd);
+        top.addView(snd);
+        top.addView(Ui.iconBtn(this, IconView.NEWCHAT2, 48, 28, Theme.text, new View.OnClickListener() {
             public void onClick(View v) { newChat(); }
         }));
-        main.addView(top, new LinearLayout.LayoutParams(-1, dp(56)));
+        main.addView(top, new LinearLayout.LayoutParams(-1, dp(58)));
 
         // messages + empty state
         FrameLayout mid = new FrameLayout(this);
@@ -147,73 +202,24 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dp(16), dp(4), dp(16), dp(12));
+        list.setPadding(dp(18), dp(4), dp(18), dp(12));
         scroll.addView(list, new FrameLayout.LayoutParams(-1, -2));
         mid.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
         emptyBox = new LinearLayout(this);
         emptyBox.setOrientation(LinearLayout.VERTICAL);
         emptyBox.setGravity(Gravity.CENTER);
-        emptyBox.setPadding(dp(14), 0, dp(14), 0);
-        FrameLayout lg = new FrameLayout(this);
-        View glow = new View(this);
-        android.graphics.drawable.GradientDrawable gg = new android.graphics.drawable.GradientDrawable();
-        gg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        gg.setGradientType(android.graphics.drawable.GradientDrawable.RADIAL_GRADIENT);
-        gg.setGradientRadius(dp(64));
-        gg.setColors(new int[]{Theme.alpha(Theme.accent, 110), 0x00000000});
-        glow.setBackground(gg);
-        lg.addView(glow, new FrameLayout.LayoutParams(dp(130), dp(130), Gravity.CENTER));
-        Fx.breathe(glow, 1.2f);
-        lg.addView(new IconView(this, IconView.LOGO, Theme.accent), new FrameLayout.LayoutParams(dp(64), dp(64), Gravity.CENTER));
-        emptyBox.addView(lg, new LinearLayout.LayoutParams(dp(130), dp(130)));
-        emptyItems.add(lg);
-        TextView hi = Ui.label(this, T.s("hi"), 28, Theme.text, true);
-        Fonts.heavy(hi);
+        emptyBox.setPadding(dp(40), 0, dp(40), 0);
+        IconView logo = new IconView(this, IconView.LOGO, Theme.accent);
+        emptyBox.addView(logo, new LinearLayout.LayoutParams(dp(62), dp(62)));
+        emptyItems.add(logo);
+        TextView hi = Ui.label(this, T.s("hi"), 25, Theme.text, true);
         hi.setGravity(Gravity.CENTER);
-        hi.setSingleLine(true);
-        hi.setMinHeight(dp(46));
-        Fx.gradientText(hi);
-        Fx.typeLoop(hi, new String[]{T.s("hi"), T.s("tl2"), T.s("tl3"), T.s("tl4"), T.s("tl5")});
+        hi.setLineSpacing(0, 1.18f);
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(-1, -2);
-        hl.topMargin = dp(4);
+        hl.topMargin = dp(26);
         emptyBox.addView(hi, hl);
         emptyItems.add(hi);
-        TextView help = Ui.label(this, T.s("help"), 16, Theme.text2, false);
-        help.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hl2 = new LinearLayout.LayoutParams(-1, -2);
-        hl2.topMargin = dp(6);
-        hl2.bottomMargin = dp(22);
-        emptyBox.addView(help, hl2);
-        emptyItems.add(help);
-        String[] sgs = {"sg1", "sg2", "sg3", "sg4"};
-        for (int r = 0; r < 2; r++) {
-            LinearLayout rowL = new LinearLayout(this);
-            for (int k = 0; k < 2; k++) {
-                final String txt = T.s(sgs[r * 2 + k]);
-                LinearLayout cardS = new LinearLayout(this);
-                cardS.setOrientation(LinearLayout.VERTICAL);
-                cardS.setPadding(dp(14), dp(12), dp(14), dp(12));
-                cardS.setBackground(Theme.ripple(Theme.rect(this, Theme.alpha(Theme.surface, 220), 18, Theme.border, 1)));
-                cardS.addView(new IconView(this, k == 0 ? IconView.SPARK : IconView.CHAT, k == 0 ? Theme.accent2 : Theme.accent),
-                        new LinearLayout.LayoutParams(dp(18), dp(18)));
-                TextView st = Ui.label(this, txt, 13.5f, Theme.text, true);
-                st.setLineSpacing(0, 1.1f);
-                st.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-                LinearLayout.LayoutParams stl = new LinearLayout.LayoutParams(-1, -2);
-                stl.topMargin = dp(8);
-                cardS.addView(st, stl);
-                cardS.setOnClickListener(new View.OnClickListener() {
-                    public void onClick(View v) { input.setText(txt); send(); }
-                });
-                Fx.press(cardS);
-                LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -2, 1);
-                cl.setMargins(dp(4), dp(4), dp(4), dp(4));
-                rowL.addView(cardS, cl);
-                emptyItems.add(cardS);
-            }
-            emptyBox.addView(rowL, new LinearLayout.LayoutParams(-1, -2));
-        }
         FrameLayout.LayoutParams ep = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
         ep.bottomMargin = dp(10);
         mid.addView(emptyBox, ep);
@@ -222,89 +228,83 @@ public class MainActivity extends Activity {
         // input area
         LinearLayout area = new LinearLayout(this);
         area.setOrientation(LinearLayout.VERTICAL);
-        area.setPadding(dp(12), dp(4), dp(12), dp(6));
+        area.setPadding(dp(12), dp(4), dp(12), dp(10));
 
         inputCard = new LinearLayout(this);
-        LinearLayout card = inputCard;
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackground(Theme.rect(this, Theme.surface, 26, Theme.border, 1));
-        card.setElevation(dp(3));
-        card.setPadding(dp(16), dp(8), dp(10), dp(10));
+        inputCard.setOrientation(LinearLayout.VERTICAL);
+        inputCard.setBackground(Theme.rect(this, Theme.surface, 30, Theme.border, 1));
+        inputCard.setPadding(dp(20), dp(8), dp(14), dp(14));
+
+        previewScroll = new HorizontalScrollView(this);
+        previewScroll.setHorizontalScrollBarEnabled(false);
+        previewRow = new LinearLayout(this);
+        previewScroll.addView(previewRow);
+        previewScroll.setVisibility(View.GONE);
+        LinearLayout.LayoutParams pvl = new LinearLayout.LayoutParams(-1, -2);
+        pvl.topMargin = dp(6);
+        inputCard.addView(previewScroll, pvl);
 
         input = new EditText(this);
         input.setHint(T.s("hint"));
         input.setHintTextColor(Theme.text3);
         input.setTextColor(Theme.text);
-        input.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
-        input.setBackground(null);
         input.setTypeface(Fonts.m);
-        input.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            public void onFocusChange(View v, boolean f) {
-                inputCard.setBackground(Theme.rect(MainActivity.this, Theme.surface, 26, f ? Theme.accent : Theme.border, f ? 1.5f : 1));
-            }
-        });
-        input.setMinHeight(dp(44));
+        input.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 17f * Theme.font);
+        input.setBackground(null);
+        input.setMinHeight(dp(56));
         input.setMaxLines(6);
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         input.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        input.setPadding(0, dp(6), 0, dp(6));
+        input.setPadding(0, dp(8), 0, dp(8));
+        input.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            public void onFocusChange(View v, boolean f) { if (f && panelOpen) togglePanel(false); }
+        });
         input.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
             public void onTextChanged(CharSequence s, int a, int b, int c) { }
             public void afterTextChanged(Editable e) { updateSend(); }
         });
-        card.addView(input, new LinearLayout.LayoutParams(-1, -2));
+        inputCard.addView(input, new LinearLayout.LayoutParams(-1, -2));
 
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        FrameLayout plus = new FrameLayout(this);
-        plus.setBackground(Theme.ripple(Theme.circle(Theme.surface2)));
-        IconView pi = new IconView(this, IconView.PLUS, Theme.text2);
-        plus.addView(pi, new FrameLayout.LayoutParams(dp(18), dp(18), Gravity.CENTER));
-        plus.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { attachMenu(); }
-        });
-        row.addView(plus, new LinearLayout.LayoutParams(dp(36), dp(36)));
-
         pillThink = new Pill(IconView.ATOM, T.s("deepthink"));
         pillThink.set(think);
         pillThink.box.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { think = !think; pillThink.set(think); haptic(v); }
         });
-        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(-2, dp(36));
-        pl.setMarginStart(dp(8));
-        row.addView(pillThink.box, pl);
-
+        Fx.press(pillThink.box);
+        row.addView(pillThink.box, new LinearLayout.LayoutParams(-2, dp(42)));
         pillSearch = new Pill(IconView.GLOBE, T.s("search"));
         pillSearch.set(search);
         pillSearch.box.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) { search = !search; pillSearch.set(search); haptic(v); }
         });
-        LinearLayout.LayoutParams pl2 = new LinearLayout.LayoutParams(-2, dp(36));
-        pl2.setMarginStart(dp(8));
-        row.addView(pillSearch.box, pl2);
+        Fx.press(pillSearch.box);
+        LinearLayout.LayoutParams ps = new LinearLayout.LayoutParams(-2, dp(42));
+        ps.setMarginStart(dp(10));
+        row.addView(pillSearch.box, ps);
+        row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
 
-        View sp = new View(this);
-        row.addView(sp, new LinearLayout.LayoutParams(0, 1, 1));
-
-        sendBtn = new FrameLayout(this);
-        sendIcon = new IconView(this, IconView.SEND, Theme.text3);
-        sendBtn.addView(sendIcon, new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER));
-        sendBtn.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { send(); }
+        plusBtn = ringBtn(IconView.PLUS, 42, new View.OnClickListener() {
+            public void onClick(View v) { togglePanel(!panelOpen); }
         });
-        Fx.press(sendBtn);
-        Fx.press(plus);
-        row.addView(sendBtn, new LinearLayout.LayoutParams(dp(38), dp(38)));
-        card.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        area.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        plusIcon = (IconView) plusBtn.getChildAt(0);
+        row.addView(plusBtn);
+        sendBtn = ringBtn(IconView.VOICE, 42, new View.OnClickListener() {
+            public void onClick(View v) { onSendOrVoice(); }
+        });
+        sendIcon = (IconView) sendBtn.getChildAt(0);
+        LinearLayout.LayoutParams sbl = new LinearLayout.LayoutParams(dp(42), dp(42));
+        sbl.setMarginStart(dp(10));
+        row.addView(sendBtn, sbl);
+        inputCard.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        area.addView(inputCard, new LinearLayout.LayoutParams(-1, -2));
 
-        TextView disc = Ui.label(this, T.s("disclaimer"), 11, Theme.text3, false);
-        disc.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-1, -2);
-        dl.topMargin = dp(6);
-        area.addView(disc, dl);
+        buildAttachPanel();
+        area.addView(attachPanel, new LinearLayout.LayoutParams(-1, -2));
+        bottomBar = area;
         main.addView(area, new LinearLayout.LayoutParams(-1, -2));
         updateSend();
 
@@ -321,28 +321,264 @@ public class MainActivity extends Activity {
         Pill(int icon, String label) {
             box = new LinearLayout(MainActivity.this);
             box.setGravity(Gravity.CENTER);
-            box.setPadding(dp(12), 0, dp(14), 0);
-            ic = new IconView(MainActivity.this, icon, Theme.text2);
-            box.addView(ic, new LinearLayout.LayoutParams(dp(18), dp(18)));
-            tx = Ui.label(MainActivity.this, label, 13.5f, Theme.text2, false);
+            box.setPadding(dp(16), 0, dp(18), 0);
+            ic = new IconView(MainActivity.this, icon, Theme.text);
+            box.addView(ic, new LinearLayout.LayoutParams(dp(21), dp(21)));
+            tx = Ui.label(MainActivity.this, label, 17, Theme.text, true);
             tx.setSingleLine(true);
             LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2);
-            l.setMarginStart(dp(6));
+            l.setMarginStart(dp(8));
             box.addView(tx, l);
         }
 
         void set(boolean v) {
             on = v;
-            int c = v ? Theme.accent : Theme.text2;
-            box.setBackground(Theme.ripple(Theme.rect(MainActivity.this, v ? Theme.accentSoft : 0x00000000, 18,
-                    v ? Theme.accent : Theme.border, 1)));
+            int c = v ? 0xFF4D8DFF : Theme.text;
+            box.setBackground(Theme.ripple(Theme.rect(MainActivity.this, v ? 0x2E4D6BFE : 0x00000000, 21,
+                    v ? 0x664D6BFE : Theme.alpha(Theme.text, 130), 1.3f)));
             ic.setColor(c);
             tx.setTextColor(c);
         }
     }
 
+    // ------------------------------------------------------------------ attach panel (gallery + camera/album/file)
+    private void buildAttachPanel() {
+        attachPanel = new LinearLayout(this);
+        attachPanel.setOrientation(LinearLayout.VERTICAL);
+        attachPanel.setVisibility(View.GONE);
+
+        HorizontalScrollView hs = new HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        galleryRow = new LinearLayout(this);
+        galleryRow.setPadding(0, dp(6), 0, dp(6));
+        hs.addView(galleryRow);
+        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(-1, dp(138));
+        gl.topMargin = dp(14);
+        attachPanel.addView(hs, gl);
+
+        LinearLayout btns = new LinearLayout(this);
+        int[] icons = {IconView.CAMERA, IconView.IMAGE, IconView.CLIP};
+        String[] labels = {T.s("camera"), T.s("album"), T.s("file")};
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            LinearLayout b = new LinearLayout(this);
+            b.setOrientation(LinearLayout.VERTICAL);
+            b.setGravity(Gravity.CENTER);
+            b.setBackground(Theme.ripple(Theme.rect(this, Theme.surface2, 28)));
+            b.addView(new IconView(this, icons[i], Theme.text), new LinearLayout.LayoutParams(dp(32), dp(32)));
+            TextView t = Ui.label(this, labels[i], 22, Theme.text, true);
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-2, -2);
+            tl.topMargin = dp(10);
+            b.addView(t, tl);
+            b.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) { attachAction(idx); }
+            });
+            Fx.press(b);
+            LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(0, dp(118), 1);
+            bl.setMargins(dp(5), 0, dp(5), 0);
+            btns.addView(b, bl);
+        }
+        LinearLayout.LayoutParams btl = new LinearLayout.LayoutParams(-1, -2);
+        btl.topMargin = dp(8);
+        attachPanel.addView(btns, btl);
+    }
+
+    private void togglePanel(boolean open) {
+        panelOpen = open;
+        plusIcon.setType(open ? IconView.CLOSE : IconView.PLUS);
+        if (open) {
+            hideKeyboard();
+            input.clearFocus();
+            attachPanel.setVisibility(View.VISIBLE);
+            Fx.enter(attachPanel, 0);
+            loadGallery();
+        } else {
+            attachPanel.setVisibility(View.GONE);
+        }
+    }
+
+    private void attachAction(int idx) {
+        if (idx == 0) {
+            Intent it = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            try { startActivityForResult(it, REQ_CAMERA); } catch (Exception e) { Toast.makeText(this, "—", Toast.LENGTH_SHORT).show(); }
+        } else if (idx == 1) {
+            Intent it = new Intent(Intent.ACTION_GET_CONTENT);
+            it.setType("image/*");
+            it.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            try { startActivityForResult(it, REQ_ALBUM); } catch (Exception e) { Toast.makeText(this, "—", Toast.LENGTH_SHORT).show(); }
+        } else {
+            Intent it = new Intent(Intent.ACTION_GET_CONTENT);
+            it.setType("*/*");
+            it.addCategory(Intent.CATEGORY_OPENABLE);
+            try { startActivityForResult(it, REQ_FILE); } catch (Exception e) { Toast.makeText(this, "—", Toast.LENGTH_SHORT).show(); }
+        }
+    }
+
+    private boolean hasGalleryPerm() {
+        String p = Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_IMAGES : Manifest.permission.READ_EXTERNAL_STORAGE;
+        return checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void loadGallery() {
+        galleryRow.removeAllViews();
+        if (!hasGalleryPerm()) {
+            String p = Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_IMAGES : Manifest.permission.READ_EXTERNAL_STORAGE;
+            requestPermissions(new String[]{p}, REQ_PERM);
+            return;
+        }
+        new Thread(new Runnable() {
+            public void run() {
+                final List<Object[]> items = new ArrayList<Object[]>();
+                try {
+                    Cursor c = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            new String[]{MediaStore.Images.Media._ID}, null, null, MediaStore.Images.Media.DATE_ADDED + " DESC");
+                    if (c != null) {
+                        while (c.moveToNext() && items.size() < 14) {
+                            long id = c.getLong(0);
+                            Uri u = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, String.valueOf(id));
+                            Bitmap bm = decode(u, 260);
+                            if (bm != null) items.add(new Object[]{u, bm});
+                        }
+                        c.close();
+                    }
+                } catch (Exception ignored) { }
+                ui.post(new Runnable() {
+                    public void run() {
+                        for (Object[] it : items) galleryRow.addView(thumb((Uri) it[0], (Bitmap) it[1]));
+                    }
+                });
+            }
+        }).start();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(req, perms, res);
+        if (req == REQ_PERM) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) loadGallery();
+            else Toast.makeText(this, T.s("perm_needed"), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private View thumb(final Uri uri, final Bitmap bm) {
+        FrameLayout f = new FrameLayout(this);
+        ImageView iv = new ImageView(this);
+        iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        iv.setImageBitmap(bm);
+        iv.setClipToOutline(true);
+        iv.setBackground(Theme.rect(this, Theme.surface2, 22));
+        iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            public void getOutline(View v, android.graphics.Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(22)); }
+        });
+        f.addView(iv, new FrameLayout.LayoutParams(-1, -1));
+        final View ring = new View(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(0x33000000);
+        g.setStroke(dp(2.2f), 0xFFFFFFFF);
+        ring.setBackground(g);
+        FrameLayout.LayoutParams rl = new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.TOP | Gravity.START);
+        rl.setMargins(dp(10), dp(10), dp(10), dp(10));
+        f.addView(ring, rl);
+        f.setTag(Boolean.FALSE);
+        f.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                boolean on = !Boolean.TRUE.equals(v.getTag());
+                v.setTag(on);
+                GradientDrawable gg = new GradientDrawable();
+                gg.setShape(GradientDrawable.OVAL);
+                gg.setColor(on ? Theme.accent : 0x33000000);
+                gg.setStroke(dp(2.2f), 0xFFFFFFFF);
+                ring.setBackground(gg);
+                Fx.pop(ring);
+                if (on) addAttachment(uri, bm); else removeAttachment(uri);
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(124), -1);
+        lp.setMarginEnd(dp(10));
+        f.setLayoutParams(lp);
+        return f;
+    }
+
+    private Bitmap decode(Uri uri, int max) {
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            InputStream in = getContentResolver().openInputStream(uri);
+            BitmapFactory.decodeStream(in, null, o);
+            in.close();
+            int sample = 1;
+            while (o.outWidth / sample > max * 2 || o.outHeight / sample > max * 2) sample *= 2;
+            o = new BitmapFactory.Options();
+            o.inSampleSize = sample;
+            in = getContentResolver().openInputStream(uri);
+            Bitmap b = BitmapFactory.decodeStream(in, null, o);
+            in.close();
+            return b;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String toB64(Bitmap b) {
+        int max = 1024;
+        float k = Math.min(1f, max / (float) Math.max(b.getWidth(), b.getHeight()));
+        Bitmap s = k < 1f ? Bitmap.createScaledBitmap(b, Math.round(b.getWidth() * k), Math.round(b.getHeight() * k), true) : b;
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        s.compress(Bitmap.CompressFormat.JPEG, 82, bo);
+        return Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP);
+    }
+
+    private void addAttachment(final Uri uri, final Bitmap thumbBm) {
+        final Att a = new Att();
+        a.uri = uri;
+        a.thumb = thumbBm;
+        atts.add(a);
+        refreshPreview();
+        new Thread(new Runnable() {
+            public void run() {
+                Bitmap full = uri != null ? decode(uri, 1024) : thumbBm;
+                a.b64 = toB64(full == null ? thumbBm : full);
+            }
+        }).start();
+    }
+
+    private void removeAttachment(Uri uri) {
+        for (int i = 0; i < atts.size(); i++) if (atts.get(i).uri != null && atts.get(i).uri.equals(uri)) { atts.remove(i); break; }
+        refreshPreview();
+    }
+
+    private void refreshPreview() {
+        previewRow.removeAllViews();
+        previewScroll.setVisibility(atts.isEmpty() ? View.GONE : View.VISIBLE);
+        for (final Att a : atts) {
+            FrameLayout f = new FrameLayout(this);
+            ImageView iv = new ImageView(this);
+            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setImageBitmap(a.thumb);
+            iv.setBackground(Theme.rect(this, Theme.surface2, 14));
+            iv.setClipToOutline(true);
+            iv.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                public void getOutline(View v, android.graphics.Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(14)); }
+            });
+            f.addView(iv, new FrameLayout.LayoutParams(dp(60), dp(60)));
+            TextView x = Ui.label(this, "✕", 12, 0xFFFFFFFF, true);
+            x.setGravity(Gravity.CENTER);
+            x.setBackground(Theme.circle(0xCC000000));
+            x.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) { atts.remove(a); refreshPreview(); }
+            });
+            f.addView(x, new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.TOP | Gravity.END));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+            lp.setMarginEnd(dp(8));
+            previewRow.addView(f, lp);
+        }
+        updateSend();
+    }
+
+    // ------------------------------------------------------------------ drawer (search + history, as in the reference)
     private void buildDrawer() {
-        int w = Math.min(dp(320), (int) (getResources().getDisplayMetrics().widthPixels * 0.84f));
+        int w = (int) (getResources().getDisplayMetrics().widthPixels * 0.86f);
         scrim = new View(this);
         scrim.setBackgroundColor(Theme.scrim);
         scrim.setAlpha(0);
@@ -358,39 +594,34 @@ public class MainActivity extends Activity {
         drawer.setClickable(true);
         drawer.setElevation(dp(16));
         drawer.setVisibility(View.GONE);
-        drawer.setPadding(dp(16), dp(14), dp(16), dp(10));
-        FrameLayout.LayoutParams dlp = new FrameLayout.LayoutParams(w, -1, Gravity.START);
-        root.addView(drawer, dlp);
+        drawer.setPadding(dp(16), dp(10), dp(16), dp(10));
+        root.addView(drawer, new FrameLayout.LayoutParams(w, -1, Gravity.START));
         drawer.setTranslationX(closedX(w));
 
-        LinearLayout head = new LinearLayout(this);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(new IconView(this, IconView.LOGO, Theme.accent), new LinearLayout.LayoutParams(dp(32), dp(32)));
-        TextView nm = Ui.label(this, T.s("app"), 21, Theme.text, true);
-        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(0, -2, 1);
-        nl.setMarginStart(dp(10));
-        head.addView(nm, nl);
-        head.addView(Ui.iconBtn(this, IconView.CLOSE, 40, 22, Theme.text2, new View.OnClickListener() {
-            public void onClick(View v) { closeDrawer(); }
-        }));
-        drawer.addView(head, new LinearLayout.LayoutParams(-1, dp(48)));
-
-        LinearLayout nb = new LinearLayout(this);
-        nb.setGravity(Gravity.CENTER);
-        nb.setBackground(Theme.ripple(Theme.gradRect(this, 16)));
-        Fx.press(nb);
-        nb.addView(new IconView(this, IconView.NEWCHAT, 0xFFFFFFFF), new LinearLayout.LayoutParams(dp(20), dp(20)));
-        TextView nt = Ui.label(this, T.s("new_chat"), 15.5f, 0xFFFFFFFF, true);
-        LinearLayout.LayoutParams ntl = new LinearLayout.LayoutParams(-2, -2);
-        ntl.setMarginStart(dp(8));
-        nb.addView(nt, ntl);
-        nb.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { newChat(); }
+        // search pill
+        LinearLayout sb = new LinearLayout(this);
+        sb.setGravity(Gravity.CENTER_VERTICAL);
+        sb.setBackground(Theme.rect(this, Theme.field, 28));
+        sb.setPadding(dp(18), 0, dp(18), 0);
+        sb.addView(new IconView(this, IconView.SEARCH, Theme.text2), new LinearLayout.LayoutParams(dp(24), dp(24)));
+        searchBox = new EditText(this);
+        searchBox.setHint(T.s("search_chats"));
+        searchBox.setHintTextColor(Theme.text2);
+        searchBox.setTextColor(Theme.text);
+        searchBox.setTypeface(Fonts.m);
+        searchBox.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f * Theme.font);
+        searchBox.setBackground(null);
+        searchBox.setSingleLine(true);
+        searchBox.setPadding(dp(12), 0, dp(4), 0);
+        searchBox.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            public void afterTextChanged(Editable e) { refreshHistory(); }
         });
-        LinearLayout.LayoutParams nbl = new LinearLayout.LayoutParams(-1, dp(48));
-        nbl.topMargin = dp(14);
-        nbl.bottomMargin = dp(8);
-        drawer.addView(nb, nbl);
+        sb.addView(searchBox, new LinearLayout.LayoutParams(0, -1, 1));
+        LinearLayout.LayoutParams sbl = new LinearLayout.LayoutParams(-1, dp(56));
+        sbl.topMargin = dp(4);
+        drawer.addView(sb, sbl);
 
         ScrollView hs = new ScrollView(this);
         hs.setVerticalScrollBarEnabled(false);
@@ -399,64 +630,58 @@ public class MainActivity extends Activity {
         hs.addView(histBox, new FrameLayout.LayoutParams(-1, -2));
         drawer.addView(hs, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        View div = new View(this);
-        div.setBackgroundColor(Theme.border);
-        LinearLayout.LayoutParams dv = new LinearLayout.LayoutParams(-1, 1);
-        dv.topMargin = dp(6);
-        drawer.addView(div, dv);
-
+        // profile row (avatar, name, more)
         LinearLayout prof = new LinearLayout(this);
         prof.setGravity(Gravity.CENTER_VERTICAL);
-        prof.setPadding(dp(4), dp(8), dp(4), dp(8));
-        prof.setBackground(Theme.rippleRect(this, 0x00000000, 14));
-        TextView av = Ui.label(this, "", 16, 0xFFFFFFFF, true);
-        av.setGravity(Gravity.CENTER);
-        av.setBackground(Theme.gradCircle());
-        String n = userName();
-        av.setText(n.substring(0, 1).toUpperCase());
-        prof.addView(av, new LinearLayout.LayoutParams(dp(38), dp(38)));
-        LinearLayout pcol = new LinearLayout(this);
-        pcol.setOrientation(LinearLayout.VERTICAL);
-        profileName = Ui.label(this, n, 16, Theme.text, true);
+        prof.setPadding(dp(4), dp(10), dp(4), dp(10));
+        prof.addView(new IconView(this, IconView.AVATAR, 0xFFFFFFFF), new LinearLayout.LayoutParams(dp(46), dp(46)));
+        profileName = Ui.label(this, userName(), 18, Theme.text, true);
         profileName.setSingleLine(true);
-        pcol.addView(profileName);
-        String em = Store.get("user_email", "");
-        if (!em.isEmpty()) {
-            TextView et = Ui.label(this, em, 12.5f, Theme.text3, false);
-            et.setSingleLine(true);
-            et.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            pcol.addView(et);
-        }
         LinearLayout.LayoutParams pn = new LinearLayout.LayoutParams(0, -2, 1);
-        pn.setMarginStart(dp(12));
-        prof.addView(pcol, pn);
-        prof.addView(new IconView(this, IconView.SETTINGS, Theme.text2), new LinearLayout.LayoutParams(dp(24), dp(24)));
+        pn.setMarginStart(dp(14));
+        prof.addView(profileName, pn);
+        FrameLayout more = new FrameLayout(this);
+        more.addView(new IconView(this, IconView.MORE, Theme.text2), new FrameLayout.LayoutParams(dp(26), dp(26), Gravity.CENTER));
+        more.setBackground(Theme.ripple(Theme.circle(0x00000000)));
+        prof.addView(more, new LinearLayout.LayoutParams(dp(46), dp(46)));
         prof.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 closeDrawer();
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
+        Fx.press(prof);
+        delCount = Ui.label(this, "", 17, Theme.danger, true);
+        delCount.setGravity(Gravity.CENTER);
+        delCount.setVisibility(View.GONE);
+        delCount.setBackground(Theme.rippleRect(this, Theme.field, 22));
+        delCount.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { deleteSelected(); }
+        });
         drawer.addView(prof, new LinearLayout.LayoutParams(-1, -2));
+        drawer.addView(delCount, new LinearLayout.LayoutParams(-1, dp(50)));
     }
 
     private float closedX(int w) { return Theme.rtl ? w : -w; }
 
     private void openDrawer() {
         refreshHistory();
-        for (int i = 0; i < histBox.getChildCount() && i < 14; i++) Fx.enter(histBox.getChildAt(i), 60 + i * 35L);
+        for (int i = 0; i < histBox.getChildCount() && i < 14; i++) Fx.enter(histBox.getChildAt(i), 40 + i * 28L);
         drawerOpen = true;
         scrim.setVisibility(View.VISIBLE);
         drawer.setVisibility(View.VISIBLE);
         scrim.animate().alpha(1f).setDuration(220).start();
-        drawer.animate().translationX(0).setDuration(240).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        drawer.animate().translationX(0).setDuration(260).setInterpolator(new DecelerateInterpolator(1.6f)).start();
+        main.animate().translationX((Theme.rtl ? -1 : 1) * dp(26)).setDuration(260).start();
     }
 
     private void closeDrawer() {
         if (!drawerOpen) return;
         drawerOpen = false;
+        if (selectMode) exitSelect();
         scrim.animate().alpha(0f).setDuration(200).start();
-        drawer.animate().translationX(closedX(drawer.getWidth())).setDuration(210)
+        main.animate().translationX(0).setDuration(220).start();
+        drawer.animate().translationX(closedX(drawer.getWidth())).setDuration(220)
                 .setInterpolator(new DecelerateInterpolator()).withEndAction(new Runnable() {
                     public void run() {
                         if (!drawerOpen) { drawer.setVisibility(View.GONE); scrim.setVisibility(View.GONE); }
@@ -466,13 +691,25 @@ public class MainActivity extends Activity {
 
     private void refreshHistory() {
         histBox.removeAllViews();
+        String q = searchBox == null ? "" : searchBox.getText().toString().trim().toLowerCase();
         List<Store.Conv> all = new ArrayList<Store.Conv>();
-        for (Store.Conv c : Store.convs) if (!c.msgs.isEmpty()) all.add(c);
+        for (Store.Conv c : Store.convs) {
+            if (c.msgs.isEmpty()) continue;
+            if (!q.isEmpty()) {
+                boolean hit = c.title.toLowerCase().contains(q);
+                for (int i = 0; i < c.msgs.size() && !hit; i++) hit = c.msgs.get(i).content.toLowerCase().contains(q);
+                if (!hit) continue;
+            }
+            all.add(c);
+        }
         Collections.sort(all, new Comparator<Store.Conv>() {
-            public int compare(Store.Conv a, Store.Conv b) { return a.ts == b.ts ? 0 : (a.ts < b.ts ? 1 : -1); }
+            public int compare(Store.Conv a, Store.Conv b) {
+                if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+                return a.ts == b.ts ? 0 : (a.ts < b.ts ? 1 : -1);
+            }
         });
         if (all.isEmpty()) {
-            TextView e = Ui.label(this, T.s("no_history"), 14, Theme.text3, false);
+            TextView e = Ui.label(this, T.s("no_history"), 15, Theme.text3, false);
             e.setGravity(Gravity.CENTER);
             e.setPadding(0, dp(40), 0, 0);
             histBox.addView(e, new LinearLayout.LayoutParams(-1, -2));
@@ -480,48 +717,153 @@ public class MainActivity extends Activity {
         }
         long now = System.currentTimeMillis();
         String lastGroup = "";
+        boolean firstHeader = true;
         for (final Store.Conv c : all) {
             long age = now - c.ts;
-            String g = age < 86400000L ? T.s("today") : age < 7 * 86400000L ? T.s("week") : T.s("earlier");
+            String g = c.pinned ? T.s("pinned") : age < 86400000L ? T.s("today") : age < 7 * 86400000L ? T.s("week") : age < 30 * 86400000L ? T.s("month") : T.s("earlier");
             if (!g.equals(lastGroup)) {
                 lastGroup = g;
-                TextView gh = Ui.label(this, g, 12.5f, Theme.text3, true);
-                gh.setPadding(dp(8), dp(14), dp(8), dp(6));
+                LinearLayout gh = new LinearLayout(this);
+                gh.setGravity(Gravity.CENTER_VERTICAL);
+                gh.setPadding(dp(8), dp(18), dp(8), dp(4));
+                TextView gt = Ui.label(this, g, 14, Theme.text2, true);
+                gh.addView(gt, new LinearLayout.LayoutParams(0, -2, 1));
+                if (firstHeader) {
+                    firstHeader = false;
+                    FrameLayout ms = Ui.iconBtn(this, IconView.MULTI, 36, 22, Theme.text2, new View.OnClickListener() {
+                        public void onClick(View v) { enterSelect(null); }
+                    });
+                    gh.addView(ms);
+                } else {
+                    gh.addView(new View(this), new LinearLayout.LayoutParams(dp(36), dp(1)));
+                }
                 histBox.addView(gh, new LinearLayout.LayoutParams(-1, -2));
             }
-            boolean sel = c == cur;
-            TextView it = Ui.label(this, c.title.isEmpty() ? T.s("new_chat") : c.title, 15, Theme.text, false);
-            it.setSingleLine(true);
-            it.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            it.setGravity(Gravity.CENTER_VERTICAL);
-            it.setPadding(dp(12), 0, dp(12), 0);
-            it.setBackground(Theme.rippleRect(this, sel ? Theme.surface2 : 0x00000000, 12));
-            it.setOnClickListener(new View.OnClickListener() {
-                public void onClick(View v) { openConv(c); }
-            });
-            it.setOnLongClickListener(new View.OnLongClickListener() {
-                public boolean onLongClick(View v) { convMenu(c); return true; }
-            });
-            histBox.addView(it, new LinearLayout.LayoutParams(-1, dp(44)));
+            histBox.addView(convRow(c), new LinearLayout.LayoutParams(-1, dp(56)));
         }
     }
 
-    private void convMenu(final Store.Conv c) {
-        Ui.choose(this, c.title, new String[]{T.s("rename"), T.s("share"), T.s("delete")}, -1, new Ui.Idx() {
-            public void on(int i) {
-                if (i == 0) {
-                    Ui.edit(MainActivity.this, T.s("rename"), c.title, "", false, false, new Ui.Str() {
-                        public void on(String s) { if (!s.isEmpty()) { c.title = s; Store.save(); refreshHistory(); if (c == cur) Fx.typeInto(title, s, 34); } }
-                    });
-                } else if (i == 1) {
-                    shareText(transcript(c));
-                } else {
-                    Store.convs.remove(c);
-                    Store.save();
-                    if (c == cur) newChat(); else refreshHistory();
-                }
+    private View convRow(final Store.Conv c) {
+        final boolean sel = selected.contains(c);
+        LinearLayout it = new LinearLayout(this);
+        it.setGravity(Gravity.CENTER_VERTICAL);
+        it.setPadding(dp(8), 0, dp(8), 0);
+        it.setBackground(Theme.rippleRect(this, sel ? Theme.surface2 : (c == cur && !selectMode ? Theme.alpha(Theme.surface2, 120) : 0x00000000), 16));
+        if (selectMode) {
+            GradientDrawable g = new GradientDrawable();
+            g.setShape(GradientDrawable.OVAL);
+            g.setColor(sel ? Theme.accent : 0x00000000);
+            g.setStroke(dp(2), sel ? Theme.accent : Theme.text3);
+            View ck = new View(this);
+            ck.setBackground(g);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(dp(24), dp(24));
+            cl.setMarginEnd(dp(12));
+            it.addView(ck, cl);
+        }
+        TextView t = Ui.label(this, c.title.isEmpty() ? T.s("new_chat") : c.title, 17, Theme.text, true);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+        it.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+        if (c.pinned) it.addView(new IconView(this, IconView.PIN, Theme.text3), new LinearLayout.LayoutParams(dp(18), dp(18)));
+        it.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (selectMode) { if (selected.contains(c)) selected.remove(c); else selected.add(c); updateSelectBar(); refreshHistory(); }
+                else openConv(c);
             }
         });
+        it.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) { if (!selectMode) convMenu(v, c); return true; }
+        });
+        return it;
+    }
+
+    /** Context menu like the reference: rename / pin / multi-select / delete. */
+    private void convMenu(final View anchor, final Store.Conv c) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackground(Theme.rect(this, Theme.surface2, 26));
+        box.setLayoutDirection(Theme.rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        final PopupWindow pw = new PopupWindow(box, (int) (getResources().getDisplayMetrics().widthPixels * 0.62f), -2, true);
+        pw.setElevation(dp(14));
+        pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+        String[] labels = {T.s("rename"), c.pinned ? T.s("unpin") : T.s("pin"), T.s("multi"), T.s("delete")};
+        int[] icons = {IconView.EDIT, IconView.PIN, IconView.MULTI, IconView.TRASH};
+        for (int i = 0; i < 4; i++) {
+            final int idx = i;
+            LinearLayout r = new LinearLayout(this);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setPadding(dp(22), 0, dp(22), 0);
+            r.setBackground(Theme.rippleRect(this, 0x00000000, 24));
+            int col = i == 3 ? 0xFFFF5A5F : Theme.text;
+            TextView t = Ui.label(this, labels[i], 18, col, true);
+            r.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+            r.addView(new IconView(this, icons[i], col), new LinearLayout.LayoutParams(dp(24), dp(24)));
+            r.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    pw.dismiss();
+                    if (idx == 0) {
+                        Ui.edit(MainActivity.this, T.s("rename"), c.title, "", false, false, new Ui.Str() {
+                            public void on(String s) { if (!s.isEmpty()) { c.title = s; Store.save(); refreshHistory(); if (c == cur) Fx.typeInto(title, s, 34); } }
+                        });
+                    } else if (idx == 1) {
+                        c.pinned = !c.pinned;
+                        Store.save();
+                        refreshHistory();
+                    } else if (idx == 2) {
+                        enterSelect(c);
+                    } else {
+                        Store.convs.remove(c);
+                        Store.save();
+                        if (c == cur) newChat(); else refreshHistory();
+                    }
+                }
+            });
+            box.addView(r, new LinearLayout.LayoutParams(-1, dp(62)));
+            if (i < 3) {
+                View d = new View(this);
+                d.setBackgroundColor(Theme.alpha(0xFFFFFFFF, 28));
+                LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-1, 1);
+                dl.setMargins(dp(8), 0, dp(8), 0);
+                box.addView(d, dl);
+            }
+        }
+        int[] loc = new int[2];
+        anchor.getLocationOnScreen(loc);
+        int x = Theme.rtl ? getResources().getDisplayMetrics().widthPixels - pw.getWidth() - dp(24) : dp(24);
+        pw.showAtLocation(root, Gravity.TOP | Gravity.START, x, loc[1] + anchor.getHeight() + dp(2));
+        box.setAlpha(0f);
+        box.setScaleY(0.85f);
+        box.animate().alpha(1f).scaleY(1f).setDuration(160).start();
+    }
+
+    private void enterSelect(Store.Conv first) {
+        selectMode = true;
+        selected.clear();
+        if (first != null) selected.add(first);
+        updateSelectBar();
+        refreshHistory();
+    }
+
+    private void exitSelect() {
+        selectMode = false;
+        selected.clear();
+        updateSelectBar();
+        refreshHistory();
+    }
+
+    private void updateSelectBar() {
+        delCount.setVisibility(selectMode ? View.VISIBLE : View.GONE);
+        delCount.setText(T.s("delete") + " (" + selected.size() + ")");
+    }
+
+    private void deleteSelected() {
+        if (selected.isEmpty()) { exitSelect(); return; }
+        boolean curGone = selected.contains(cur);
+        Store.convs.removeAll(selected);
+        Store.save();
+        exitSelect();
+        if (curGone) newChat();
     }
 
     // ------------------------------------------------------------------ conversation handling
@@ -539,12 +881,11 @@ public class MainActivity extends Activity {
         Store.put("cur", cur.id);
         showConv();
         closeDrawer();
-        input.requestFocus();
     }
 
     private void showConv() {
         list.removeAllViews();
-        Fx.typeInto(title, cur.title.isEmpty() ? T.s("new_chat") : cur.title, 34);
+        title.setText(cur.title);
         int lastAi = -1;
         for (int i = 0; i < cur.msgs.size(); i++) if (cur.msgs.get(i).role.equals("assistant")) lastAi = i;
         for (int i = 0; i < cur.msgs.size(); i++) {
@@ -553,28 +894,36 @@ public class MainActivity extends Activity {
             else { AiRow r = new AiRow(m, true, i == lastAi); list.addView(r.root); }
         }
         emptyBox.setVisibility(cur.msgs.isEmpty() ? View.VISIBLE : View.GONE);
-        if (cur.msgs.isEmpty()) for (int i = 0; i < emptyItems.size(); i++) Fx.enter(emptyItems.get(i), 80L + i * 70L);
+        if (cur.msgs.isEmpty()) for (int i = 0; i < emptyItems.size(); i++) Fx.enter(emptyItems.get(i), 80L + i * 90L);
         scrollToEnd(false);
     }
 
     private void addUserRow(final Store.Msg m) {
         emptyBox.setVisibility(View.GONE);
         LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
         wrap.setGravity(Gravity.END);
-        TextView t = new TextView(this);
-        t.setText(m.content);
-        t.setTextColor(Theme.text);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f * Theme.font);
-        t.setLineSpacing(0, 1.2f);
-        t.setTypeface(Fonts.m);
-        t.setTextIsSelectable(true);
-        t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-        t.setPadding(dp(16), dp(11), dp(16), dp(11));
-        t.setBackground(Theme.rect(this, Theme.userBubble, 20, Theme.border, 1));
-        t.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.82f));
-        wrap.addView(t, new LinearLayout.LayoutParams(-2, -2));
+        if (m.imgCount > 0) {
+            TextView ic = Ui.label(this, "🖼 " + m.imgCount + " " + T.s("attached"), 13, Theme.text2, true);
+            ic.setPadding(dp(8), 0, dp(8), dp(4));
+            wrap.addView(ic);
+        }
+        if (!m.content.isEmpty()) {
+            TextView t = new TextView(this);
+            t.setText(m.content);
+            t.setTextColor(Theme.text);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16f * Theme.font);
+            t.setLineSpacing(0, 1.2f);
+            t.setTypeface(Fonts.m);
+            t.setTextIsSelectable(true);
+            t.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            t.setPadding(dp(18), dp(13), dp(18), dp(13));
+            t.setBackground(Theme.rect(this, Theme.userBubble, 24));
+            t.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.8f));
+            wrap.addView(t, new LinearLayout.LayoutParams(-2, -2));
+        }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.topMargin = dp(14);
+        lp.topMargin = dp(16);
         lp.bottomMargin = dp(4);
         wrap.setAlpha(0f);
         wrap.setTranslationY(dp(10));
@@ -582,22 +931,26 @@ public class MainActivity extends Activity {
         wrap.animate().alpha(1f).translationY(0).setDuration(380).setInterpolator(new android.view.animation.OvershootInterpolator(1.1f)).start();
     }
 
-    // ------------------------------------------------------------------ sending
+    // ------------------------------------------------------------------ sending / voice
     private void updateSend() {
-        boolean has = input != null && input.getText().toString().trim().length() > 0;
-        int st = streaming ? 2 : (has ? 1 : 0);
-        if (st != sendState) {
-            if (sendState != -1) Fx.pop(sendBtn);
-            sendState = st;
-        }
+        boolean has = input != null && (input.getText().toString().trim().length() > 0 || !atts.isEmpty());
+        if (sendBtn == null) return;
         if (streaming) {
-            sendBtn.setBackground(Theme.ripple(Theme.gradCircle()));
+            sendBtn.setBackground(Theme.ripple(Theme.circle(Theme.accent)));
             sendIcon.setType(IconView.STOP);
             sendIcon.setColor(0xFFFFFFFF);
-        } else {
-            sendBtn.setBackground(Theme.ripple(has ? Theme.gradCircle() : Theme.circle(Theme.surface2)));
+        } else if (has) {
+            sendBtn.setBackground(Theme.ripple(Theme.circle(Theme.accent)));
             sendIcon.setType(IconView.SEND);
-            sendIcon.setColor(has ? 0xFFFFFFFF : Theme.text3);
+            sendIcon.setColor(0xFFFFFFFF);
+        } else {
+            GradientDrawable g = new GradientDrawable();
+            g.setShape(GradientDrawable.OVAL);
+            g.setColor(0x00000000);
+            g.setStroke(dp(1.6f), Theme.text);
+            sendBtn.setBackground(Theme.ripple(g));
+            sendIcon.setType(IconView.VOICE);
+            sendIcon.setColor(Theme.text);
         }
     }
 
@@ -605,18 +958,33 @@ public class MainActivity extends Activity {
         if (Store.bool("haptic", true)) v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
     }
 
+    private void onSendOrVoice() {
+        boolean has = input.getText().toString().trim().length() > 0 || !atts.isEmpty();
+        if (streaming || has) { send(); return; }
+        Intent it = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        it.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en".equals(Store.get("voice_lang", "ar")) ? "en-US" : "ar-SA");
+        try { startActivityForResult(it, REQ_VOICE); }
+        catch (Exception e) { Toast.makeText(this, T.s("voice_fail"), Toast.LENGTH_SHORT).show(); }
+    }
+
     private void send() {
         if (streaming) { stopGen(); return; }
         String q = input.getText().toString().trim();
-        if (q.isEmpty()) return;
+        if (q.isEmpty() && atts.isEmpty()) return;
         haptic(sendBtn);
+        if (panelOpen) togglePanel(false);
         input.setText("");
         Store.Msg u = new Store.Msg();
         u.role = "user";
         u.content = q;
+        for (Att a : atts) if (a.b64 != null) u.images.add(a.b64);
+        u.imgCount = atts.size();
+        atts.clear();
+        refreshPreview();
         cur.msgs.add(u);
         if (cur.title.isEmpty()) {
-            String t = q.replace('\n', ' ');
+            String t = (q.isEmpty() ? "🖼" : q).replace('\n', ' ');
             cur.title = t.length() > 40 ? t.substring(0, 40) : t;
             Fx.typeInto(title, cur.title, 34);
         }
@@ -625,6 +993,33 @@ public class MainActivity extends Activity {
         Store.put("cur", cur.id);
         addUserRow(u);
         startAnswer();
+    }
+
+    private void toggleSound() {
+        boolean on = !Store.bool("sound", false);
+        Store.putBool("sound", on);
+        soundIcon.setType(on ? IconView.SOUND_ON : IconView.SOUND_OFF);
+        if (on) ensureTts(); else if (tts != null) tts.stop();
+        Toast.makeText(this, on ? T.s("s_sound") + " ✓" : T.s("s_sound") + " ✕", Toast.LENGTH_SHORT).show();
+    }
+
+    private void ensureTts() {
+        if (tts != null) return;
+        tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            public void onInit(int status) {
+                ttsReady = status == TextToSpeech.SUCCESS;
+                if (ttsReady) tts.setLanguage(Theme.rtl ? new Locale("ar") : Locale.US);
+            }
+        });
+    }
+
+    private void speak(String text) {
+        if (!Store.bool("sound", false)) return;
+        ensureTts();
+        if (!ttsReady) return;
+        String clean = text.replace("```", " ").replace("*", "").replace("#", "");
+        if (clean.length() > 3500) clean = clean.substring(0, 3500);
+        tts.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "karrar");
     }
 
     private void startAnswer() {
@@ -695,7 +1090,6 @@ public class MainActivity extends Activity {
                     });
                 }
             }).start();
-            // allow cancelling during the search phase
             handle = new Api.Handle();
         } else {
             handle = Api.chat(hist, useThink, "", cb, ui);
@@ -716,12 +1110,13 @@ public class MainActivity extends Activity {
         row.refresh();
         updateSend();
         scrollToEnd(true);
+        speak(ai.content);
     }
 
     private void stopGen() {
         if (handle != null) handle.cancel();
+        if (tts != null) tts.stop();
         if (liveRow != null) {
-            // finish immediately; late callbacks are ignored through row.finished
             for (int i = cur.msgs.size() - 1; i >= 0; i--) {
                 Store.Msg m = cur.msgs.get(i);
                 if (m.role.equals("assistant")) {
@@ -764,41 +1159,35 @@ public class MainActivity extends Activity {
         return scroll.getScrollY() + scroll.getHeight() >= c.getHeight() - dp(140);
     }
 
-    // ------------------------------------------------------------------ attach / share
-    private void attachMenu() {
-        Ui.choose(this, T.s("app"), new String[]{T.s("attach_file"), T.s("paste")}, -1, new Ui.Idx() {
-            public void on(int i) {
-                if (i == 0) {
-                    Intent it = new Intent(Intent.ACTION_GET_CONTENT);
-                    it.setType("*/*");
-                    it.addCategory(Intent.CATEGORY_OPENABLE);
-                    try { startActivityForResult(it, 77); } catch (Exception e) { Toast.makeText(MainActivity.this, "—", Toast.LENGTH_SHORT).show(); }
-                } else {
-                    ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cm.hasPrimaryClip() && cm.getPrimaryClip().getItemCount() > 0) {
-                        CharSequence t = cm.getPrimaryClip().getItemAt(0).coerceToText(MainActivity.this);
-                        if (t != null) input.append(t);
-                    }
-                }
-            }
-        });
-    }
-
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req != 77 || res != RESULT_OK || data == null || data.getData() == null) return;
+        if (res != RESULT_OK || data == null) return;
         try {
-            InputStream in = getContentResolver().openInputStream(data.getData());
-            ByteArrayOutputStream bo = new ByteArrayOutputStream();
-            byte[] buf = new byte[4096];
-            int n, total = 0;
-            while ((n = in.read(buf)) > 0 && total < 40000) { bo.write(buf, 0, n); total += n; }
-            in.close();
-            String txt = new String(bo.toByteArray(), "UTF-8");
-            input.append("\n```\n" + txt + "\n```\n");
+            if (req == REQ_FILE && data.getData() != null) {
+                InputStream in = getContentResolver().openInputStream(data.getData());
+                ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                byte[] buf = new byte[4096];
+                int n, total = 0;
+                while ((n = in.read(buf)) > 0 && total < 40000) { bo.write(buf, 0, n); total += n; }
+                in.close();
+                input.append("\n```\n" + new String(bo.toByteArray(), "UTF-8") + "\n```\n");
+            } else if (req == REQ_ALBUM) {
+                List<Uri> uris = new ArrayList<Uri>();
+                if (data.getClipData() != null) {
+                    ClipData cd = data.getClipData();
+                    for (int i = 0; i < cd.getItemCount(); i++) uris.add(cd.getItemAt(i).getUri());
+                } else if (data.getData() != null) uris.add(data.getData());
+                for (Uri u : uris) { Bitmap t = decode(u, 200); if (t != null) addAttachment(u, t); }
+            } else if (req == REQ_CAMERA && data.getExtras() != null) {
+                Bitmap bm = (Bitmap) data.getExtras().get("data");
+                if (bm != null) addAttachment(null, bm);
+            } else if (req == REQ_VOICE) {
+                ArrayList<String> r = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (r != null && !r.isEmpty()) input.append(r.get(0));
+            }
         } catch (Exception e) {
-            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, String.valueOf(e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -807,12 +1196,6 @@ public class MainActivity extends Activity {
         i.setType("text/plain");
         i.putExtra(Intent.EXTRA_TEXT, s);
         startActivity(Intent.createChooser(i, T.s("share")));
-    }
-
-    private String transcript(Store.Conv c) {
-        StringBuilder sb = new StringBuilder();
-        for (Store.Msg m : c.msgs) sb.append(m.role.equals("user") ? "▌" : "◆").append(' ').append(m.content).append("\n\n");
-        return sb.toString();
     }
 
     private void hideKeyboard() {

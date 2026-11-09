@@ -18,7 +18,7 @@ public final class Theme {
     public static float font = 1f;
 
     public static int bg, surface, surface2, text, text2, text3, accent, accentSoft,
-            border, userBubble, codeBg, danger, scrim, onAccent, accent2;
+            border, userBubble, codeBg, danger, scrim, onAccent, accent2, bg2, card, field;
 
     public static void apply(boolean d) {
         dark = d;
@@ -27,18 +27,24 @@ public final class Theme {
         danger = 0xFFEF5350;
         onAccent = 0xFFFFFFFF;
         if (d) {
-            bg = 0xFF17181A;
-            surface = 0xFF242528;
-            surface2 = 0xFF2F3034;
-            text = 0xFFEDEDEF;
-            text2 = 0xFFA6A7AD;
-            text3 = 0xFF70717A;
-            accentSoft = 0x264D6BFE;
-            border = 0xFF38393F;
-            userBubble = 0xFF2A2B30;
-            codeBg = 0xFF1E1F23;
+            bg = 0xFF0F0F10;
+            surface = 0xFF262626;
+            surface2 = 0xFF3A3A3C;
+            text = 0xFFFFFFFF;
+            text2 = 0xFF9A9A9F;
+            text3 = 0xFF6E6E73;
+            accentSoft = 0x334D6BFE;
+            border = 0xFF343436;
+            userBubble = 0xFF2C2C2E;
+            codeBg = 0xFF1A1A1C;
             scrim = 0x99000000;
+            bg2 = 0xFF1C1C1E;
+            card = 0xFF282828;
+            field = 0xFF2A2A2C;
         } else {
+            bg2 = 0xFFF2F2F7;
+            card = 0xFFFFFFFF;
+            field = 0xFFEDEDF0;
             bg = 0xFFFFFFFF;
             surface = 0xFFF3F4F7;
             surface2 = 0xFFE8EAEE;
@@ -100,10 +106,15 @@ public final class Theme {
 
     public static void styleWindow(Activity a) {
         Fonts.init(a);
+        styleWindow(a, bg);
+    }
+
+    public static void styleWindow(Activity a, int bgColor) {
+        Fonts.init(a);
         Window w = a.getWindow();
-        w.setStatusBarColor(bg);
-        w.setNavigationBarColor(bg);
-        w.getDecorView().setBackgroundColor(bg);
+        w.setStatusBarColor(bgColor);
+        w.setNavigationBarColor(bgColor);
+        w.getDecorView().setBackgroundColor(bgColor);
         if (Build.VERSION.SDK_INT >= 23) {
             int f = w.getDecorView().getSystemUiVisibility();
             if (dark) f &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;

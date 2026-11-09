@@ -13,7 +13,10 @@ public class IconView extends View {
             LIKE = 6, DISLIKE = 7, GLOBE = 8, ATOM = 9, SETTINGS = 10, TRASH = 11, CHEV_DOWN = 12,
             CHEV_RIGHT = 13, CLOSE = 14, PLUS = 15, USER = 16, CHECK = 17, SHARE = 18, LOGO = 19,
             BACK = 20, KEY = 21, LINK = 22, PALETTE = 23, LANG = 24, INFO = 25, DATABASE = 26,
-            EDIT = 27, CHEV_LEFT = 28, CHAT = 29, SPARK = 30, FILE = 31;
+            EDIT = 27, CHEV_LEFT = 28, CHAT = 29, SPARK = 30, FILE = 31,
+            NEWCHAT2 = 32, SOUND_OFF = 33, SOUND_ON = 34, VOICE = 35, SEARCH = 36, PIN = 37, MULTI = 38,
+            CAMERA = 39, IMAGE = 40, CLIP = 41, MORE = 42, MOON = 43, TEXTSIZE = 44, WAND = 45, MIC = 46,
+            HELP = 47, LOGOUT = 48, PHONE = 49, DOC = 50, MAIL = 51, AVATAR = 52;
 
     private int type;
     private int color = 0xFFFFFFFF;
@@ -271,10 +274,156 @@ public class IconView extends View {
                 line(c, 9, 13, 16, 13);
                 line(c, 9, 16.5f, 14, 16.5f);
                 break;
+            case NEWCHAT2:
+                c.drawCircle(12, 11.5f, 8.6f, p);
+                poly(c, 6.4f, 17.6f, 4f, 21.2f, 10f, 19.8f);
+                line(c, 12, 8, 12, 15);
+                line(c, 8.5f, 11.5f, 15.5f, 11.5f);
+                break;
+            case SOUND_OFF:
+            case SOUND_ON:
+                poly(c, 3.5f, 9.5f, 7.5f, 9.5f, 12.5f, 5.2f, 12.5f, 18.8f, 7.5f, 14.5f, 3.5f, 14.5f, 3.5f, 9.5f);
+                r.set(9, 8.4f, 15.5f, 15.6f);
+                c.drawArc(r, -50, 100, false, p);
+                r.set(7.5f, 5.6f, 19f, 18.4f);
+                c.drawArc(r, -50, 100, false, p);
+                if (type == SOUND_OFF) line(c, 20.5f, 3.5f, 3.5f, 20.5f);
+                break;
+            case VOICE:
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(8, 12, 1.5f, p);
+                p.setStyle(Paint.Style.STROKE);
+                r.set(5.5f, 9.5f, 10.5f, 14.5f);
+                r.set(2.8f, 9f, 14.2f, 15f);
+                c.drawArc(r, -55, 110, false, p);
+                r.set(0.8f, 5.8f, 20f, 18.2f);
+                c.drawArc(r, -55, 110, false, p);
+                break;
+            case SEARCH:
+                c.drawCircle(10.8f, 10.8f, 6.6f, p);
+                line(c, 15.8f, 15.8f, 20.6f, 20.6f);
+                break;
+            case PIN:
+                poly(c, 8.5f, 4.5f, 15.5f, 4.5f, 14.5f, 10.5f, 18f, 14f, 6f, 14f, 9.5f, 10.5f, 8.5f, 4.5f);
+                line(c, 12, 14, 12, 20.5f);
+                break;
+            case MULTI:
+                c.drawCircle(6, 7, 2.2f, p);
+                c.drawCircle(6, 16.5f, 2.2f, p);
+                line(c, 11.5f, 7, 20, 7);
+                line(c, 11.5f, 16.5f, 20, 16.5f);
+                break;
+            case CAMERA:
+                r.set(3, 7, 21, 20);
+                c.drawRoundRect(r, 3.2f, 3.2f, p);
+                c.drawCircle(12, 13.5f, 3.6f, p);
+                poly(c, 8, 7, 9.6f, 4.4f, 14.4f, 4.4f, 16, 7);
+                break;
+            case IMAGE:
+                r.set(3.5f, 4.5f, 20.5f, 19.5f);
+                c.drawRoundRect(r, 3.2f, 3.2f, p);
+                c.drawCircle(9, 10, 1.8f, p);
+                poly(c, 4, 17.5f, 10, 12.8f, 14, 16.5f, 17, 13.8f, 20, 16.5f);
+                break;
+            case CLIP:
+                path.reset();
+                path.moveTo(17.2f, 11.2f);
+                path.lineTo(10.8f, 17.6f);
+                path.quadTo(8.6f, 19.6f, 6.8f, 17.8f);
+                path.quadTo(5f, 16f, 7f, 13.8f);
+                path.lineTo(14.4f, 6.4f);
+                path.quadTo(16.2f, 4.8f, 17.8f, 6.4f);
+                path.quadTo(19.3f, 8.1f, 17.8f, 9.8f);
+                path.lineTo(10.6f, 17f);
+                c.drawPath(path, p);
+                break;
+            case MORE:
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(5, 12, 1.8f, p);
+                c.drawCircle(12, 12, 1.8f, p);
+                c.drawCircle(19, 12, 1.8f, p);
+                break;
+            case MOON:
+                path.reset();
+                path.moveTo(19.5f, 14f);
+                path.cubicTo(18f, 18.2f, 13.5f, 20.5f, 9.2f, 19f);
+                path.cubicTo(4.8f, 17.5f, 3f, 12.8f, 5f, 8.8f);
+                path.cubicTo(6f, 6.8f, 7.8f, 5.4f, 9.8f, 4.8f);
+                path.cubicTo(8.3f, 8.2f, 9f, 12f, 12f, 14.4f);
+                path.cubicTo(14.5f, 16.2f, 17.5f, 15.8f, 19.5f, 14f);
+                c.drawPath(path, p);
+                break;
+            case TEXTSIZE:
+                poly(c, 2.5f, 19f, 8.2f, 5f, 13.9f, 19f);
+                line(c, 4.4f, 14.2f, 12f, 14.2f);
+                poly(c, 14.6f, 19f, 17.9f, 10.8f, 21.2f, 19f);
+                line(c, 15.9f, 16.6f, 19.9f, 16.6f);
+                break;
+            case WAND:
+                path.reset();
+                path.moveTo(9.5f, 3.5f);
+                path.quadTo(10.2f, 8.2f, 15f, 9.5f);
+                path.quadTo(10.2f, 10.8f, 9.5f, 15.5f);
+                path.quadTo(8.8f, 10.8f, 4f, 9.5f);
+                path.quadTo(8.8f, 8.2f, 9.5f, 3.5f);
+                c.drawPath(path, p);
+                line(c, 14f, 14f, 20.5f, 20.5f);
+                line(c, 18f, 4f, 18f, 7.4f);
+                line(c, 16.3f, 5.7f, 19.7f, 5.7f);
+                break;
+            case MIC:
+                r.set(9, 3.5f, 15, 13.5f);
+                c.drawRoundRect(r, 3f, 3f, p);
+                r.set(5.8f, 7.5f, 18.2f, 18.5f);
+                c.drawArc(r, 0, 180, false, p);
+                line(c, 12, 18.5f, 12, 21f);
+                break;
+            case HELP:
+                c.drawCircle(12, 12, 8.6f, p);
+                r.set(9.4f, 7.2f, 14.6f, 12.2f);
+                c.drawArc(r, 180, 230, false, p);
+                line(c, 12, 12.4f, 12, 14f);
+                p.setStyle(Paint.Style.FILL);
+                c.drawCircle(12, 16.4f, 1.1f, p);
+                break;
+            case LOGOUT:
+                poly(c, 14.5f, 4.5f, 19.5f, 4.5f, 19.5f, 19.5f, 14.5f, 19.5f);
+                line(c, 3.5f, 12, 14.5f, 12);
+                poly(c, 7, 8.2f, 3.5f, 12, 7, 15.8f);
+                break;
+            case PHONE:
+                r.set(7, 3, 17, 21);
+                c.drawRoundRect(r, 2.6f, 2.6f, p);
+                line(c, 10.6f, 18, 13.4f, 18);
+                break;
+            case DOC:
+                poly(c, 6, 3.5f, 18, 3.5f, 18, 20.5f, 6, 20.5f, 6, 3.5f);
+                line(c, 9, 8, 15, 8);
+                line(c, 9, 12, 15, 12);
+                line(c, 9, 16, 12.5f, 16);
+                break;
+            case MAIL:
+                r.set(3, 5.5f, 21, 18.5f);
+                c.drawRoundRect(r, 2.6f, 2.6f, p);
+                poly(c, 4, 7.5f, 12, 13.5f, 20, 7.5f);
+                break;
+            case AVATAR:
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(0xFFD9D9DC);
+                c.drawCircle(12, 12, 12, p);
+                p.setColor(0xFF8E8E93);
+                c.drawCircle(12, 9.4f, 3.9f, p);
+                path.reset();
+                path.moveTo(4.6f, 20f);
+                path.quadTo(5.5f, 14f, 12, 14f);
+                path.quadTo(18.5f, 14f, 19.4f, 20f);
+                path.quadTo(16f, 23f, 12, 23f);
+                path.quadTo(8f, 23f, 4.6f, 20f);
+                c.drawPath(path, p);
+                break;
             case LOGO:
                 // Original whale-style mark (not a copy of any brand logo).
                 p.setStyle(Paint.Style.FILL);
-                if (color == Theme.accent) p.setShader(new android.graphics.LinearGradient(2, 6, 23, 20, Theme.accent, Theme.accent2, android.graphics.Shader.TileMode.CLAMP));
                 path.reset();
                 path.moveTo(2.2f, 13.2f);
                 path.cubicTo(2.2f, 8.2f, 6.2f, 5.4f, 11.2f, 5.9f);

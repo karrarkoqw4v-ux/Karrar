@@ -20,12 +20,15 @@ public final class Store {
         public String sources = "[]";
         public int vote = 0;
         public boolean demo = false;
+        public int imgCount = 0;
+        public java.util.List<String> images = new ArrayList<String>(); // transient (not saved)
     }
 
     public static class Conv {
         public String id = UUID.randomUUID().toString();
         public String title = "";
         public long ts = System.currentTimeMillis();
+        public boolean pinned = false;
         public List<Msg> msgs = new ArrayList<Msg>();
     }
 
@@ -48,8 +51,12 @@ public final class Store {
     public static void applyTheme() {
         Theme.rtl = "ar".equals(get("lang", "ar"));
         Theme.apply(!"light".equals(get("theme", "dark")));
-        String f = get("font", "m");
-        Theme.font = "s".equals(f) ? 0.9f : "l".equals(f) ? 1.12f : "xl".equals(f) ? 1.25f : 1f;
+        if (bool("font_sys", false)) {
+            Theme.font = Math.max(0.85f, Math.min(1.4f, android.content.res.Resources.getSystem().getConfiguration().fontScale));
+        } else {
+            int i = Integer.parseInt(get("font_i", "2"));
+            Theme.font = 0.8f + 0.1f * i;
+        }
     }
 
     public static String baseUrl() {
@@ -73,6 +80,7 @@ public final class Store {
                 c.id = o.getString("id");
                 c.title = o.optString("title", "");
                 c.ts = o.optLong("ts", 0);
+                c.pinned = o.optBoolean("p", false);
                 JSONArray ms = o.getJSONArray("m");
                 for (int j = 0; j < ms.length(); j++) {
                     JSONObject mo = ms.getJSONObject(j);
@@ -84,6 +92,7 @@ public final class Store {
                     m.sources = mo.optString("src", "[]");
                     m.vote = mo.optInt("v", 0);
                     m.demo = mo.optBoolean("d", false);
+                    m.imgCount = mo.optInt("ic", 0);
                     c.msgs.add(m);
                 }
                 convs.add(c);
@@ -106,6 +115,7 @@ public final class Store {
                 o.put("id", c.id);
                 o.put("title", c.title);
                 o.put("ts", c.ts);
+                o.put("p", c.pinned);
                 JSONArray ms = new JSONArray();
                 for (Msg m : c.msgs) {
                     JSONObject mo = new JSONObject();
@@ -116,6 +126,7 @@ public final class Store {
                     mo.put("src", m.sources);
                     mo.put("v", m.vote);
                     mo.put("d", m.demo);
+                    mo.put("ic", m.imgCount);
                     ms.put(mo);
                 }
                 o.put("m", ms);

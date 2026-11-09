@@ -60,7 +60,16 @@ public final class Api {
                     if (!sys.isEmpty()) msgs.put(new JSONObject().put("role", "system").put("content", sys));
                     for (Store.Msg m : history) {
                         if (m.content.isEmpty() && m.role.equals("assistant")) continue;
-                        msgs.put(new JSONObject().put("role", m.role).put("content", m.content));
+                        if (m.images != null && !m.images.isEmpty()) {
+                            JSONArray parts = new JSONArray();
+                            parts.put(new JSONObject().put("type", "text").put("text", m.content.isEmpty() ? "?" : m.content));
+                            for (String b64 : m.images)
+                                parts.put(new JSONObject().put("type", "image_url")
+                                        .put("image_url", new JSONObject().put("url", "data:image/jpeg;base64," + b64)));
+                            msgs.put(new JSONObject().put("role", m.role).put("content", parts));
+                        } else {
+                            msgs.put(new JSONObject().put("role", m.role).put("content", m.content));
+                        }
                     }
                     body.put("messages", msgs);
 
