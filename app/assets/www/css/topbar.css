@@ -4,3 +4,8 @@
 .topbar .title{flex:1;text-align:center;color:var(--text2);font-weight:700;font-size:1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;min-height:1.4em}
 .topbar{padding:0 6px}.topbar .icon-btn{width:46px;height:46px}.topbar .icon-btn svg{width:20px;height:20px}
 .topbar .caret::after{content:"";display:inline-block;width:2px;height:1em;background:var(--accent-text);margin-inline-start:2px;vertical-align:-.15em;animation:blink 1s steps(1) infinite}
+/* round filled buttons */
+.topbar{padding:0 10px}
+.topbar .icon-btn{width:46px;height:46px;border-radius:50%;background:#303030;border:1px solid #454545;margin:0 4px;display:grid;place-items:center;transition:transform .25s var(--spring),background .2s}
+.topbar .icon-btn:active{transform:scale(.88);background:#3a3a3c}
+html[data-theme=light] .topbar .icon-btn{background:var(--surface);border-color:var(--border)}
