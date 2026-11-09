@@ -54,16 +54,27 @@ function mainPage(b){
  row(c,{icon:'plug',title:K.t('connected_apps'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('apps')});
  c=sec(b,K.t('s_app'));
  row(c,{icon:'globe',title:K.t('s_lang'),value:K.lang()==='ar'?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],K.lang()==='ar'?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}});
- row(c,{icon:'moon',title:K.t('s_theme'),value:K.pref.get('theme','dark')==='dark'?K.t('s_dark'):K.t('s_light'),onclick:async()=>{const i=await K.ui.choose(K.t('s_theme'),[K.t('s_dark'),K.t('s_light')],K.pref.get('theme','dark')==='dark'?0:1);if(i!=null){K.pref.set('theme',i===0?'dark':'light');after({remount:true})}}});
+ const thv=K.pref.get('theme','dark');
+ row(c,{icon:'moon',title:K.t('s_theme'),value:thv==='system'?K.t('s_th_sys'):thv==='light'?K.t('s_light'):K.t('s_dark'),onclick:async()=>{const keys=['dark','light','system'];const i=await K.ui.choose(K.t('s_theme'),[K.t('s_dark'),K.t('s_light'),K.t('s_th_sys')],keys.indexOf(thv));if(i!=null){K.pref.set('theme',keys[i]);after({remount:true})}}});
  row(c,{icon:'a-large-small',title:K.t('s_font'),onclick:()=>S.open('font')});
  const FF=['noto','plex','cairo','almarai'];
  row(c,{icon:'sparkles',title:K.t('s_fontface'),value:K.t('f_'+K.pref.get('font_f','noto')).replace(/ \(.*\)/,''),onclick:async()=>{const i=await K.ui.choose(K.t('s_fontface'),FF.map(f=>K.t('f_'+f)),Math.max(0,FF.indexOf(K.pref.get('font_f','noto'))));if(i!=null){K.pref.set('font_f',FF[i]);after()}}});
  row(c,{icon:'pencil',title:K.t('s_weight'),value:K.t('s_w'+K.pref.get('font_w','1')),onclick:async()=>{const i=await K.ui.choose(K.t('s_weight'),[K.t('s_w0'),K.t('s_w1'),K.t('s_w2')],+K.pref.get('font_w','1'));if(i!=null){K.pref.set('font_w',String(i));after()}}});
+ toggle(c,{icon:'sparkles',title:K.t('s_motion'),sub:K.t('s_motion_s'),key:'reduce_motion',def:false,after:()=>K.app.apply()});
  row(c,{icon:'wand-sparkles',title:K.t('s_custom'),onclick:()=>S.open('custom')});
  c=sec(b,K.t('s_audio'));
  row(c,{icon:'mic',title:K.t('s_main_lang'),value:K.pref.get('voice_lang','ar')==='en'?'English':'العربية',onclick:async()=>{const i=await K.ui.choose(K.t('s_main_lang'),['العربية','English'],K.pref.get('voice_lang','ar')==='en'?1:0);if(i!=null){K.pref.set('voice_lang',i===0?'ar':'en');S.rerender()}}});
+ const RATES=['0.75','1.0','1.25','1.5'],RN=()=>[K.t('s_slow'),K.t('s_normal'),K.t('s_fast'),K.t('s_vfast')];
+ row(c,{icon:'audio-lines',title:K.t('s_rate'),value:RN()[Math.max(0,RATES.indexOf(K.pref.get('tts_rate','1.0')))],onclick:async()=>{const i=await K.ui.choose(K.t('s_rate'),RN(),Math.max(0,RATES.indexOf(K.pref.get('tts_rate','1.0'))));if(i!=null){K.pref.set('tts_rate',RATES[i]);S.rerender()}}});
  toggle(c,{icon:'volume-2',title:K.t('s_sound'),sub:K.t('s_sound_sub'),key:'sound',def:false,after:()=>K.home.paintSound()});
  note(b,K.t('s_audio_note'));
+ c=sec(b,K.t('s_privacy'));
+ row(c,{icon:'lock',title:K.t('s_lock'),value:K.lock.has()?K.t('s_lock_on'):K.t('s_lock_off'),onclick:async()=>{
+  if(K.lock.has()){const i=await K.ui.choose(K.t('s_lock'),[K.t('s_lock_change'),K.t('s_lock_disable')]);if(i==null)return;
+   K.lock.show('verify',ok=>{if(!ok)return;if(i===0)K.lock.show('set',()=>S.rerender());else{K.pref.set('pin_hash','');S.rerender()}})}
+  else K.lock.show('set',()=>S.rerender())}});
+ const ADK=['0','7','30','90'];
+ row(c,{icon:'clock',title:K.t('s_autodel'),value:K.t('s_ad'+K.pref.get('auto_del','0')),onclick:async()=>{const i=await K.ui.choose(K.t('s_autodel'),ADK.map(k=>K.t('s_ad'+k)),Math.max(0,ADK.indexOf(K.pref.get('auto_del','0'))));if(i!=null){K.pref.set('auto_del',ADK[i]);K.db.load();S.rerender()}}});
  c=sec(b,K.t('s_about'));
  row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
  row(c,{icon:'file-text',title:K.t('s_terms'),onclick:()=>K.ui.info(K.t('s_terms'),K.t('s_terms_body'))});
@@ -90,7 +101,12 @@ function dataPage(b){
  row(c,{icon:'share',title:K.t('s_export'),onclick:()=>{K.native.share(K.db.convs.map(cv=>'# '+cv.title+'\n'+cv.msgs.map(m=>(m.role==='user'?'User: ':'AI: ')+m.c).join('\n\n')).join('\n\n'))}});
  row(c,{icon:'trash-2',title:K.t('s_clear'),danger:true,onclick:async()=>{if(await K.ui.confirm(K.t('s_clear_q'),true)){K.db.convs.length=0;K.db.save();K.home.newChat();K.toast('✓')}}});
 }
-function customPage(b){
+ function customPage(b){
+ let c0=sec(b,K.t('s_you'));
+ row(c0,{icon:'user',title:K.t('s_nick'),value:K.pref.get('nickname','')||K.t('s_not_set'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('s_nick'),value:K.pref.get('nickname','')});if(v!=null){K.pref.set('nickname',v);S.rerender()}}});
+ row(c0,{icon:'file-text',title:K.t('s_aboutme'),value:K.pref.get('about_me','')||K.t('s_not_set'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('s_aboutme'),value:K.pref.get('about_me',''),hint:K.t('s_about_h'),multi:true});if(v!=null){K.pref.set('about_me',v);S.rerender()}}});
+ row(c0,{icon:'sparkles',title:K.t('s_style'),value:K.t('s_st'+K.pref.get('reply_style','1')),onclick:async()=>{const i=await K.ui.choose(K.t('s_style'),[K.t('s_st0'),K.t('s_st1'),K.t('s_st2')],+K.pref.get('reply_style','1'));if(i!=null){K.pref.set('reply_style',String(i));S.rerender()}}});
+ row(c0,{icon:'languages',title:K.t('s_rlang'),value:K.t('s_rl_'+K.pref.get('reply_lang','auto')),onclick:async()=>{const k=['auto','ar','en'];const i=await K.ui.choose(K.t('s_rlang'),k.map(x=>K.t('s_rl_'+x)),k.indexOf(K.pref.get('reply_lang','auto')));if(i!=null){K.pref.set('reply_lang',k[i]);S.rerender()}}});
  let cur=K.t('s_custom_p');const base=(K.pref.get('base_url','https://api.deepseek.com')||'').replace(/\/+$/,'');
  PRESETS.forEach(p=>{if(p[1]===base)cur=p[0]});
  let c=sec(b,K.t('s_connect'));
@@ -117,22 +133,23 @@ function appIc(bg,icon){return '<span class="appic" style="background:'+bg+'">'+
 function appsPage(b){
  const n=document.createElement('div');n.className='note';n.style.paddingTop='4px';n.textContent=K.t('apps_sub');b.appendChild(n);
  let c=sec(b,K.t('apps_live'));
- row(c,{html:appIc('#24292f','git-branch'),title:K.t('app_github'),sub:K.t('app_github_s'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('github')});
+ row(c,{html:K.brand('github'),title:K.t('app_github'),sub:K.t('app_github_s'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('github')});
  c=sec(b,K.t('apps_soon'));
  const bd='<i class="badge">'+K.t('soon')+'</i>';
- [['#1a73e8','cloud','app_drive'],['#ea4335','mail','app_gmail'],['#4285f4','calendar','app_cal'],['#4285f4','file-text','app_docs'],['#0f9d58','table','app_sheets'],['#2b2b2d','notebook-pen','app_notion'],['#611f69','hash','app_slack'],['#f24e1e','blocks','app_figma'],['#6b5cff','plug','app_api']].forEach(a=>{
-  row(c,{html:appIc(a[0],a[1]),title:K.t(a[2]),sub:K.t(a[2]+'_s'),badge:bd,onclick:()=>K.toast(K.t(a[2])+' — '+K.t('soon'))});
+ [['googledrive','app_drive'],['gmail','app_gmail'],['googlecalendar','app_cal'],['googledocs','app_docs'],['googlesheets','app_sheets'],['notion','app_notion'],['gitlab','app_gitlab'],['figma','app_figma'],['dropbox','app_dropbox'],['trello','app_trello'],['discord','app_discord'],['telegram','app_telegram']].forEach(a=>{
+  row(c,{html:K.brand(a[0]),title:K.t(a[1]),sub:K.t(a[1]+'_s'),badge:bd,onclick:()=>K.toast(K.t(a[1])+' — '+K.t('soon'))});
  });
+ row(c,{html:appIc('#6b5cff','plug'),title:K.t('app_api'),sub:K.t('app_api_s'),badge:bd,onclick:()=>K.toast(K.t('app_api')+' — '+K.t('soon'))});
 }
 async function githubPage(b){
  const connected=!!K.gh.tok();
  if(!connected){
   let c=sec(b,K.t('gh_title'));
-  row(c,{html:appIc('#24292f','git-branch'),title:K.t('gh_token'),value:K.t('s_not_set'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('gh_token'),hint:'ghp_...',secret:true});if(v){K.pref.set('gh_token',v);S.rerender()}}});
+  row(c,{html:K.brand('github'),title:K.t('gh_token'),value:K.t('s_not_set'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('gh_token'),hint:'ghp_...',secret:true});if(v){K.pref.set('gh_token',v);S.rerender()}}});
   note(b,K.t('gh_help'));return;
  }
  let c=sec(b,K.t('gh_title'));
- const who=row(c,{html:appIc('#24292f','git-branch'),title:K.t('gh_connect'),value:'…'});
+ const who=row(c,{html:K.brand('github'),title:K.t('gh_connect'),value:'…'});
  row(c,{icon:'unplug',title:K.t('gh_disconnect'),danger:true,onclick:async()=>{K.pref.set('gh_token','');K.pref.set('gh_sel','[]');K.home&&K.home.paintPills&&K.home.paintPills();S.rerender()}});
  const t=document.createElement('div');t.className='sec-t';t.textContent=K.t('gh_repos');b.appendChild(t);
  const list=document.createElement('div');list.className='card';b.appendChild(list);

@@ -9,7 +9,7 @@ A.bars=function(){const d=document.documentElement,dark=d.dataset.theme==='dark'
  K.native.setBars(c,!dark&&!vo)};
 A.apply=function(){
  const d=document.documentElement;
- d.dataset.font=K.pref.get('font_f','noto');d.dataset.weight=K.pref.get('font_w','1');d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';d.dataset.theme=K.pref.get('theme','dark')==='light'?'light':'dark';
+ d.dataset.font=K.pref.get('font_f','noto');d.dataset.weight=K.pref.get('font_w','1');d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';let th=K.pref.get('theme','dark');if(th==='system')th=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';d.dataset.theme=th==='light'?'light':'dark';d.dataset.motion=K.pref.bool('reduce_motion',false)?'off':'on';
  let sc=1;if(K.pref.bool('font_sys',false))sc=1;else sc=0.84+0.07*(+K.pref.get('font_i','2'));
  d.style.setProperty('--scale',sc.toFixed(3));
  K.native.setPref('lang',K.lang());
@@ -38,6 +38,8 @@ A.boot=function(){
  const def=K.native.defaults();Object.keys(def).forEach(k=>{if(K.native.getPref(k,null)===null)K.native.setPref(k,def[k])});
  A.apply();
  if(K.pref.bool('logged',false))A.toHome();else A.toLogin();
+ if(K.lock.has())K.lock.show('unlock');
+ let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(K.lock.has()&&hid&&Date.now()-hid>15000)K.lock.show('unlock')});
  setTimeout(()=>{const s=document.getElementById('splash');if(s)s.remove()},60);
 };
 document.addEventListener('DOMContentLoaded',()=>{A.boot()});

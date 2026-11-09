@@ -1,0 +1,10 @@
+.lock{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;animation:fadeIn .25s both}
+.lock.out{opacity:0;transition:opacity .25s}
+.lk-logo{width:54px;height:54px;color:var(--accent);animation:pop .5s var(--spring) both}.lk-logo svg{width:100%;height:100%}
+.lk-t{font-size:1.3em;font-weight:800}
+.lk-dots{display:flex;gap:16px;margin:6px 0 0}.lk-dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--text3);transition:all .2s var(--spring)}.lk-dots i.on{background:var(--accent);border-color:var(--accent);transform:scale(1.15)}
+.lk-e{color:var(--danger);font-weight:700;min-height:1.4em}
+.lk-pad{display:grid;grid-template-columns:repeat(3,76px);gap:16px;margin-top:6px;direction:ltr}
+.lk-pad button{height:76px;border-radius:50%;background:var(--surface);font-size:1.7em;font-weight:700;display:grid;place-items:center;transition:transform .2s var(--spring),background .2s}
+.lk-pad button:active{transform:scale(.9);background:var(--surface2)}
+.lk-c{margin-top:10px;color:var(--text2);font-weight:700;padding:10px 20px}

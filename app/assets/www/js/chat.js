@@ -103,6 +103,7 @@ C.start=function(){
  const hist=toApi(conv.msgs.slice(0,-1));
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
  const run=function(ctx){
+  const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   let t0=0;
   S.handle=K.native.chat(hist,S.think,ctx,function(ev){
    if(view.finished)return;

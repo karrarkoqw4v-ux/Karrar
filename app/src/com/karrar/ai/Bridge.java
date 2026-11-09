@@ -489,6 +489,7 @@ public class Bridge {
     private void doSpeak(String t) {
         String clean = t.replace("```", " ").replace("*", "").replace("#", "");
         if (clean.length() > 3500) clean = clean.substring(0, 3500);
+        try { tts.setSpeechRate(Float.parseFloat(Store.get("tts_rate", "1.0"))); } catch (Exception ignored) { }
         tts.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "karrar");
     }
 
