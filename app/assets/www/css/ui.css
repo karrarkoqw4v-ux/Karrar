@@ -1,5 +1,5 @@
 /* modals / dialogs / lightbox */
-#overlay{position:fixed;inset:0;z-index:80;pointer-events:none}
+#overlay{position:fixed;inset:0;z-index:420;pointer-events:none}
 #overlay>*{pointer-events:auto}
 .backdrop{position:fixed;inset:0;background:var(--scrim);animation:fadeIn .25s both}
 .dlg{position:fixed;inset-inline:0;bottom:0;background:var(--card);border-radius:30px 30px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));animation:sheetUp .36s var(--ease) both;max-height:80vh;display:flex;flex-direction:column}

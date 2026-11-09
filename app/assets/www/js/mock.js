@@ -7,8 +7,10 @@ K.mock={
   const answer=ar?
   '## ابدأ بالأساسيات 🚀\nإليك خطة مختصرة لتعلّم البرمجة [1][2]:\n\n1. اختر لغة واحدة مثل **Python**.\n2. تدرّب يومياً على مشاريع صغيرة.\n3. اقرأ كود غيرك وتعلّم منه 😊\n\n> نصيحة: الاستمرار أهم من السرعة.\n\n```python\ndef hello(name):\n    return f"مرحباً {name}"\n\nprint(hello("بوصلة"))\n```\n\n| المرحلة | المدة |\n|---|---|\n| الأساسيات | شهر |\n| مشروع أول | شهران |\n\n> 💡 نصيحة: ابدأ بمشروع صغير تحبه، فهو يبقيك متحمساً.\n\n> ⚠️ لا تنتقل بين اللغات كثيراً في البداية.\n\n> ✅ بعد شهر ستكتب برامج صغيرة بنفسك.\n\n**الخلاصة:** لغة واحدة + تدريب يومي + مشروع صغير.\n':
   '## Start with the basics 🚀\nHere is a short plan [1][2]:\n\n1. Pick one language such as **Python**.\n2. Practise daily with small projects.\n3. Read other people\'s code 😊\n\n```python\ndef hello(name):\n    return f"Hello {name}"\n```\n';
+  const fileAns='سأرسل لك الملف الآن 👇\n\n```file:todo-app.zip\n=== index.html ===\n<!DOCTYPE html>\n<html><body><h1>مهامي</h1></body></html>\n=== app.js ===\nconsole.log("hi")\n```\n\nوهذا مثال كود:\n\n```javascript\n// جمع رقمين\nfunction add(a, b) {\n  const total = a + b; // 42\n  return `Sum: ${total}`;\n}\nclass User extends Base { constructor(){ super(); this.name = \"Ali\"; } }\n```\n\n```python\ndef hello(name: str) -> str:\n    # greet\n    return f\"Hello {name}\" if name else None\n```\n\n```json\n{\"name\": \"app\", \"v\": 2, \"ok\": true}\n```\n\nاستخدم `npm start` للتشغيل.';
+  const ans=/ملف|file/i.test(q)?fileAns:answer;
   const parts=[];for(let i=0;i<reasoning.length;i+=4)parts.push(['think',reasoning.slice(i,i+4)]);
-  for(let i=0;i<answer.length;i+=3)parts.push(['text',answer.slice(i,i+3)]);
+  for(let i=0;i<ans.length;i+=3)parts.push(['text',ans.slice(i,i+3)]);
   let k=0;(function step(){if(stop)return;if(k>=parts.length){cb({t:'done'});return}const p=parts[k++];cb({t:p[0],d:p[1]});setTimeout(step,k<20?60:14)})();
   return {cancel(){stop=true}}},
  search(q){return new Promise(r=>setTimeout(()=>r([

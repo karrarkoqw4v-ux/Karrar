@@ -75,11 +75,18 @@ K.code={
   const off=w.querySelector('#cdOff');if(off)off.onclick=()=>{K.pref.set('gh_token','');K.pref.set('gh_sel','[]');P.repo='';w.close();K.code.paint()};
   w.querySelector('#cdGh').onclick=async()=>{
    if(ok){w.close();K.code.repos(after);return}
+   const btn=w.querySelector('#cdGh'),lab=btn.querySelector('span:last-child'),orig=lab.textContent;
+   const wait=t=>{btn.classList.add('wait');btn.querySelector('.gi').innerHTML='<i class="sp"></i>';lab.textContent=t};
+   const rest=()=>{btn.classList.remove('wait');btn.querySelector('.gi').innerHTML=GH(20,'#000');lab.textContent=orig};
+   wait(T('انتظر…','Please wait…'));
+   await new Promise(r=>setTimeout(r,700));
+   rest();
    const v=await K.ui.prompt({title:T('رمز وصول GitHub','GitHub access token'),hint:'ghp_…  /  github_pat_…',secret:true});
    if(!v)return;
+   wait(T('جارٍ التحقق… انتظر','Verifying… please wait'));
    K.pref.set('gh_token',v);
    try{const u=await K.gh.user();K.toast(T('تم الاتصال: ','Connected: ')+u.login);w.close();K.code.paint();K.code.repos(after)}
-   catch(e){K.pref.set('gh_token','');K.ui.info(T('تعذّر الاتصال','Connection failed'),T('الرمز غير صالح أو لا يوجد اتصال بالإنترنت. أنشئ رمز وصول شخصي من GitHub ← Settings ← Developer settings ← Personal access tokens.','The token is invalid or you are offline. Create a personal access token in GitHub → Settings → Developer settings → Personal access tokens.'))}
+   catch(e){rest();K.pref.set('gh_token','');K.ui.info(T('تعذّر الاتصال','Connection failed'),T('الرمز غير صالح أو لا يوجد اتصال بالإنترنت. أنشئ رمز وصول شخصي من GitHub ← Settings ← Developer settings ← Personal access tokens.','The token is invalid or you are offline. Create a personal access token in GitHub → Settings → Developer settings → Personal access tokens.'))}
   };
  },
  repos(after){

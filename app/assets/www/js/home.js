@@ -11,7 +11,7 @@ H.mount=function(){
  +'<header class="topbar"><button class="icon-btn" id="bMenu"><svg class="ic flip-rtl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h16M4 16h10"/></svg></button><div class="title" id="title"></div><button class="icon-btn" id="bSound"></button><button class="icon-btn" id="bNew">'+K.icon('message-circle-plus',22)+'</button></header>'
  +'<div class="scroll chat" id="scroll"><div class="empty" id="empty"><div class="logo-big">'+K.LOGO+'</div><h2>'+K.t('hi')+'</h2></div><div class="msgs" id="msgs"></div></div>'
  +'<div class="composer-wrap" id="cwrap"><div class="pmenu" id="pmenu"><div class="gal" id="gal"></div><div class="attrow"><button id="aCam">'+K.icon('camera',22)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',22)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',22)+'<span>'+K.t('file')+'</span></button></div>'
- +'<div class="mlist"><button class="mi soon" id="mImg">'+K.icon('image',24)+'<span>'+K.t('create_img')+'</span><i class="badge">'+K.t('soon')+'</i></button>'
+ +'<div class="mlist"><button class="mi" id="mImg">'+K.icon('image',24)+'<span>'+K.t('create_img')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button>'
  +[['video','create_video'],['gamepad-2','create_game'],['code-xml','dev_apps'],['clapperboard','create_edit'],['graduation-cap','student_tools'],['rocket','dev_project',1]].map(x=>x[1]==='dev_apps'?'<button class="mi" data-act="code">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':'<button class="mi soon">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span>'+(x[2]?'<i class="badge pro">'+K.icon('crown',12,2.4)+'Pro</i>':'')+'<i class="badge">'+K.t('soon')+'</i></button>').join('')
  +'<button class="mi" id="mThink">'+K.icon('atom',24)+'<span>'+K.t('think')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mSearch">'+K.icon('globe',24)+'<span>'+K.t('web_search')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mApps">'+K.icon('plug',24)+'<span>'+K.t('connected_apps')+'</span></button></div></div>'
  +'<div class="mchips" id="mchips"></div>'
@@ -23,6 +23,7 @@ H.mount=function(){
  $('bMenu').onclick=()=>H.openDrawer();
  $('bNew').onclick=()=>H.newChat();
  $('bSound').onclick=()=>{const on=!K.pref.bool('sound',false);K.pref.setBool('sound',on);if(!on)K.native.stopSpeak();H.paintSound();K.toast(K.t('s_sound')+(on?' ✓':' ✕'))};
+ $('mImg').onclick=()=>{H.toggleSheet(false);if(S().imgMode){S().imgMode=false;H.paintPills();$('ta').placeholder=K.t('hint')}else K.imggen.enter();K.native.haptic()};
  $('mThink').onclick=()=>{S().think=!S().think;H.paintPills();H.toggleSheet(false);K.native.haptic()};
  $('mSearch').onclick=()=>{S().search=!S().search;H.paintPills();H.toggleSheet(false);K.native.haptic()};
  $('pmenu').querySelectorAll('.mi.soon').forEach(bn=>bn.onclick=()=>K.toast(bn.querySelector('span').textContent+' — '+K.t('soon')));
@@ -58,12 +59,12 @@ ta.addEventListener('focus',()=>{H.toggleSheet(false);$('composer').classList.ad
 };
 H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',22)};
 H.paintPills=function(){
- $('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
- const c=$('mchips');c.innerHTML=(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
+ $('mImg').classList.toggle('on',!!S().imgMode);$('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
+ const c=$('mchips');c.innerHTML=(S().imgMode?K.imggen.chips():'')+(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
  const md=S().cur&&S().cur.mode;if(md&&MODES[md])c.insertAdjacentHTML('afterbegin','<button class="mchip" data-md="1">'+K.icon(MODES[md][0],16)+'<span>'+K.t(MODES[md][1])+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>');
  const repos=K.gh.tok()?K.gh.sel():[];
  c.insertAdjacentHTML('beforeend',repos.map(r=>'<button class="mchip" data-r="'+r.replace(/"/g,'')+'">'+K.icon('git-branch',16)+'<span>'+r.split('/').pop()+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>').join(''));
- c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
+ c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.img){K.imggen.onChip(b.dataset.img,b);return}if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
 };
 H.refreshComposer=function(){
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');

@@ -15,7 +15,7 @@ function AIView(m,o){
  const el=this.el=document.createElement('div');el.className='msg ai'+(this.live?' live':' done');el._view=this;
  el.innerHTML='<div class="ai-head"><span class="logo">'+K.LOGO+'</span></div><div class="src"></div><div class="status shimmer hidden"></div><div class="dots hidden"><i></i><i></i><i></i></div>'
   +'<div class="think hidden"><button class="think-h">'+K.icon('atom',17)+'<span></span><span class="chev">'+K.icon('chevron-down',16)+'</span></button><div class="think-b"><div><p></p></div></div></div>'
-  +'<div class="md"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
+  +'<div class="gen hidden"></div><div class="md"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
   +'<div class="acts"><button data-a="copy">'+K.icon('copy',19)+'</button><button data-a="regen" class="'+(this.last?'':'hidden')+'">'+K.icon('refresh-cw',19)+'</button><button data-a="up">'+K.icon('thumbs-up',19)+'</button><button data-a="down">'+K.icon('thumbs-down',19)+'</button><button data-a="share">'+K.icon('share',19)+'</button></div>';
  const self=this;
  el.querySelector('.think-h').onclick=function(){self.open=!self.open;self.render()};
@@ -38,13 +38,14 @@ AIView.prototype.render=function(){
  if(hasT){this.q('.think-b p').textContent=m.t;th.classList.toggle('open',this.open);th.classList.toggle('live',this.thinking);
   th.querySelector('.think-h>span').textContent=this.thinking?K.t('thinking'):K.t('thought_for',Math.max(1,m.s||1))}
  const st=this.q('.status');st.classList.toggle('hidden',!this.status);st.textContent=this.status;
- this.q('.dots').classList.toggle('hidden',!!(m.c||m.t||this.status||!live));
+ this.q('.dots').classList.toggle('hidden',!!(m.c||m.t||m.gen||this.status||!live));
+ const gn=this.q('.gen');gn.classList.toggle('hidden',!m.gen);if(m.gen)gn.innerHTML=K.imggen.html(m.gen);
  const hasSrc=(m.src||[]).length>0;
  this.q('.md').innerHTML=K.mdEmoji(m.c||'',hasSrc)+(live&&m.c?'<span class="cursor"></span>':'');
  this.el.classList.toggle('done',!live);this.el.classList.toggle('live',live);
  this.q('.demo-note').classList.toggle('hidden',!(m.demo&&!live));
  this.q('[data-a=up]').classList.toggle('on',m.v===1);this.q('[data-a=down]').classList.toggle('on',m.v===-1);
- this.q('[data-a=regen]').classList.toggle('hidden',!(this.last&&!live));
+ this.q('[data-a=regen]').classList.toggle('hidden',!(this.last&&!live&&!m.gen));
 };
 
 /* ---------------- public API ---------------- */
@@ -54,6 +55,8 @@ C.mount=function(){
  sc.addEventListener('scroll',function(){C.nearBottom=sc.scrollTop+sc.clientHeight>=sc.scrollHeight-140});
  msgs.addEventListener('click',function(e){
   const t=e.target;
+  const gb=t.closest('[data-g]');if(gb){K.imggen.act(gb.closest('.msg.ai')._view,gb.dataset.g);return}
+  const dl=t.closest('[data-fid]');if(dl){K.files.save(dl.dataset.fid,dl);return}
   const cp=t.closest('[data-copy]');if(cp){const pre=cp.closest('.codebox').querySelector('pre');K.native.copy(pre.innerText);if(!cp._t){const sp=cp.querySelector('span'),old=sp.textContent,ic=cp.querySelector('svg');cp.classList.add('done');sp.textContent=K.t('copied');cp._t=setTimeout(function(){cp.classList.remove('done');sp.textContent=old;cp._t=0},1600)}return}
   const a=t.closest('[data-a]');if(a){const v=a.closest('.msg.ai')._view;C.action(v,a.dataset.a);return}
   const ci=t.closest('.cite');if(ci){const v=ci.closest('.msg.ai')._view;const src=v.q('.src');src.classList.add('open');
@@ -85,6 +88,7 @@ C.send=function(){
  if(S.streaming){C.stop();return}
  const ta=$('ta'),text=ta.value.trim(),atts=S.atts.slice();
  if(!text&&!atts.length)return;
+ if(S.imgMode&&!S.img){K.imggen.sizes();return}
  K.native.haptic();
  const files=atts.filter(a=>a.kind==='file');
  const m={role:'user',c:text,imgs:atts.filter(a=>a.kind==='img').map(a=>a.th),files:files.map(f=>({n:f.name,size:f.size,pages:f.pages})),ft:files.map(f=>'[File: '+f.name+']\n```\n'+f.text+'\n```').join('\n\n')};
@@ -93,7 +97,7 @@ C.send=function(){
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
- K.pref.set('cur',conv.id);C.addUser(m);C.start();
+ K.pref.set('cur',conv.id);C.addUser(m);if(S.imgMode)K.imggen.start(conv,m);else C.start();
 };
 C.start=function(){
  const conv=S.cur;
@@ -134,6 +138,7 @@ C.finish=function(view){
  view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
 };
+C.AIView=AIView;
 C.stop=function(){if(S.handle)S.handle.cancel();K.native.stopSpeak();if(S.live){if(!S.live.m.s&&S.live.m.t)S.live.m.s=1;C.finish(S.live)}};
 C.action=function(v,a){
  if(a==='copy'){K.native.copy(v.m.c)}

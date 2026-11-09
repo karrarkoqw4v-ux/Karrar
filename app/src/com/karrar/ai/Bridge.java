@@ -530,6 +530,36 @@ public class Bridge {
         });
     }
 
+    /** Saves a file (base64) into Downloads/Bawsala. Returns "ok:<where>" or "err:<reason>". */
+    @JavascriptInterface
+    public String saveFile(String name, String mime, String b64) {
+        try {
+            byte[] data = Base64.decode(b64, Base64.DEFAULT);
+            String safe = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (Build.VERSION.SDK_INT >= 29) {
+                android.content.ContentValues v = new android.content.ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Bawsala");
+                Uri u = act.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (u == null) return "err:insert";
+                java.io.OutputStream os = act.getContentResolver().openOutputStream(u);
+                os.write(data);
+                os.close();
+                return "ok:Download/Bawsala/" + safe;
+            }
+            java.io.File dir = act.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
+            if (dir == null) return "err:nodir";
+            java.io.File f = new java.io.File(dir, safe);
+            java.io.FileOutputStream fo = new java.io.FileOutputStream(f);
+            fo.write(data);
+            fo.close();
+            return "ok:" + f.getAbsolutePath();
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
     @JavascriptInterface
     public void share(final String t) {
         ui.post(new Runnable() {

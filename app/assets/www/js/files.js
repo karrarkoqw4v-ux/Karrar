@@ -37,7 +37,7 @@ async function zipText(u,pick){await load('js/vendor/jszip.min.js');const z=awai
 const strip=x=>x.replace(/<w:p[ >][^]*?<\/w:p>/g,p=>p.replace(/<w:tab\/>/g,'\t').replace(/<[^>]+>/g,'')+'\n').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
 const tt=x=>(x.match(/<(?:a:t|t)[^>]*>([^<]*)<\/(?:a:t|t)>/g)||[]).map(s=>s.replace(/<[^>]+>/g,'')).join(' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 K.files={
- ext,kind,size,
+ ext,kind,size,load,
  /* f: {name,size,b64}  ->  {text,pages?} or {err:'f_...'} */
  async parse(f){
   const e=ext(f.name),u=bytes(f.b64);let text='',pages=0;

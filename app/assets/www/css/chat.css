@@ -7,7 +7,7 @@
 .msg.user{display:flex;flex-direction:column;align-items:flex-end;gap:6px;animation:bubbleIn .4s var(--ease) both}
 .bubble{background:var(--bubble);padding:12px 18px;border-radius:24px;max-width:84%;font-size:1.06em;line-height:1.55;white-space:pre-wrap;word-break:break-word;user-select:text}
 .att-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;max-width:90%}
-.att-img{width:112px;height:112px;border-radius:20px;object-fit:cover;background:var(--surface);animation:pop .4s var(--spring) both}
+.att-img{width:112px;height:112px;border-radius:20px;object-fit:cover;background:var(--surface)}
 .att-file{display:flex;align-items:center;gap:10px;background:var(--bubble);padding:10px 16px 10px 14px;border-radius:18px;max-width:260px;font-weight:600}
 .att-file .fi{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
 .att-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr}

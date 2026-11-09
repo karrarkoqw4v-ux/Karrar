@@ -63,3 +63,5 @@
 .cd-go{height:54px;border-radius:28px;background:#5b78e6;color:#fff;font-weight:800;font-size:1.1em;transition:opacity .25s,transform .25s var(--spring)}.cd-go:active{transform:scale(.97)}
 .cd-go:disabled{opacity:.35;pointer-events:none;filter:grayscale(.4)}
 .cd-main{display:flex;flex-direction:column;flex:1;min-height:0}
+.cd-sheet>*{flex-shrink:0}.cd-gh.wait{pointer-events:none;opacity:.85}.cd-gh .sp{width:16px;height:16px;border-radius:50%;border:2.5px solid #000;border-top-color:transparent;animation:spin .7s linear infinite}
+.dlg>*{flex-shrink:0}
