@@ -45,7 +45,7 @@ K.dialect={
   if(id==='auto'){if(IQ.test(text||''))id='iraq';else return ''}
   const d=D.find(x=>x[0]===id);if(!d||id==='auto')return '';
   if(id==='msa'||/^en|fr|de|es|it|tr|ru|pt$/.test(id))return 'Reply in '+d[4]+'.';
-  return 'Reply in a warm, natural '+d[4]+'. Keep technical terms, code and file contents in standard form. Sound like a friendly local, not a translation.'},
+  return 'Reply in a warm, natural '+d[4]+'. Keep technical terms, code and file contents in standard form. Sound like a friendly local, not a translation. Stay polite and respectful at all times: never insult the user, never call them names (no كلب، حمار، etc.), never curse or use rude slang, not even jokingly. Greet with warm words like هلا بيك / أهلاً أخوي / حبيبي.'},
  apply(id,style){
   const d=D.find(x=>x[0]===id)||D[0];K.pref.set('reply_dialect',id);
   const sty=STY.find(x=>x[0]===(style||K.pref.get('voice_style','m')))||STY[0];K.pref.set('voice_style',sty[0]);

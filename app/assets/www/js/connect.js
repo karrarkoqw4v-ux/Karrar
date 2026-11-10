@@ -33,7 +33,7 @@ K.gh={
 
 /* system-prompt additions from Settings -> Personalization */
 K.persona=function(){
- const p=K.pref,st=+p.get('reply_style','1'),lg=p.get('reply_lang','auto'),nm=p.get('nickname','').trim(),ab=p.get('about_me','').trim(),a=[];
+ const p=K.pref,st=+p.get('reply_style','1'),lg=p.get('reply_lang','auto'),nm=p.get('nickname','').trim(),ab=p.get('about_me','').trim(),a=['Always be polite and respectful to the user: never insult, curse, or call them names (even jokingly, even in a dialect). Keep a warm, friendly tone.'];
 const MP={enc:'',apps:'Role: senior mobile/app engineer. Help the user design and build apps (Android, iOS, Flutter, React Native): architecture, complete working code, debugging and publishing. Ask a short clarifying question when requirements are unclear.',biz:'Role: business strategist. Help the user plan a commercial project: idea validation, business model, market and competitors, pricing, marketing, simple financial projections and a step-by-step action plan.',web:'Role: senior web developer. Help build websites: HTML/CSS/JS and frameworks, responsive design, SEO, performance and hosting. Give complete, working code.'};
  const md=K.state&&K.state.cur&&K.state.cur.mode;if(md&&MP[md])a.push(MP[md]);if(K.state&&K.state.cur&&K.state.cur.enc)a.push(K.enc.persona(K.state.cur.enc));if(K.state&&K.state.cur&&K.state.cur.stu)a.push(K.students.persona(K.state.cur));
  if(nm)a.push('Address the user as "'+nm+'".');
