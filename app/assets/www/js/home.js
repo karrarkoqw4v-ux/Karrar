@@ -70,6 +70,7 @@ H.paintPills=function(){
  c.querySelectorAll('.mchip').forEach(b=>b.onclick=()=>{if(b.dataset.enc){K.enc.run(b.dataset.enc);return}if(b.dataset.img){K.imggen.onChip(b.dataset.img,b);return}if(b.dataset.md){S().cur.mode=null}else if(b.dataset.r){K.gh.toggle(b.dataset.r)}else if(b.dataset.m==='think')S().think=false;else S().search=false;H.paintPills();K.native.haptic()});
 };
 H.refreshComposer=function(){
+ if(K.voice&&K.voice.refreshAtts)setTimeout(K.voice.refreshAtts,0);
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
  let icon='audio-lines';if(S().streaming)icon='square';else if(has)icon='arrow-up';
  if(b.dataset.s!==icon){b.dataset.s=icon;b.innerHTML=K.icon(icon,icon==='square'?15:21);b.classList.remove('pulse');void b.offsetWidth;if(icon!=='audio-lines')b.classList.add('pulse')}
