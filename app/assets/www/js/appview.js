@@ -11,24 +11,41 @@ const DEV={
  phone:{n:T('هاتف','Phone'),w:390,h:844,r:46,bz:11,ic:'smartphone'},
  tablet:{n:T('تابلت','Tablet'),w:820,h:1180,r:34,bz:16,ic:'file'},
  desk:{n:T('حاسوب','Desktop'),w:1280,h:800,r:14,bz:0,ic:'globe'}};
-function prep(code){
+function parseFiles(code){const parts=code.split(/^=== *(.+?) *===\s*$/m);if(parts.length<3)return null;const f={};for(let i=1;i<parts.length;i+=2)f[parts[i].trim().replace(/^\/+/,'')]=(parts[i+1]||'').replace(/^\n/,'');return f}
+function norm(p){const o=[];p.split('/').forEach(x=>{if(x==='..')o.pop();else if(x&&x!=='.')o.push(x)});return o.join('/')}
+function inlineFiles(f){const entry=f['index.html']?'index.html':Object.keys(f).find(k=>/\.html?$/i.test(k));if(!entry)return null;const base=entry.replace(/[^/]*$/,'');let h=f[entry];
+ h=h.replace(/<link[^>]+href=["']([^"']+\.css)["'][^>]*>/gi,(m,p)=>{const k=norm(base+p);return f[k]!=null?'<style>'+f[k]+'</style>':m});
+ h=h.replace(/<script[^>]+src=["']([^"']+\.js)["'][^>]*><\/script>/gi,(m,p)=>{const k=norm(base+p);return f[k]!=null?'<script>'+f[k].replace(/<\/script/gi,'<\\/script')+'<\/script>':m});return h}
+function html(code){const f=parseFiles(code);if(f){const h=inlineFiles(f);if(h)return h}return code}
+function prep(code0){const code=html(code0);
  let c=code;if(!/<meta[^>]+viewport/i.test(c)){if(/<head[^>]*>/i.test(c))c=c.replace(/<head[^>]*>/i,m=>m+'<meta name="viewport" content="width=device-width,initial-scale=1">');else c='<meta name="viewport" content="width=device-width,initial-scale=1">'+c}
  return c}
 K.apps={
  card(name,code){
-  name=name.replace(/[<>]/g,'').slice(0,60)||'App';const id='a'+(++n);reg[id]={name,code};
+  name=name.replace(/[<>]/g,'').slice(0,60)||'App';const id='a'+(++n);reg[id]={name,code};const pf=parseFiles(code),nf=pf?Object.keys(pf).length:1;
   const c=hue(name);
-  return '<div class="appcard" style="--ac:'+c+'"><span class="ai-tile">'+esc((name.match(/[\p{L}\p{N}]/u)||['A'])[0].toUpperCase())+'</span><div class="an"><b>'+esc(name)+'</b><small>'+T('تطبيق ويب · HTML','Web app · HTML')+' · '+(new Blob([code]).size/1024).toFixed(1)+' KB</small></div>'
-   +'<div class="ab"><button class="view" data-appv="'+id+'">'+K.icon('smartphone',17)+'<span>'+T('عرض','Preview')+'</span></button><button data-apps="'+id+'" title="'+T('حفظ','Save')+'">'+K.icon('arrow-up',17).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button><button data-appc="'+id+'" title="'+T('نسخ','Copy')+'">'+K.icon('copy',17)+'</button></div></div>'},
- async save(id){const a=reg[id];if(!a)return;const name=a.name.replace(/[\\/:*?"<>|\s]+/g,'-').toLowerCase()+'.html';
-  const b64=btoa(unescape(encodeURIComponent(a.code)));const r=await K.native.saveFile(name,'text/html',b64);K.toast(r&&String(r).indexOf('err')===0?T('تعذّر الحفظ','Could not save'):T('تم الحفظ في التنزيلات/Bawsala','Saved to Downloads/Bawsala'))},
+  return '<div class="appcard" style="--ac:'+c+'"><span class="ai-tile">'+esc((name.match(/[\p{L}\p{N}]/u)||['A'])[0].toUpperCase())+'</span><div class="an"><b>'+esc(name)+'</b><small>'+(nf>1?T('مشروع · '+nf+' ملفات','Project · '+nf+' files'):T('تطبيق ويب · HTML','Web app · HTML'))+' · '+(new Blob([code]).size/1024).toFixed(1)+' KB</small></div>'
+   +'<div class="ab"><button class="view" data-appv="'+id+'">'+K.icon('smartphone',17)+'<span>'+T('عرض','Preview')+'</span></button><button data-apps="'+id+'" title="'+T('حفظ','Save')+'">'+K.icon('arrow-up',17).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button><button data-appc="'+id+'" title="'+T('نسخ','Copy')+'">'+K.icon('copy',17)+'</button><button data-appb="'+id+'" title="'+T('فتح في المتصفح','Open in browser')+'">'+K.icon('globe',17)+'</button><button data-appg="'+id+'" title="GitHub">'+K.icon('git-branch',17)+'</button></div></div>'},
+ slug(a){return a.name.replace(/[\\/:*?"<>|\s]+/g,'-').toLowerCase()||'app'},
+ async save(id){const a=reg[id];if(!a)return;const multi=!!parseFiles(a.code);
+  const r=multi?await K.files.saveNamed(K.apps.slug(a)+'.zip',a.code):await K.files.saveNamed(K.apps.slug(a)+'.html',a.code);
+  if(r&&String(r).indexOf('err')===0)K.toast(T('تعذّر الحفظ','Could not save'))},
+ async browser(id){const a=reg[id];if(!a)return;const b64=btoa(unescape(encodeURIComponent(prep(a.code))));const r=await K.native.saveFile(K.apps.slug(a)+'.html','text/html',b64);
+  if(r&&String(r).indexOf('ok:')===0){const u=String(r).slice(3).split('|')[1];if(u)K.native.openUri(u,'text/html')}else K.toast(T('تعذّر الفتح','Could not open'))},
+ async push(id){const a=reg[id];if(!a)return;
+  if(!K.gh.tok()){K.toast(T('سجّل الدخول بـ GitHub أولاً','Sign in with GitHub first'));K.code.github();return}
+  let repo=K.pref.get('code_repo','');if(!repo){K.toast(T('اختر مستودعاً أولاً','Pick a repository first'));K.code.repos(()=>K.apps.push(id));return}
+  const f=parseFiles(a.code)||{'index.html':a.code},dir='apps/'+K.apps.slug(a)+'/',files={};Object.keys(f).forEach(k=>files[dir+k]=f[k]);
+  K.toast(T('جارٍ الرفع إلى GitHub…','Pushing to GitHub…'));
+  try{const done=await K.gh.push(repo,files,'Bawsala: '+a.name);K.snack(T('تم الرفع: '+done.length+' ملف إلى '+repo,'Pushed '+done.length+' file(s) to '+repo),T('فتح','Open'),()=>K.native.open('https://github.com/'+repo+'/tree/HEAD/apps/'+K.apps.slug(a)))}
+  catch(e){K.ui.info(T('تعذّر الرفع','Push failed'),String(e.message)+'\n'+T('تأكد أن الحساب منح صلاحية repo وأن المستودع موجود.','Make sure the account granted the repo scope and the repository exists.'))}},
  copy(id){const a=reg[id];if(a)K.native.copy(a.code)},
  close(){const d=$('apv');if(!d)return false;d.classList.add('out');setTimeout(()=>d.remove(),240);return true},
  open(id){
   const a=reg[id];if(!a)return;const old=$('apv');if(old)old.remove();
   const st={dev:'phone',land:false,key:0};
   const d=document.createElement('div');d.id='apv';d.className='apv';d.dir=K.lang()==='ar'?'rtl':'ltr';
-  d.innerHTML='<div class="apv-top"><button class="apv-ib" id="apX">'+K.icon('x',22,2.4)+'</button><div class="apv-t"><b>'+esc(a.name)+'</b><small>'+T('معاينة كاملة على جهاز','Full device preview')+'</small></div><button class="apv-ib" id="apS">'+K.icon('arrow-up',20).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button></div>'
+  d.innerHTML='<div class="apv-top"><button class="apv-ib" id="apX">'+K.icon('x',22,2.4)+'</button><div class="apv-t"><b>'+esc(a.name)+'</b><small>'+T('معاينة كاملة على جهاز','Full device preview')+'</small></div><button class="apv-ib" id="apB" title="browser">'+K.icon('globe',20)+'</button><button class="apv-ib" id="apS">'+K.icon('arrow-up',20).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button></div>'
    +'<div class="apv-devs" id="apDevs">'+Object.keys(DEV).map(k=>'<button data-d="'+k+'">'+K.icon(DEV[k].ic,16)+'<span>'+DEV[k].n+'</span></button>').join('')+'<i class="sp"></i><button id="apRot" title="'+T('تدوير','Rotate')+'">'+K.icon('smartphone',16).replace('<svg ','<svg style="transform:rotate(90deg)" ')+'</button><button id="apRe" title="'+T('إعادة تحميل','Reload')+'">'+K.icon('refresh-cw',16)+'<span>'+T('تشغيل','Run')+'</span></button></div>'
    +'<div class="apv-stage" id="apStage"><div class="apv-dev" id="apDev"></div></div>';
   document.body.appendChild(d);
@@ -41,7 +58,7 @@ K.apps={
    dev.innerHTML=chrome+'<div class="scr" style="border-radius:'+D.r+'px">'+phone+'<iframe id="apFr" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock" referrerpolicy="no-referrer"></iframe>'+(st.dev==='phone'&&!st.land?'<i class="home"></i>':'')+'</div>';
    $('apFr').srcdoc=prep(a.code);
    d.querySelectorAll('#apDevs [data-d]').forEach(b=>b.classList.toggle('on',b.dataset.d===st.dev));$('apRot').style.display=st.dev==='desk'?'none':''};
-  $('apX').onclick=()=>K.apps.close();$('apS').onclick=()=>K.apps.save(id);
+  $('apX').onclick=()=>K.apps.close();$('apS').onclick=()=>K.apps.save(id);$('apB').onclick=()=>K.apps.browser(id);
   d.querySelectorAll('#apDevs [data-d]').forEach(b=>b.onclick=()=>{st.dev=b.dataset.d;st.land=false;paint()});
   $('apRot').onclick=()=>{st.land=!st.land;paint()};$('apRe').onclick=()=>{const f=$('apFr');if(f)f.srcdoc=prep(a.code)};
   window.addEventListener('resize',()=>{if($('apv'))paint()});

@@ -41,13 +41,14 @@ import java.util.Locale;
 
 /** Native services exposed to the HTML/JS UI as window.Android. */
 public class Bridge {
-    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6, REQ_AUDIO = 7;
+    static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6, REQ_AUDIO = 7, REQ_SAVE = 8;
 
     private final Activity act;
     private final WebView wv;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final HashMap<Integer, Api.Handle> handles = new HashMap<Integer, Api.Handle>();
-    private int idAlbum, idCamera, idFile, idVoice, idGallery, idGoogle;
+    private int idAlbum, idCamera, idFile, idVoice, idGallery, idGoogle, idSave;
+    private byte[] pendingSave;
     private SpeechRecognizer sr;
     private int idLive;
     private TextToSpeech tts;
@@ -578,6 +579,17 @@ public class Bridge {
                         }
                     }
                 }).start();
+            } else if (req == REQ_SAVE) {
+                int id = idSave;
+                if (res == ok && data != null && data.getData() != null && pendingSave != null) {
+                    try {
+                        java.io.OutputStream os = act.getContentResolver().openOutputStream(data.getData());
+                        os.write(pendingSave);
+                        os.close();
+                        cb(id, JSONObject.quote("ok:" + data.getData().toString() + "|" + data.getData().toString()));
+                    } catch (Exception e) { cb(id, JSONObject.quote("err:" + e.getMessage())); }
+                } else cb(id, JSONObject.quote("err:cancel"));
+                pendingSave = null;
             } else if (req == REQ_GOOGLE) {
                 int id = idGoogle;
                 String email = data == null ? null : data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
@@ -635,6 +647,17 @@ public class Bridge {
         String clean = t.replace("```", " ").replace("*", "").replace("#", "");
         if (clean.length() > 3500) clean = clean.substring(0, 3500);
         try { tts.setSpeechRate(Float.parseFloat(Store.get("tts_rate", "1.0"))); } catch (Exception ignored) { }
+        try { tts.setPitch(Float.parseFloat(Store.get("tts_pitch", "1.0"))); } catch (Exception ignored) { }
+        try {
+            String vn = Store.get("tts_voice", "");
+            boolean set = false;
+            if (!vn.isEmpty() && tts.getVoices() != null)
+                for (android.speech.tts.Voice v : tts.getVoices()) if (v.getName().equals(vn)) { tts.setVoice(v); set = true; break; }
+            if (!set) {
+                String lt = Store.get("tts_locale", "");
+                if (!lt.isEmpty()) tts.setLanguage(Locale.forLanguageTag(lt));
+            }
+        } catch (Exception ignored) { }
         tts.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "karrar");
     }
 
@@ -658,6 +681,72 @@ public class Bridge {
         });
     }
 
+    /** System "Save as" picker (works on every Android version). Returns "ok:<uri>|<uri>" or "err:cancel". */
+    @JavascriptInterface
+    public void saveAs(final int id, final String name, final String mime, final String b64) {
+        try {
+            idSave = id;
+            pendingSave = Base64.decode(b64, Base64.DEFAULT);
+            Intent it = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            it.addCategory(Intent.CATEGORY_OPENABLE);
+            it.setType(mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+            it.putExtra(Intent.EXTRA_TITLE, name);
+            start(it, REQ_SAVE, id);
+        } catch (Exception e) {
+            cb(id, JSONObject.quote("err:" + e.getMessage()));
+        }
+    }
+
+    @JavascriptInterface
+    public void openUri(final String uri, final String mime) {
+        ui.post(new Runnable() {
+            public void run() {
+                try {
+                    Intent i = new Intent(Intent.ACTION_VIEW);
+                    i.setDataAndType(Uri.parse(uri), mime == null || mime.isEmpty() ? "*/*" : mime);
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    act.startActivity(Intent.createChooser(i, "Open"));
+                } catch (Exception e) {
+                    Toast.makeText(act, "No app can open this file", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    /** Installed text-to-speech voices: [{name, locale, net}] */
+    @JavascriptInterface
+    public void ttsVoices(final int id) {
+        ui.post(new Runnable() {
+            public void run() {
+                final Runnable send = new Runnable() {
+                    public void run() {
+                        try {
+                            JSONArray a = new JSONArray();
+                            java.util.Set<android.speech.tts.Voice> vs = tts.getVoices();
+                            if (vs != null) for (android.speech.tts.Voice v : vs)
+                                a.put(new JSONObject().put("name", v.getName()).put("locale", v.getLocale().toLanguageTag()).put("net", v.isNetworkConnectionRequired()));
+                            cb(id, a.toString());
+                        } catch (Exception e) { cb(id, "[]"); }
+                    }
+                };
+                if (tts != null && ttsReady) { send.run(); return; }
+                tts = new TextToSpeech(act, new TextToSpeech.OnInitListener() {
+                    public void onInit(int status) {
+                        ttsReady = status == TextToSpeech.SUCCESS;
+                        if (ttsReady) {
+                            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                                public void onStart(String u) { }
+                                public void onDone(String u) { js("window.__ttsDone&&window.__ttsDone()"); }
+                                public void onError(String u) { js("window.__ttsDone&&window.__ttsDone()"); }
+                            });
+                            send.run();
+                        } else cb(id, "[]");
+                    }
+                });
+            }
+        });
+    }
+
     /** Saves a file (base64) into Downloads/Bawsala. Returns "ok:<where>" or "err:<reason>". */
     @JavascriptInterface
     public String saveFile(String name, String mime, String b64) {
@@ -675,7 +764,7 @@ public class Bridge {
                 java.io.OutputStream os = act.getContentResolver().openOutputStream(u);
                 os.write(data);
                 os.close();
-                return "ok:" + (img ? "Pictures" : "Download") + "/Bawsala/" + safe;
+                return "ok:" + (img ? "Pictures" : "Download") + "/Bawsala/" + safe + "|" + u.toString();
             }
             java.io.File dir = act.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS);
             if (dir == null) return "err:nodir";
@@ -683,7 +772,7 @@ public class Bridge {
             java.io.FileOutputStream fo = new java.io.FileOutputStream(f);
             fo.write(data);
             fo.close();
-            return "ok:" + f.getAbsolutePath();
+            return "ok:" + f.getAbsolutePath() + "|";
         } catch (Exception e) {
             return "err:" + e.getMessage();
         }

@@ -17,3 +17,8 @@
 .opt:active{background:var(--hover)}.opt.sel{color:var(--accent-text)}
 .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:grid;place-items:center;animation:fadeIn .25s both}
 .lightbox img{max-width:96vw;max-height:88vh;border-radius:14px;animation:pop .35s var(--spring) both}
+#snack{position:fixed;left:50%;bottom:92px;transform:translate(-50%,30px);opacity:0;z-index:600;display:flex;align-items:center;gap:14px;max-width:92vw;padding:12px 14px 12px 18px;border-radius:26px;background:#2a2a2d;border:1px solid #3d3d42;color:#fff;font-weight:700;box-shadow:0 12px 34px rgba(0,0,0,.55);transition:all .35s var(--ease)}#snack.in{opacity:1;transform:translate(-50%,0)}#snack button{height:36px;padding:0 18px;border-radius:18px;background:#fff;color:#000;font-weight:800;flex:none}
+.jbl{position:fixed;inset:0;z-index:900;background:radial-gradient(circle at 50% 30%,#3a0f12,#0a0505 70%);display:grid;place-items:center;padding:30px;animation:fade .4s both}
+.jb-i{max-width:420px;text-align:center;display:flex;flex-direction:column;gap:16px;align-items:center}.jb-i img{width:84px;height:84px;animation:lglPulse 2s ease-in-out infinite}
+.jb-i h2{font-size:1.8em;font-weight:800;color:#ff6b6b}.jb-i p{color:#ddd;line-height:1.8;font-weight:600}
+.jb-c{display:flex;flex-direction:column;gap:6px;padding:16px 22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700;font-size:.95em}

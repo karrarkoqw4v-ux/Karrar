@@ -45,8 +45,9 @@ function build(){
  +[['vScr',T('مشاركة الشاشة','Share screen'),'#4d6bfe,#8b5cf6',MON],['vAlb',T('الصور','Photos'),'#10b981,#22d3ee',K.icon('image',28)],['vFile',T('الملفات','Files'),'#f59e0b,#ef4444',K.icon('paperclip',28)],['vCm',T('الكاميرا','Camera'),'#ec4899,#f43f5e',K.icon('camera',28)],['vImg',T('إنشاء صورة','Create image'),'#8b5cf6,#d946ef',K.icon('sparkles',28)],['vShare',T('مشاركة الرد','Share reply'),'#0ea5e9,#3b82f6',K.icon('share',28)]].map(x=>'<button class="vtile" id="'+x[0]+'"><span class="vti" style="background:linear-gradient(145deg,'+x[2]+')">'+x[3]+'</span><span>'+x[1]+'</span></button>').join('')
  +'</div></div></div>';
  document.body.appendChild(d);
+ d.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.closest('.vc,.vpill');if(!b)return;const r=document.createElement('i');r.className='v-rp';b.appendChild(r);setTimeout(()=>r.remove(),900)});
  $('vX').onclick=()=>V.close();$('vMic').onclick=()=>V.toggleMute();
- $('vSet').onclick=async()=>{const i=await K.ui.choose(K.t('v_lang'),['العربية','English'],K.pref.get('voice_lang','ar')==='en'?1:0);if(i!=null){K.pref.set('voice_lang',i===0?'ar':'en');if(!V.muted&&V.state==='listening'){stopLive();startLive()}}};
+ $('vSet').onclick=()=>K.dialect.open();
  $('vTr').onclick=()=>{const t=$('vTrans');if(t.classList.contains('show')){t.classList.remove('show');return}
   const c=S().cur;t.innerHTML=(c?c.msgs.slice(-6):[]).map(m=>'<p><b>'+(m.role==='user'?K.t('v_you'):K.t('v_ai'))+'</b>'+String(m.c||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</p>').join('')||'<p>—</p>';t.classList.add('show')};
  $('vRot').onclick=()=>{K.native.haptic();$('aCam').click()};

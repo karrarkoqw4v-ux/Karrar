@@ -36,3 +36,4 @@ html[dir=ltr] .vtiles{direction:ltr}
 .vti{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.4)}
 .vc{position:relative;touch-action:manipulation}.vc::after{content:'';position:absolute;inset:-7px}
 .vbar{z-index:3}
+.v-rp{position:absolute;inset:0;border-radius:inherit;border:2px solid rgba(130,170,255,.85);animation:vRp .9s ease-out forwards;pointer-events:none}@keyframes vRp{from{transform:scale(1);opacity:.9}to{transform:scale(2.3);opacity:0}}.vpill{overflow:visible}.vpill::before{content:'';position:absolute;inset:0;border-radius:inherit;overflow:hidden}

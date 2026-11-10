@@ -57,6 +57,8 @@ C.mount=function(){
   const t=e.target;
   const av=t.closest('[data-appv]');if(av){K.apps.open(av.dataset.appv);return}
   const as=t.closest('[data-apps]');if(as){K.apps.save(as.dataset.apps);return}
+  const ab=t.closest('[data-appb]');if(ab){K.apps.browser(ab.dataset.appb);return}
+  const ag=t.closest('[data-appg]');if(ag){K.apps.push(ag.dataset.appg);return}
   const ac=t.closest('[data-appc]');if(ac){K.apps.copy(ac.dataset.appc);return}
   const gb=t.closest('[data-g]');if(gb){K.imggen.act(gb.closest('.msg.ai')._view,gb.dataset.g);return}
   const sv=t.closest('[data-save]');if(sv){const cb=sv.closest('.codebox');K.files.saveCode(cb.querySelector('.ch>span').textContent,cb.querySelector('pre').innerText);return}
@@ -90,6 +92,7 @@ function toApi(msgs){return msgs.filter(function(m){return !m.gen}).map(m=>({rol
 function buildCtx(a){if(!a.length)return '';return 'Web search results (cite them in your answer as [1], [2] when you use them):\n'+a.map((s,i)=>(i+1)+'. '+s.title+' - '+(s.snippet||'')+' ('+s.url+')').join('\n')}
 C.send=function(){
  if(S.streaming){C.stop();return}
+ if(K.guard.locked()){K.guard.showLock();return}
  const ta=$('ta'),text=ta.value.trim(),atts=S.atts.slice();
  if(!text&&!atts.length)return;
  if(S.imgMode&&!S.img){K.imggen.sizes();return}
@@ -101,11 +104,14 @@ C.send=function(){
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
- K.pref.set('cur',conv.id);C.addUser(m);if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
+ K.pref.set('cur',conv.id);C.addUser(m);if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
 };
 C.isDevQ=function(t){t=(t||'').trim();if(!t||t.length>140)return false;
  const who=/(مطور|المطور|مبرمج|صاحب|مالك|مسؤول|المسؤول|من\s+(صنع|سوى|برمج|طور|عمل|انشأ|أنشأ)|مين\s+(صنع|سوى|برمج|طور|عمل)|تواصل|حسابات|developer|owner|admin|who\s+(made|built|created|developed|owns|runs)|contact)/i;
  return who.test(t)&&/(التطبيق|تطبيق|بوصلة|bawsala|\bapp\b|الذكاء)/i.test(t)};
+C.localReply=function(conv,md){
+ const ai={role:'assistant',c:md,t:'',s:0,src:[],v:0};conv.msgs.push(ai);
+ const v=new AIView(ai,{last:true,live:false});$('msgs').appendChild(v.el);K.db.save();C.scrollEnd(true)};
 C.devReply=function(conv){
  const ar=K.lang()==='ar';
  const md=ar?'## مطوّر «بوصلة» والمسؤول عن التطبيق\nالمسؤول عن التطبيق وتطويره: **كروري** (Karrouri)\n\n### طرق التواصل\n- 📧 البريد الإلكتروني: karrarkooqwtoi@gmail.com\n- 🎵 TikTok: [@vwv2e](https://www.tiktok.com/@vwv2e)\n- 📸 Instagram: [@10s.i2](https://www.instagram.com/10s.i2)\n- 🐦 X (تويتر): [@Compassv4](https://x.com/Compassv4)\n\nيمكنك أيضاً فتح صفحة **اتصل بنا** من شاشة الدخول أو من الإعدادات ← المساعدة، وفيها الحسابات والشروط وأحكام الاستخدام.'
@@ -120,14 +126,22 @@ C.start=function(){
  const view=new AIView(ai,{last:true,live:true});$('msgs').appendChild(view.el);S.live=view;S.streaming=true;K.home.refreshComposer();C.scrollEnd(true);
  const hist=toApi(conv.msgs.slice(0,-1));
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
- const run=function(ctx){
+ const lu0=(lastUser&&lastUser.c)||'';
+ const thinkNow=S.think||K.intent.think(lu0);
+ const run=async function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
-  const T0=Date.now(),lu=(lastUser&&lastUser.c)||'';
+  const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
+  const dl=K.dialect&&K.dialect.hint?K.dialect.hint(lu0):'';if(dl)ctx+=(ctx?'\n\n':'')+dl;
+  try{const tn=await K.team.run(lu0,view);if(tn)ctx+='\n\n'+tn}catch(e){}
+  if(view.finished)return;
+  const T0=Date.now(),lu=lu0;
   /* calm pacing: think 4-10 s depending on the question, then reveal the answer gently */
   let want=3600+Math.min(5400,lu.trim().split(/\s+/).filter(Boolean).length*230);
   if(/(اكتب|برمج|كود|اشرح|شرح|قارن|حلل|code|write|explain|compare|build)/i.test(lu))want+=1800;
   if(lastUser&&((lastUser.files&&lastUser.files.length)||(lastUser.imgs&&lastUser.imgs.length)))want+=1500;
   want=Math.min(10000,want);
+  const hasAtt=!!(lastUser&&((lastUser.files&&lastUser.files.length)||(lastUser.imgs&&lastUser.imgs.length)));
+  if(K.intent.simple(lu,hasAtt)&&!thinkNow)want=1100;else if(thinkNow)want=Math.max(want,6000);
   let q='',doneEv=null,tm=0,flushed=false;
   view.setStatus(K.t('thinking'));
   const pump=function(){tm=0;if(view.finished)return;
@@ -137,7 +151,7 @@ C.start=function(){
    if(q){const n=2+Math.floor(q.length/70);ai.c+=q.slice(0,n);q=q.slice(n);view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c);tm=setTimeout(pump,34);return}
    if(doneEv){doneEv=null;C.finish(view)}
   };
-  S.handle=K.native.chat(hist,S.think,ctx,function(ev){
+  S.handle=K.native.chat(hist,thinkNow,ctx,function(ev){
    if(view.finished)return;
    if(ev.t==='think'){ai.t+=ev.d;view.open=true;view.thinking=true;view.status='';view.dirty()}
    else if(ev.t==='text'){q+=ev.d;if(!tm)pump()}
@@ -150,7 +164,7 @@ C.start=function(){
   view.setStatus(K.t('gh_reading'));
   return K.gh.context(repos).then(function(t){view.setStatus('');return (ctx?ctx+'\n\n':'')+t}).catch(function(){view.setStatus('');return ctx});
  };
- if(S.search){
+ if(S.search||K.intent.search(lu0)){
   view.searching=true;view.renderSources();view.setStatus(K.t('searching'));
   K.native.search(lastUser.c||'').then(function(res){
    if(view.finished)return;view.searching=false;ai.src=Array.isArray(res)?res:[];view.setStatus('');view.renderSources();view.render();

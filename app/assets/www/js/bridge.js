@@ -44,7 +44,14 @@ K.native={
  screenshot(){return new Promise(r=>{if(!A||!A.screenshot)return r(K.mock.images(1)[0]);const id=reg(r);A.screenshot(id)})},
  fetchImage(url,bearer,body){return new Promise(r=>{if(!A||!A.fetchImage)return r(null);const id=reg(r);A.fetchImage(id,url,bearer||'',body||'')})},
  scanUrl(url,deep){return new Promise(r=>{if(!A||!A.scanUrl)return r(K.mock.scanUrl(url,deep));const id=reg(r);A.scanUrl(id,url,!!deep)})},
- saveFile(name,mime,b64){return new Promise(r=>{if(A&&A.saveFile){r(A.saveFile(name,mime,b64));return}try{const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);r('ok')}catch(e){r('err')}})},
+ saveFile(name,mime,b64){return new Promise(async r=>{
+  if(A&&A.saveFile){let res=A.saveFile(name,mime,b64);
+   if(String(res).indexOf('err')===0&&A.saveAs){res=await new Promise(x=>{const id=reg(x);A.saveAs(id,name,mime,b64)})}
+   if(String(res).indexOf('ok:')===0){const pr=res.slice(3).split('|'),ar=K.lang()==='ar';K.snack(ar?'تم الحفظ: '+(pr[0].split('/').slice(-2).join('/')||name):'Saved: '+(pr[0].split('/').slice(-2).join('/')||name),ar?'فتح':'Open',()=>{if(pr[1])A.openUri(pr[1],mime)})}
+   r(res);return}
+  try{const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);r('ok:'+name+'|')}catch(e){r('err')}})},
+ openUri(uri,mime){if(A&&A.openUri&&uri)A.openUri(uri,mime||'text/html')},
+ ttsVoices(){return new Promise(r=>{if(!A||!A.ttsVoices)return r([{name:'ar-xa-x-arz-local',locale:'ar-EG'},{name:'ar-xa-x-ard-local',locale:'ar-SA'},{name:'en-us-x-tpd-local',locale:'en-US'}]);const id=reg(r);A.ttsVoices(id)})},
  copy(t){if(A)A.copy(t);else{try{navigator.clipboard.writeText(t).catch(function(){})}catch(e){}}K.toast(K.t('copied'))},
  share(t){if(A)A.share(t)},
  open(u){if(A)A.open(u);else window.open(u,'_blank')},

@@ -48,3 +48,6 @@ html[data-theme=light] .tk-k{color:#af00db}html[data-theme=light] .tk-s{color:#a
 .codebox .cp.done{color:#34c759;background:rgba(52,199,89,.12)}
 .codebox pre{counter-reset:ln}
 .codebox .cpg{display:flex;gap:2px}
+
+.md a[data-url]{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;margin:2px 3px;border-radius:18px;background:var(--accent-soft);color:var(--accent-text);font-weight:800;text-decoration:none;border:1px solid rgba(77,107,254,.35);direction:ltr;transition:transform .2s var(--spring)}
+.md a[data-url]::after{content:"\2197";font-size:.95em}.md a[data-url]:active{transform:scale(.94)}

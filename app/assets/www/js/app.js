@@ -25,6 +25,9 @@ A.toLogin=function(){while(K.settings.depth())K.settings.back();$('home').classL
 A.toHome=function(){$('login').classList.add('hidden');$('home').classList.remove('hidden');K.db.load();K.home.mount();K.home.start();K.fx.start(K.pref.bool('fx',false)?2:0);A.apply()};
 window.__back=function(){
  if(K.gsheet&&K.gsheet.closeIfOpen())return true;
+ if(K.catalog&&K.catalog.closeIfOpen())return true;
+ if(K.students&&K.students.close())return true;
+ if(K.dialect&&K.dialect.closeIfOpen())return true;
  if(K.apps&&K.apps.close())return true;
  if(K.plans&&K.plans.isOpen()){K.plans.close();return true}
  if(K.enc&&K.enc.back())return true;
@@ -49,7 +52,7 @@ A.boot=function(){
  const def=K.native.defaults();Object.keys(def).forEach(k=>{if(K.native.getPref(k,null)===null)K.native.setPref(k,def[k])});
  A.apply();
  if(K.pref.bool('logged',false))A.toHome();else A.toLogin();
- K.splash.show();
+ K.splash.show();K.guard&&K.guard.boot();
  if(K.lock.has())K.lock.show('unlock');
  let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden)hid=Date.now();else if(K.lock.has()&&hid&&Date.now()-hid>15000)K.lock.show('unlock')});
 };

@@ -44,6 +44,7 @@ async function build(name,content){
  if(e==='xlsx')return {b64:b64(await xlsx(content)),mime:MIME.xlsx};
  return {b64:utf8((e==='csv'?'\ufeff':'')+content),mime:MIME[e]||'text/plain'};
 }
+K.files.saveNamed=async function(name,content){const r=await build(name,content);return K.native.saveFile(name,r.mime,r.b64)};
 K.files.box=function(name,content){
  name=name.replace(/[\\/:*?"<>|]/g,'_').slice(0,80)||'file.txt';
  const id='f'+(++n);reg[id]={name,content};

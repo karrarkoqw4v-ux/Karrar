@@ -14,4 +14,6 @@ K.db={
  create(){return {id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title:'',ts:Date.now(),pinned:false,msgs:[]}},
  remove(c){const i=this.convs.indexOf(c);if(i>=0)this.convs.splice(i,1);this.save()}
 };
-K.toast=function(m){const t=document.getElementById('toast');if(!t)return;const d=document.createElement('div');d.textContent=m;t.appendChild(d);setTimeout(()=>d.remove(),2300)};
+K.toast=function(m){if(K._snackAt&&Date.now()-K._snackAt<2600&&/تم الحفظ|Saved|محفوظ|saved/i.test(m))return;const t=document.getElementById('toast');if(!t)return;const d=document.createElement('div');d.textContent=m;t.appendChild(d);setTimeout(()=>d.remove(),2300)};
+
+K.snack=function(text,label,fn){K._snackAt=Date.now();const old=document.getElementById('snack');if(old)old.remove();const d=document.createElement('div');d.id='snack';d.innerHTML='<span></span><button></button>';d.firstChild.textContent=text;const b=d.lastChild;b.textContent=label||'';if(!label||!fn)b.remove();else b.onclick=()=>{fn();d.remove()};document.body.appendChild(d);setTimeout(()=>d.classList.add('in'),20);setTimeout(()=>{d.classList.remove('in');setTimeout(()=>d.remove(),400)},6000)};

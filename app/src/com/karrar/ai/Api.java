@@ -84,6 +84,22 @@ public final class Api {
                 l.add(p);
             }
         }
+        // user-picked model from the catalog goes first
+        String pp = Store.get("pref_provider", ""), pm = Store.get("pref_model", "");
+        if (!pp.isEmpty() && !pm.isEmpty()) {
+            Prov chosen = null;
+            for (Prov x : l) if (x.name.equals(pp)) { chosen = x; break; }
+            if (chosen != null) {
+                l.remove(chosen);
+                Prov c2 = new Prov(chosen.name, chosen.base, chosen.key, pm, pm);
+                c2.url = chosen.url; c2.keyless = chosen.keyless;
+                l.add(0, c2);
+            } else if (pp.equals("pollinations")) {
+                Prov c2 = new Prov("pollinations-pref", "https://text.pollinations.ai", "", pm, pm);
+                c2.url = "https://text.pollinations.ai/openai"; c2.keyless = true;
+                l.add(0, c2);
+            }
+        }
         return l;
     }
 
