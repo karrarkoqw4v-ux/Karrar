@@ -3,7 +3,7 @@ window.K=window.K||{};
 (function(){
 const S=K.state={cur:null,think:false,search:false,streaming:false,atts:[],handle:null,live:null};
 const $=id=>document.getElementById(id);
-K.LOGO='<svg viewBox="0 0 120 120"><defs><linearGradient id="lp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9c99a"/><stop offset="1" stop-color="#a97a46"/></linearGradient><linearGradient id="lp2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e2c2"/><stop offset="1" stop-color="#c39a64"/></linearGradient><linearGradient id="lp3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6e6"/><stop offset="1" stop-color="#d8b784"/></linearGradient></defs><ellipse class="s1" cx="60" cy="88" rx="38" ry="15" fill="url(#lp1)"/><ellipse class="s2" cx="59" cy="66" rx="28" ry="12" fill="url(#lp2)"/><ellipse class="s3" cx="60" cy="46" rx="19" ry="9.5" fill="url(#lp3)"/></svg>';
+K.LOGO='<svg viewBox="0 0 120 120"><image href="img/logo.png" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/></svg>';
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return u}};
 function fav(s,big){const h=host(s.url),l=(h[0]||'?').toUpperCase();let n=0;for(const c of h)n=(n*31+c.charCodeAt(0))%360;

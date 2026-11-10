@@ -7,11 +7,11 @@
 .vpg button{width:54px;height:52px;display:grid;place-items:center;color:#fff;transition:transform .2s var(--spring)}.vpg button:active{transform:scale(.86)}
 .vrot{width:52px;height:52px;border-radius:50%;background:#232325;border:1px solid #333;display:none;place-items:center;color:#fff}.vrot.show{display:grid;animation:pop .35s var(--spring) both}
 .stage{position:relative;flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 28px 110px;text-align:center;z-index:2}
-.vstar{animation:vBreath 3.4s ease-in-out infinite;filter:drop-shadow(0 0 22px rgba(120,150,255,.45))}
-.voice.thinking .vstar{animation:vSpin 1.8s linear infinite}
+.vstar{width:118px;height:118px;animation:vBreath 3.4s ease-in-out infinite;filter:drop-shadow(0 0 26px rgba(233,201,154,.35))}.vstar svg{width:100%;height:100%;display:block}
+.voice.thinking .vstar{animation:vBob 1.2s ease-in-out infinite}
 .voice.speaking .vstar{animation:vBeat .9s ease-in-out infinite}
 @keyframes vBreath{0%,100%{transform:scale(.92)}50%{transform:scale(1.08)}}
-@keyframes vSpin{to{transform:rotate(360deg)}}@keyframes vBeat{0%,100%{transform:scale(.95)}50%{transform:scale(1.18)}}
+@keyframes vBob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-10px) scale(1.06)}}@keyframes vBeat{0%,100%{transform:scale(.95)}50%{transform:scale(1.18)}}
 .vgreet{margin-top:26px;font-size:2.1em;font-weight:500;line-height:1.5;color:#ececf0;transition:opacity .4s}.vgreet.hide{opacity:0;height:0;margin:0;overflow:hidden}
 .vtext{margin-top:22px;font-size:1.7em;font-weight:600;line-height:1.7;color:#f2f2f7;max-height:46vh;overflow:hidden;opacity:0;transition:opacity .35s}.vtext.show{opacity:1}
 .vtrans{position:absolute;top:84px;inset-inline:16px;bottom:140px;overflow-y:auto;background:rgba(18,18,20,.94);border:1px solid #2e2e30;border-radius:24px;padding:14px 18px;transform:translateY(12px);opacity:0;pointer-events:none;transition:all .3s var(--ease);z-index:4;backdrop-filter:blur(10px)}

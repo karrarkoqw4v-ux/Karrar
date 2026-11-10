@@ -38,7 +38,7 @@ function build(){
  if($('voice'))return;const d=document.createElement('div');d.id='voice';d.className='voice';
  d.innerHTML='<canvas class="vfx" id="vfx"></canvas>'
  +'<div class="vtopL"><div class="vpg"><button id="vSet">'+DOTS+'</button><button id="vTr">'+CC+'</button></div><button class="vrot" id="vRot">'+K.icon('refresh-cw',22)+'</button></div>'
- +'<div class="stage"><div class="vstar" id="vStar">'+STAR+'</div><div class="vgreet" id="vGreet"></div><div class="vtext" id="vText"></div></div>'
+ +'<div class="stage"><div class="vstar" id="vStar">'+K.LOGO.replace(/lp(\d)/g,'vlp$1')+'</div><div class="vgreet" id="vGreet"></div><div class="vtext" id="vText"></div></div>'
  +'<div class="vtrans" id="vTrans"></div>'
  +'<div class="vbar"><button class="vc vx" id="vX">'+K.icon('x',24,2.2)+'</button><button class="vc vmic" id="vMic"></button><div class="vpill" id="vPill"><i></i><i></i><i></i><i></i></div><button class="vc vcam" id="vCam">'+CAM+'</button><button class="vc vplus" id="vPlus">'+K.icon('plus',26,2.2)+'</button></div>'
  +'<div class="vsheet" id="vSheet"><div class="vsbd"></div><div class="vsh"><i class="vgr"></i><div class="vtiles">'
