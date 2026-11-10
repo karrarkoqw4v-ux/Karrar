@@ -72,7 +72,7 @@ function sp_ai(b){
 let c=sec(b,K.t('s_ai'));
  row(c,{icon:'atom',title:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),sub:(K.lang()==='ar'?'اتصال تلقائي ومفاتيح مجانية':'Auto-connect and free keys'),value:K.pref.bool('auto',true)?(K.lang()==='ar'?'تلقائي':'Auto'):'',onclick:()=>S.open('oss')});
  row(c,{icon:'atom',title:(K.lang()==='ar'?'كتالوج النماذج (43)':'Model catalog (43)'),sub:(K.lang()==='ar'?'Llama وQwen وGemma وMistral وDeepSeek وGPT-OSS…':'Llama, Qwen, Gemma, Mistral, DeepSeek, GPT-OSS…'),onclick:()=>K.catalog.open()});
- toggle(c,{icon:'sparkles',title:(K.lang()==='ar'?'مكتبة المهارات (75)':'Skills library (75)'),sub:(K.lang()==='ar'?'يطبّق المهارة المناسبة لطلبك تلقائياً':'Applies the right skills to your request'),key:'skills',def:true});
+ toggle(c,{icon:'sparkles',title:(K.lang()==='ar'?'مكتبة المهارات (115)':'Skills library (115)'),sub:(K.lang()==='ar'?'يطبّق المهارة المناسبة لطلبك تلقائياً':'Applies the right skills to your request'),key:'skills',def:true});
  toggle(c,{icon:'atom',title:(K.lang()==='ar'?'فريق الذكاء لبناء التطبيقات':'AI team for app builds'),sub:(K.lang()==='ar'?'معماري ← مصمم ← مسؤول تفاصيل ← مبرمج':'Architect → designer → details → developer'),key:'team',def:true});
  toggle(c,{icon:'atom',title:K.t('t_plan'),sub:K.t('t_plan_s'),key:'plan',def:true});
  const MT=['0','512','1024','2048','4096'];

@@ -157,6 +157,7 @@ C.start=function(){
  const run=async function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
+  {const dr=K.skills.rules(lu0);if(dr)ctx+=(ctx?'\n\n':'')+dr}
   if(K.intent.write(lu0)||(S.cur&&S.cur.stu&&K.intent.write(lu0)))ctx+=(ctx?'\n\n':'')+'FORMAT: when you write a finished piece for the user (composition, essay, letter, speech, report, summary, book chapter, worked solution), put the piece itself inside a block that starts with a line :::doc and ends with a line :::, with a first line "# Title" inside. Keep any short intro or closing note outside the block. Do not use the block for casual chat or code.';
   const dl=K.dialect&&K.dialect.hint?K.dialect.hint(lu0):'';if(dl)ctx+=(ctx?'\n\n':'')+dl;
   try{const tn=await K.team.run(lu0,view);if(tn)ctx+='\n\n'+tn}catch(e){}

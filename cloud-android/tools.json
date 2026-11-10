@@ -1,0 +1,8 @@
+[
+ {"name":"screenshot","description":"Take a screenshot of the Android screen","parameters":{"type":"object","properties":{}}},
+ {"name":"tap","description":"Tap at pixel coordinates","parameters":{"type":"object","properties":{"x":{"type":"integer"},"y":{"type":"integer"}},"required":["x","y"]}},
+ {"name":"swipe","description":"Swipe between two points","parameters":{"type":"object","properties":{"x1":{"type":"integer"},"y1":{"type":"integer"},"x2":{"type":"integer"},"y2":{"type":"integer"},"ms":{"type":"integer"}},"required":["x1","y1","x2","y2"]}},
+ {"name":"type","description":"Type text into the focused field","parameters":{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}},
+ {"name":"key","description":"Press a key: HOME, BACK, ENTER","parameters":{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]}},
+ {"name":"launch","description":"Open an installed app by package name","parameters":{"type":"object","properties":{"package":{"type":"string"}},"required":["package"]}}
+]
