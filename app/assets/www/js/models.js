@@ -20,6 +20,7 @@ K.models={
    ['groq','llama-3.3-70b-versatile','Llama 3.3 70B',T('متوازن وسريع','Balanced and fast')],
    ['groq','openai/gpt-oss-120b','GPT-OSS 120B',T('استدلال متقدّم','Advanced reasoning')],
    ['groq','qwen/qwen3-32b','Qwen3 32B',T('برمجة والمهام المعقّدة','Coding and complex tasks')],
+   ['openrouter','qwen/qwen3-coder:free','Qwen3 Coder',T('الأقوى للبرمجة (مفتوح المصدر)','Strongest open coder')],
    ['openrouter','deepseek/deepseek-r1:free','DeepSeek R1',T('تفكير عميق','Deep thinking')]];
   const w=document.createElement('div');w.id='msheet';w.className='mdrop';w.dir=ar?'rtl':'ltr';
   const tl=K.pref.get('think_level','auto');

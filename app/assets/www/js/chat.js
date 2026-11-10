@@ -115,7 +115,7 @@ C.show=function(conv){
 };
 function toApi(msgs){return msgs.filter(function(m){return !m.gen}).map(m=>({role:m.role==='assistant'?'assistant':'user',content:((m.ft?m.ft+'\n\n':'')+(m.c||'')),images:m._b64||[]})).filter(x=>x.content||x.images.length)}
 function buildCtx(a){if(!a.length)return '';return 'Web search results (cite them in your answer as [1], [2] when you use them):\n'+a.map((s,i)=>(i+1)+'. '+s.title+' - '+(s.snippet||'')+' ('+s.url+')').join('\n')}
-C.send=function(){
+C.send=async function(){
  if(K.guard.locked()){K.guard.showLock();return}
  const ta=$('ta'),text=ta.value.trim(),atts=S.atts.slice();
  if(!text&&!atts.length)return;
@@ -127,6 +127,7 @@ C.send=function(){
  m._b64=atts.filter(a=>a.kind==='img'&&a.b64).map(a=>a.b64);
  ta.value='';ta.style.height='';S.atts=[];K.home.refreshComposer();K.home.closeSheet();
  if(S.streaming){/* queue: runs right after the current answer */ (S.queue=S.queue||[]).push(m);const qd=C.addUser(m);qd.classList.add('queued');K.toast(T2('أُضيفت للدور','Queued'));C.scrollEnd(true);return}
+ if(K.brief&&K.brief.need(text,S.cur)){S.cur.briefed=true;const bf=await K.brief.ask(text);if(bf)m.brief=bf}
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
@@ -158,6 +159,8 @@ C.start=function(){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
   {const dr=K.skills.rules(lu0);if(dr)ctx+=(ctx?'\n\n':'')+dr}
+  {const lp=K.langpack&&K.langpack.hint(lu0);if(lp)ctx+=(ctx?'\n\n':'')+lp}
+  if(lastUser&&lastUser.brief)ctx+=(ctx?'\n\n':'')+lastUser.brief
   if(K.intent.write(lu0)||(S.cur&&S.cur.stu&&K.intent.write(lu0)))ctx+=(ctx?'\n\n':'')+'FORMAT: when you write a finished piece for the user (composition, essay, letter, speech, report, summary, book chapter, worked solution), put the piece itself inside a block that starts with a line :::doc and ends with a line :::, with a first line "# Title" inside. Keep any short intro or closing note outside the block. Do not use the block for casual chat or code.';
   const dl=K.dialect&&K.dialect.hint?K.dialect.hint(lu0):'';if(dl)ctx+=(ctx?'\n\n':'')+dl;
   try{const tn=await K.team.run(lu0,view);if(tn)ctx+='\n\n'+tn}catch(e){}

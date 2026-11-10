@@ -1,4 +1,4 @@
-/* Skills library (115), intent routing and the "AI team" (architect -> designer -> details -> developer) for app builds */
+/* Skills library (185), intent routing and the "AI team" (architect -> designer -> details -> developer) for app builds */
 window.K=window.K||{};
 (function(){
 const T=(a,e)=>K.lang()==='ar'?a:e;
@@ -16,15 +16,15 @@ K.skills={
  /* top skills for this request, injected into the system prompt */
  context(text){
   if(!K.skills.on()||!text)return '';
-  const hits=LIST.map(s=>{const m=text.match(new RegExp(s.k,'gi'));return {s,n:m?m.length:0}}).filter(x=>x.n).sort((a,b)=>b.n-a.n).slice(0,3);
-  if(!hits.length)return '';
+  const hits=LIST.map(s=>{const m=text.match(new RegExp(s.k,'gi'));return {s,n:m?m.length:0}}).filter(x=>x.n).sort((a,b)=>b.n-a.n).slice(0,6);
+  if(!hits.length){if(!K.intent.build(text))return '';const core=['ui-hierarchy','ui-grid8','ui-states','ui-complete','ui-responsive'];const cs=LIST.filter(x=>core.indexOf(x.id)>=0);return 'MANDATORY skills for this build (follow them silently):\n'+cs.map(x=>'- '+x.id+': '+x.p).join('\n')}
   return 'Apply these skills to the task (follow them silently, do not list them):\n'+hits.map(h=>'- '+h.s.id+': '+h.s.p).join('\n')}
 };
 K.intent={
  write(t){t=t||'';return t.length>6&&/(اكتب|اكتبلي|اكتب لي|سوي لي|اعمل لي|أريد|اريد|عطني|اعطني|حل|حلل).{0,40}(موضوع|تعبير|رسالة|رساله|مقال|خطبة|خطبه|تقرير|بحث|ملخص|كتاب|قصة|قصه|قصيدة|خاطرة|إذاعة|اذاعة|فقرة|حل الواجب|حل الاسئلة|واجب|essay|letter|speech|report|summary|story|poem|chapter|composition)|(موضوع تعبير|تعبير عن|رسالة إلى|رساله الى|اكتب موضوع)/i.test(t)},
  search(t){return /(ابحث|بحث عن|ابحثلي|دوّر|دور لي|دور على|search (for|the web)|look up|google it|آخر الأخبار|latest news)/i.test(t||'')},
  think(t){return /(فكّر|فكر لي|فكر في|فكر بالموضوع|think (about|through|hard)|reason (about|through)|تفكير عميق)/i.test(t||'')},
- build(t){t=t||'';return t.length>10&&/(اعمل|سوي|صمم|ابني|انشئ|أنشئ|اكتب لي|برمج|build|make|create|design|develop).{0,40}(تطبيق|موقع|لعبة|صفحة|لوحة|app|website|site|game|landing|dashboard)/i.test(t)},
+ build(t){t=t||'';return t.length>10&&/(اعمل|سوي|صمم|تصميم|ابني|انشئ|أنشئ|اكتب لي|برمج|قم ب|build|make|create|design|develop).{0,40}(تطبيق|موقع|لعبة|صفحة|لوحة|app|website|site|game|landing|dashboard)/i.test(t)},
  simple(t,hasAtt){t=(t||'').trim();if(hasAtt)return false;const w=t.split(/\s+/).filter(Boolean).length;return w<=7&&!/(اكتب|برمج|كود|اشرح|شرح|قارن|حلل|حل |مسألة|code|write|explain|compare|build|solve|لماذا|كيف)/i.test(t)}
 };
 /* one short helper call: returns the model's text (empty on error) */
