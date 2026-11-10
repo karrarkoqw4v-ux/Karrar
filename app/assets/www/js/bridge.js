@@ -20,6 +20,7 @@ K.native={
  login(e,p){return A?JSON.parse(A.login(e,p)):K.mock.login(e,p)},
  signup(n,e,p,p2){return A?JSON.parse(A.signup(n,e,p,p2)):K.mock.signup(n,e,p,p2)},
  google(){return new Promise(r=>{if(!A)return setTimeout(()=>r({name:'Bawsala',email:'karrar@gmail.com'}),900);const id=reg(r);A.google(id)})},
+ googleAuth(scope){return new Promise(r=>{if(!A||!A.googleAuth)return setTimeout(()=>r({err:'Not available in preview'}),600);const id=reg(r);A.googleAuth(id,scope||'')})},
  googleAccounts(){try{return A&&A.googleAccounts?JSON.parse(A.googleAccounts()):K.mock.googleAccounts()}catch(e){return[]}},
  hasAccount(e){return A?A.hasAccount(e)==='1':K.mock.has(e)},
  resetPassword(e,p,p2){return A?JSON.parse(A.resetPassword(e,p,p2)):K.mock.reset(e,p,p2)},

@@ -334,9 +334,16 @@ public class Bridge {
 
     /* Google sign-in in the browser (OAuth 2.0 + PKCE, no secret): Google's page shows the account list and consent, then returns to the app. */
     @JavascriptInterface
-    public void google(int id) {
+    public void google(int id) { googleAuth(id, ""); }
+
+    private String gExtra = "";
+
+    /** Browser OAuth (PKCE) with extra scopes; returns profile + tokens so Google services (Drive, Gmail, Calendar...) can be used. */
+    @JavascriptInterface
+    public void googleAuth(int id, String extraScopes) {
         try {
             idGoogle = id;
+            gExtra = extraScopes == null ? "" : extraScopes.trim();
             java.security.SecureRandom rnd = new java.security.SecureRandom();
             byte[] v = new byte[48]; rnd.nextBytes(v);
             byte[] st = new byte[16]; rnd.nextBytes(st);
@@ -344,8 +351,8 @@ public class Bridge {
             byte[] ch = java.security.MessageDigest.getInstance("SHA-256").digest(gVerifier.getBytes("US-ASCII"));
             String url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + java.net.URLEncoder.encode(G_CLIENT, "UTF-8")
                 + "&redirect_uri=" + java.net.URLEncoder.encode(G_REDIRECT, "UTF-8")
-                + "&response_type=code&scope=" + java.net.URLEncoder.encode("openid email profile", "UTF-8")
-                + "&code_challenge=" + b64url(ch) + "&code_challenge_method=S256&state=" + gState + "&prompt=select_account";
+                + "&response_type=code&scope=" + java.net.URLEncoder.encode(("openid email profile " + gExtra).trim(), "UTF-8")
+                + "&code_challenge=" + b64url(ch) + "&code_challenge_method=S256&state=" + gState + (gExtra.isEmpty() ? "&prompt=select_account" : "&access_type=offline&prompt=consent+select_account&include_granted_scopes=true");
             gPending = true; gStarted = System.currentTimeMillis();
             act.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
@@ -381,7 +388,8 @@ public class Bridge {
                 String mail = us.optString("email", "");
                 if (mail.isEmpty()) { cb(id, new JSONObject().put("err", "no email").toString()); return; }
                 cb(id, new JSONObject().put("email", mail).put("name", us.optString("name", nameFromEmail(mail))).put("picture", us.optString("picture", ""))
-                    .put("verified", us.optBoolean("email_verified", false)).put("sub", us.optString("sub", "")).toString());
+                    .put("verified", us.optBoolean("email_verified", false)).put("sub", us.optString("sub", ""))
+                    .put("access_token", at).put("refresh_token", t.optString("refresh_token", "")).put("expires_in", t.optInt("expires_in", 3600)).put("scope", t.optString("scope", "")).toString());
             } catch (Exception e) { try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { } }
         } }).start();
     }

@@ -156,9 +156,10 @@ function appsPage(b){
  const n=document.createElement('div');n.className='note';n.style.paddingTop='4px';n.textContent=K.t('apps_sub');b.appendChild(n);
  let c=sec(b,K.t('apps_live'));
  row(c,{html:K.brand('github'),title:K.t('app_github'),sub:K.t('app_github_s'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('github')});
+ [['drive','googledrive','app_drive'],['gmail','gmail','app_gmail'],['cal','googlecalendar','app_cal'],['docs','googledocs','app_docs'],['sheets','googlesheets','app_sheets']].forEach(a=>row(c,{html:K.brand(a[1]),title:K.t(a[2]),sub:K.t(a[2]+'_s'),value:K.google.connected(a[0])?K.t('s_connected'):'',onclick:()=>K.google.open(a[0])}));
  c=sec(b,K.t('apps_soon'));
  const bd='<i class="badge">'+K.t('soon')+'</i>';
- [['googledrive','app_drive'],['gmail','app_gmail'],['googlecalendar','app_cal'],['googledocs','app_docs'],['googlesheets','app_sheets'],['notion','app_notion'],['gitlab','app_gitlab'],['figma','app_figma'],['dropbox','app_dropbox'],['trello','app_trello'],['discord','app_discord'],['telegram','app_telegram']].forEach(a=>{
+ [['notion','app_notion'],['gitlab','app_gitlab'],['figma','app_figma'],['dropbox','app_dropbox'],['trello','app_trello'],['discord','app_discord'],['telegram','app_telegram']].forEach(a=>{
   row(c,{html:K.brand(a[0]),title:K.t(a[1]),sub:K.t(a[1]+'_s'),badge:bd,onclick:()=>K.toast(K.t(a[1])+' — '+K.t('soon'))});
  });
  row(c,{html:appIc('#6b5cff','plug'),title:K.t('app_api'),sub:K.t('app_api_s'),badge:bd,onclick:()=>K.toast(K.t('app_api')+' — '+K.t('soon'))});
