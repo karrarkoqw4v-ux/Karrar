@@ -323,61 +323,83 @@ public class Bridge {
         }
     }
 
+    private static final String G_CLIENT = "141595198139-dk1njht8r2j8h184e8053d5m070d1ijp.apps.googleusercontent.com";
+    private static final String G_SCHEME = "com.googleusercontent.apps.141595198139-dk1njht8r2j8h184e8053d5m070d1ijp";
+    private static final String G_REDIRECT = G_SCHEME + ":/oauth2redirect";
+    private String gVerifier, gState;
+    private boolean gPending;
+    private long gStarted;
+
+    private static String b64url(byte[] b) { return android.util.Base64.encodeToString(b, android.util.Base64.URL_SAFE | android.util.Base64.NO_PADDING | android.util.Base64.NO_WRAP); }
+
+    /* Google sign-in in the browser (OAuth 2.0 + PKCE, no secret): Google's page shows the account list and consent, then returns to the app. */
     @JavascriptInterface
     public void google(int id) {
-        idGoogle = id;
-        Intent it = new Intent("com.google.android.gms.common.account.CHOOSE_ACCOUNT");
-        it.setPackage("com.google.android.gms");
-        it.putExtra("allowableAccountTypes", new String[]{"com.google"});
-        it.putExtra("alwaysPromptForAccount", true);
-        it.putExtra("descriptionTextOverride", Theme.rtl ? "\u0644\u0644\u0645\u062a\u0627\u0628\u0639\u0629 \u0625\u0644\u0649 \u0628\u0648\u0635\u0644\u0629" : "to continue to Bawsala");
-        if (it.resolveActivity(act.getPackageManager()) == null) {
-            if (Build.VERSION.SDK_INT >= 26) {
-                it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, null, null, null, null);
-            } else {
-                it = android.accounts.AccountManager.newChooseAccountIntent(null, null, new String[]{"com.google"}, true, null, null, null, null);
-            }
-        }
-        start(it, REQ_GOOGLE, id);
-    }
-
-    /* Official Google sign-in: Google's own consent screen (app name + package/SHA-1 registered in Firebase), then verified profile from Google. */
-    private void officialGoogle(final int id, final String email) {
-        final String scope = "oauth2:openid email profile";
         try {
-            android.accounts.AccountManager.get(act).getAuthToken(new android.accounts.Account(email, "com.google"), scope, null, act,
-                new android.accounts.AccountManagerCallback<Bundle>() {
-                    public void run(android.accounts.AccountManagerFuture<Bundle> f) {
-                        String tok = null, err = null;
-                        try { tok = f.getResult().getString(android.accounts.AccountManager.KEY_AUTHTOKEN); }
-                        catch (Exception e) { err = String.valueOf(e.getMessage()); }
-                        if (tok == null) { try { cb(id, new JSONObject().put("err", err == null ? "no token" : err).toString()); } catch (Exception ignored) { } return; }
-                        final String token = tok;
-                        new Thread(new Runnable() { public void run() {
-                            try {
-                                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL("https://www.googleapis.com/oauth2/v3/userinfo").openConnection();
-                                c.setConnectTimeout(12000); c.setReadTimeout(15000);
-                                c.setRequestProperty("Authorization", "Bearer " + token);
-                                int code = c.getResponseCode();
-                                java.io.InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
-                                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
-                                byte[] b = new byte[4096]; int n; while (in != null && (n = in.read(b)) > 0) bo.write(b, 0, n);
-                                if (code >= 400) {
-                                    android.accounts.AccountManager.get(act).invalidateAuthToken("com.google", token);
-                                    cb(id, new JSONObject().put("err", "Google " + code).toString()); return;
-                                }
-                                JSONObject u = new JSONObject(bo.toString("UTF-8"));
-                                String mail = u.optString("email", email);
-                                JSONObject r = new JSONObject();
-                                r.put("email", mail).put("name", u.optString("name", nameFromEmail(mail))).put("picture", u.optString("picture", "")).put("verified", u.optBoolean("email_verified", false)).put("sub", u.optString("sub", ""));
-                                cb(id, r.toString());
-                            } catch (Exception e) { try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { } }
-                        } }).start();
-                    }
-                }, null);
+            idGoogle = id;
+            java.security.SecureRandom rnd = new java.security.SecureRandom();
+            byte[] v = new byte[48]; rnd.nextBytes(v);
+            byte[] st = new byte[16]; rnd.nextBytes(st);
+            gVerifier = b64url(v); gState = b64url(st);
+            byte[] ch = java.security.MessageDigest.getInstance("SHA-256").digest(gVerifier.getBytes("US-ASCII"));
+            String url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=" + java.net.URLEncoder.encode(G_CLIENT, "UTF-8")
+                + "&redirect_uri=" + java.net.URLEncoder.encode(G_REDIRECT, "UTF-8")
+                + "&response_type=code&scope=" + java.net.URLEncoder.encode("openid email profile", "UTF-8")
+                + "&code_challenge=" + b64url(ch) + "&code_challenge_method=S256&state=" + gState + "&prompt=select_account";
+            gPending = true; gStarted = System.currentTimeMillis();
+            act.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Exception e) {
+            gPending = false;
             try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { }
         }
+    }
+
+    /* called when the browser returns to the app via the redirect scheme */
+    public void onNewIntent(Intent it) {
+        Uri u = it == null ? null : it.getData();
+        if (u == null || !G_SCHEME.equals(u.getScheme()) || !gPending) return;
+        gPending = false;
+        final int id = idGoogle;
+        String err = u.getQueryParameter("error"), code = u.getQueryParameter("code"), state = u.getQueryParameter("state");
+        if (err != null) { try { cb(id, new JSONObject().put("err", "access_denied".equals(err) ? "cancel" : err).toString()); } catch (Exception ignored) { } return; }
+        if (code == null || state == null || !state.equals(gState)) { try { cb(id, new JSONObject().put("err", "bad response").toString()); } catch (Exception ignored) { } return; }
+        final String c = code, ver = gVerifier;
+        new Thread(new Runnable() { public void run() {
+            try {
+                String body = "client_id=" + java.net.URLEncoder.encode(G_CLIENT, "UTF-8") + "&code=" + java.net.URLEncoder.encode(c, "UTF-8")
+                    + "&code_verifier=" + java.net.URLEncoder.encode(ver, "UTF-8") + "&grant_type=authorization_code&redirect_uri=" + java.net.URLEncoder.encode(G_REDIRECT, "UTF-8");
+                java.net.HttpURLConnection h = (java.net.HttpURLConnection) new java.net.URL("https://oauth2.googleapis.com/token").openConnection();
+                h.setRequestMethod("POST"); h.setDoOutput(true); h.setConnectTimeout(12000); h.setReadTimeout(15000);
+                h.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                h.getOutputStream().write(body.getBytes("UTF-8"));
+                JSONObject t = new JSONObject(readAll(h));
+                String at = t.optString("access_token", "");
+                if (at.isEmpty()) { cb(id, new JSONObject().put("err", t.optString("error_description", t.optString("error", "token"))).toString()); return; }
+                java.net.HttpURLConnection q = (java.net.HttpURLConnection) new java.net.URL("https://www.googleapis.com/oauth2/v3/userinfo").openConnection();
+                q.setConnectTimeout(12000); q.setReadTimeout(15000); q.setRequestProperty("Authorization", "Bearer " + at);
+                JSONObject us = new JSONObject(readAll(q));
+                String mail = us.optString("email", "");
+                if (mail.isEmpty()) { cb(id, new JSONObject().put("err", "no email").toString()); return; }
+                cb(id, new JSONObject().put("email", mail).put("name", us.optString("name", nameFromEmail(mail))).put("picture", us.optString("picture", ""))
+                    .put("verified", us.optBoolean("email_verified", false)).put("sub", us.optString("sub", "")).toString());
+            } catch (Exception e) { try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { } }
+        } }).start();
+    }
+
+    /* user came back from the browser without finishing -> treat as cancel */
+    public void onResumeCheck() {
+        if (!gPending || System.currentTimeMillis() - gStarted < 1500) return;
+        final int id = idGoogle;
+        ui.postDelayed(new Runnable() { public void run() {
+            if (gPending) { gPending = false; try { cb(id, "{\"err\":\"cancel\"}"); } catch (Exception ignored) { } }
+        } }, 1500);
+    }
+
+    private static String readAll(java.net.HttpURLConnection c) throws Exception {
+        java.io.InputStream in = c.getResponseCode() >= 400 ? c.getErrorStream() : c.getInputStream();
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+        byte[] b = new byte[4096]; int n; while (in != null && (n = in.read(b)) > 0) bo.write(b, 0, n);
+        return bo.toString("UTF-8");
     }
 
     private static String nameFromEmail(String email) {
@@ -631,9 +653,7 @@ public class Bridge {
                 pendingSave = null;
             } else if (req == REQ_GOOGLE) {
                 int id = idGoogle;
-                String email = data == null ? null : data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
-                if (res != ok || email == null) { cb(id, "{\"err\":\"cancel\"}"); return; }
-                officialGoogle(id, email);
+                cb(id, "{\"err\":\"cancel\"}");
             } else if (req == REQ_VOICE) {
                 int id = idVoice;
                 String t = "";

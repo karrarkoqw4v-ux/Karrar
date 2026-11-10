@@ -98,6 +98,19 @@ public class WebActivity extends Activity {
     }
 
     @Override
+    protected void onNewIntent(Intent it) {
+        super.onNewIntent(it);
+        setIntent(it);
+        if (bridge != null) bridge.onNewIntent(it);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (bridge != null) bridge.onResumeCheck();
+    }
+
+    @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
         bridge.onResult(req, res, data);

@@ -13,7 +13,7 @@ const ADD='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="c
 K.gsheet={
  /* resolves {name,email} or {err:'cancel'}; keeps a black loading screen up after a choice until done() */
  async pick(){
-  if(K.native.real){ /* real device: Google's own account sheet lists the accounts that are really on the phone */
+  if(K.native.real){ /* real device: Google's own sign-in page opens in the browser and returns to the app */
    const r=await K.native.google();
    if(!r||r.err)return r||{err:'cancel'};
    K.gsheet.loading();await new Promise(x=>setTimeout(x,1100));return r}
