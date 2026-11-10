@@ -175,12 +175,17 @@ public class Bridge {
                 nb = new android.app.Notification.Builder(act, "replies");
             } else nb = new android.app.Notification.Builder(act);
             int small = act.getResources().getIdentifier("ic_stat", "drawable", act.getPackageName());
-            int launcher = act.getResources().getIdentifier("ic_launcher", "mipmap", act.getPackageName());
+            int launcher = act.getResources().getIdentifier("notif_logo", "drawable", act.getPackageName());
+            if (launcher == 0) launcher = act.getResources().getIdentifier("ic_launcher", "mipmap", act.getPackageName());
             nb.setSmallIcon(small != 0 ? small : launcher);
             if (launcher != 0) nb.setLargeIcon(android.graphics.BitmapFactory.decodeResource(act.getResources(), launcher));
-            nb.setContentTitle(Theme.rtl ? "\u0628\u0648\u0635\u0644\u0629" : "Bawsala");
-            nb.setContentText(clean.length() > 140 ? clean.substring(0, 140) + "\u2026" : clean);
-            nb.setStyle(new android.app.Notification.BigTextStyle().bigText(clean.length() > 600 ? clean.substring(0, 600) + "\u2026" : clean));
+            // like Gemini: the system header shows the app name + time; the reply itself is the bold title
+            String first = clean.length() > 90 ? clean.substring(0, 90) + "\u2026" : clean;
+            nb.setContentTitle(first);
+            if (clean.length() > 90) nb.setContentText(clean.substring(90, Math.min(clean.length(), 230)));
+            nb.setShowWhen(true);
+            nb.setWhen(System.currentTimeMillis());
+            nb.setStyle(new android.app.Notification.BigTextStyle().setBigContentTitle(first).bigText(clean.length() > 600 ? clean.substring(0, 600) + "\u2026" : clean));
             nb.setAutoCancel(true);
             nb.setColor(0xFF4D6BFE);
             Intent it = new Intent(act, WebActivity.class);
