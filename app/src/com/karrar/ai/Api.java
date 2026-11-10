@@ -74,10 +74,15 @@ public final class Api {
             l.add(new Prov(f[0], f[1], k, cached.isEmpty() ? f[2] : cached, f[3]));
         }
         if (Store.bool("auto", true)) {
-            Prov p = new Prov("pollinations", "https://text.pollinations.ai", "", null, null);
-            p.url = "https://text.pollinations.ai/openai";
-            p.keyless = true;
-            l.add(p);
+            // Keyless public gateway, several open-weights models tried one after another
+            String[][] pol = {{"pollinations-llama", "llama", "deepseek-reasoning"}, {"pollinations-mistral", "mistral", "mistral"},
+                    {"pollinations-deepseek", "deepseek", "deepseek-reasoning"}, {"pollinations-qwen", "qwen-coder", "qwen-coder"}};
+            for (String[] q : pol) {
+                Prov p = new Prov(q[0], "https://text.pollinations.ai", "", q[1], q[2]);
+                p.url = "https://text.pollinations.ai/openai";
+                p.keyless = true;
+                l.add(p);
+            }
         }
         return l;
     }
@@ -140,12 +145,56 @@ public final class Api {
         return h;
     }
 
+    /** One tiny request per configured provider: [{name, model, ok, ms, msg}]. */
+    public static String diagnose() {
+        JSONArray out = new JSONArray();
+        try {
+            for (Prov p : chain()) {
+                JSONObject r = new JSONObject();
+                r.put("name", p.name);
+                String model = p.model == null ? "" : p.model;
+                r.put("model", model);
+                long t0 = System.currentTimeMillis();
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("model", model);
+                    body.put("stream", false);
+                    body.put("max_tokens", 16);
+                    body.put("messages", new JSONArray().put(new JSONObject().put("role", "user").put("content", "Say hi")));
+                    Handle h = new Handle();
+                    HttpURLConnection c = open(p, body, false, h);
+                    int code = c.getResponseCode();
+                    String txt = readAll(code >= 400 ? c.getErrorStream() : c.getInputStream());
+                    if (code >= 400) { r.put("ok", false).put("msg", errText(code, txt)); }
+                    else {
+                        StringBuilder e = new StringBuilder();
+                        boolean ok = false;
+                        try {
+                            JSONObject j = new JSONObject(txt.trim());
+                            JSONArray ch = j.optJSONArray("choices");
+                            ok = ch != null && ch.length() > 0 && ch.getJSONObject(0).optJSONObject("message") != null
+                                    && ch.getJSONObject(0).getJSONObject("message").optString("content", "").length() > 0;
+                            if (!ok && j.has("error")) e.append(j.get("error").toString());
+                        } catch (Exception ex) { e.append(txt.length() > 160 ? txt.substring(0, 160) : txt); }
+                        r.put("ok", ok);
+                        if (!ok) r.put("msg", e.length() > 0 ? e.toString() : "empty reply");
+                    }
+                } catch (Exception e) {
+                    r.put("ok", false).put("msg", e.getClass().getSimpleName() + ": " + e.getMessage());
+                }
+                r.put("ms", System.currentTimeMillis() - t0);
+                out.put(r);
+            }
+        } catch (Exception ignored) { }
+        return out.toString();
+    }
+
     private static HttpURLConnection open(Prov p, JSONObject body, boolean sse, Handle h) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(p.endpoint()).openConnection();
         h.conn = c;
         c.setRequestMethod("POST");
-        c.setConnectTimeout(15000);
-        c.setReadTimeout(90000);
+        c.setConnectTimeout(8000);
+        c.setReadTimeout(sse ? 35000 : 60000);
         c.setDoOutput(true);
         c.setRequestProperty("Content-Type", "application/json");
         c.setRequestProperty("Accept", sse ? "text/event-stream" : "application/json");

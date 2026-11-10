@@ -39,6 +39,7 @@ K.native={
    const id=reg(handler,false);A.voiceStart(id);
    return {stop(){A.voiceStop();delete cbs[id]}};
  },
+ diag(){return new Promise(r=>{if(!A||!A.diag)return r([{name:'demo',model:'sample',ok:true,ms:120},{name:'pollinations-llama',model:'llama',ok:false,ms:900,msg:'HTTP 403: sample error'}]);const id=reg(r);A.diag(id)})},
  screenshot(){return new Promise(r=>{if(!A||!A.screenshot)return r(K.mock.images(1)[0]);const id=reg(r);A.screenshot(id)})},
  fetchImage(url,bearer,body){return new Promise(r=>{if(!A||!A.fetchImage)return r(null);const id=reg(r);A.fetchImage(id,url,bearer||'',body||'')})},
  scanUrl(url,deep){return new Promise(r=>{if(!A||!A.scanUrl)return r(K.mock.scanUrl(url,deep));const id=reg(r);A.scanUrl(id,url,!!deep)})},

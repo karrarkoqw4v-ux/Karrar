@@ -206,11 +206,12 @@ function ossPage(b){
  n.textContent=T('يتصل التطبيق تلقائياً بنماذج مفتوحة المصدر (Llama وQwen وGemma وMistral وDeepSeek…). إن فشل نموذج أو مزوّد ينتقل للتالي بصمت دون أن تظهر لك مشكلة.','The app connects automatically to open-source models (Llama, Qwen, Gemma, Mistral, DeepSeek…). If one model or provider fails it silently moves to the next, with no error shown.');b.appendChild(n);
  let c=sec(b,T('الوضع التلقائي','Automatic mode'));
  toggle(c,{icon:'sparkles',title:T('الاتصال التلقائي بنماذج مفتوحة','Auto-connect to open models'),sub:T('بوابة عامة بدون مفتاح كخيار أخير (قد تكون بطيئة أو محدودة)','A public keyless gateway as a last resort (may be slow or limited)'),key:'auto',def:true});
- row(c,{icon:'circle-check',title:T('اختبار الاتصال الآن','Test the connection now'),onclick:async(r)=>{
-  const rv=r.querySelector('.rt');K.toast(T('جارٍ الاختبار…','Testing…'));let out='',err='';
-  await new Promise(done=>{K.native.chat([{role:'user',content:'Reply with a short friendly greeting in one sentence.',images:[]}],false,'',ev=>{if(ev.t==='text')out+=ev.d;else if(ev.t==='err'){err=ev.m;done()}else if(ev.t==='done')done()});setTimeout(done,25000)});
-  K.ui.info(err?T('تعذّر الاتصال','Could not connect'):T('الاتصال يعمل ✅','Connection works ✅'),err?(err+K.errHint(err)):out.replace(/<think>[\s\S]*?<\/think>/g,'').trim()||'—')}});
- c=sec(b,T('مفاتيح مجانية (اختياري — تزيد الثبات)','Free keys (optional — more stable)'));
+ row(c,{icon:'circle-check',title:T('فحص كل المزوّدين الآن','Check every provider now'),sub:T('يعرض لكل مزوّد: يعمل أو سبب الفشل','Shows for each provider: working, or why it failed'),onclick:async()=>{
+  K.toast(T('جارٍ الفحص… قد يستغرق دقيقة','Checking… this can take a minute'));
+  let list=[];try{list=await K.native.diag()||[]}catch(e){}
+  const okc=list.filter(x=>x.ok).length;
+  const txt=list.length?list.map(x=>(x.ok?'✅ ':'❌ ')+x.name+(x.model?' ('+x.model+')':'')+' · '+x.ms+'ms'+(x.ok?'':'\n    '+String(x.msg||'').slice(0,160))).join('\n'):T('لا يوجد مزوّد مضبوط. فعّل «الاتصال التلقائي» أو أضف مفتاحاً.','No provider is configured. Turn on auto-connect or add a key.');
+  K.ui.info(okc?T('يعمل '+okc+' من '+list.length,okc+' of '+list.length+' working'):T('لا يعمل أي مزوّد','No provider works'),txt+(okc?'':'\n\n'+T('أضف مفتاح Groq أو OpenRouter أو Gemini المجاني أدناه، فالبوابة العامة قد تكون محجوبة أو متوقفة.','Add a free Groq, OpenRouter or Gemini key below — the public gateway may be blocked or down.')))}}); c=sec(b,T('مفاتيح مجانية (اختياري — تزيد الثبات)','Free keys (optional — more stable)'));
  const L=[['groq','Groq','Llama · GPT-OSS','console.groq.com/keys'],['openrouter','OpenRouter','Llama · DeepSeek · Qwen (:free)','openrouter.ai/keys'],['hf','Hugging Face','Llama · DeepSeek · Qwen','huggingface.co/settings/tokens'],['cerebras','Cerebras','Llama · Qwen','cloud.cerebras.ai'],['mistral','Mistral','Mistral Nemo','console.mistral.ai/api-keys'],['gemini','Google AI Studio','Gemma','aistudio.google.com/apikey'],['github','GitHub Models','Llama · DeepSeek','github.com/settings/tokens']];
  L.forEach(x=>{const has=!!K.pref.get('fk_'+x[0],'');
   row(c,{icon:'key',title:x[1],sub:x[2]+' · '+x[3],value:has?T('مُضاف ✓','Added ✓'):'',onclick:async()=>{

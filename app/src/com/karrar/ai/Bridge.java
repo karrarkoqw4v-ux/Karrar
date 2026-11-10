@@ -233,6 +233,11 @@ public class Bridge {
     }
 
     @JavascriptInterface
+    public void diag(final int id) {
+        new Thread(new Runnable() { public void run() { cb(id, Api.diagnose()); } }).start();
+    }
+
+    @JavascriptInterface
     public void scanUrl(final int id, final String url, final boolean deep) {
         new Thread(new Runnable() {
             public void run() {
