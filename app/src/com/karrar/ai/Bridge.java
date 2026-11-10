@@ -215,6 +215,23 @@ public class Bridge {
         }).start();
     }
 
+    /** Captures what the app currently shows (the WebView) as an image attachment. */
+    @JavascriptInterface
+    public void screenshot(final int id) {
+        ui.post(new Runnable() {
+            public void run() {
+                try {
+                    Bitmap b = Bitmap.createBitmap(Math.max(1, wv.getWidth()), Math.max(1, wv.getHeight()), Bitmap.Config.ARGB_8888);
+                    android.graphics.Canvas c = new android.graphics.Canvas(b);
+                    wv.draw(c);
+                    cb(id, new JSONObject().put("th", thumb(b)).put("b64", b64(b, 1280, 82)).toString());
+                } catch (Exception e) {
+                    cb(id, "null");
+                }
+            }
+        });
+    }
+
     @JavascriptInterface
     public void scanUrl(final int id, final String url, final boolean deep) {
         new Thread(new Runnable() {

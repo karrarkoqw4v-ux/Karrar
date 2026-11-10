@@ -11,6 +11,7 @@ V.plain=plain;
 const STAR='<svg viewBox="0 0 64 64" width="84" height="84"><defs><linearGradient id="vg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffb300"/><stop offset=".33" stop-color="#34c759"/><stop offset=".66" stop-color="#4d8dff"/><stop offset="1" stop-color="#ff453a"/></linearGradient></defs><path fill="url(#vg)" d="M32 3C34 19 45 30 61 32 45 34 34 45 32 61 30 45 19 34 3 32 19 30 30 19 32 3Z"/></svg>';
 const CAM='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="13" height="11" rx="3.5"/><path d="M20.5 9.5v5"/></svg>';
 const CC='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M8 10.5h8M8 14.5h5"/></svg>';
+const MON='<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="3"/><path d="M8 20h8M12 16v4"/><path d="M10 10l2-2 2 2M12 8v4" stroke-width="1.8"/></svg>';
 const DOTS='<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
 /* bottom glow: blue / red / green / yellow light rising from the lower edge, driven by the voice level */
 const COL=[[66,133,244],[234,67,53],[52,199,89],[251,188,5],[66,133,244],[168,85,247]];
@@ -41,7 +42,7 @@ function build(){
  +'<div class="vtrans" id="vTrans"></div>'
  +'<div class="vbar"><button class="vc vx" id="vX">'+K.icon('x',24,2.2)+'</button><button class="vc vmic" id="vMic"></button><div class="vpill" id="vPill"><i></i><i></i><i></i><i></i></div><button class="vc vcam" id="vCam">'+CAM+'</button><button class="vc vplus" id="vPlus">'+K.icon('plus',26,2.2)+'</button></div>'
  +'<div class="vsheet" id="vSheet"><div class="vsbd"></div><div class="vsh"><i class="vgr"></i><div class="vtiles">'
- +[['share','share',T('مشاركة الرد','Share reply'),'vShare'],['image','image',T('الصور','Photos'),'vAlb'],['paperclip','paperclip',T('الملفات','Files'),'vFile'],['camera','camera',T('الكاميرا','Camera'),'vCm'],['sparkles','sparkles',T('إنشاء صورة','Create image'),'vImg']].map(x=>'<button class="vtile" id="'+x[3]+'">'+K.icon(x[1],30)+'<span>'+x[2]+'</span></button>').join('')
+ +[['vScr',T('مشاركة الشاشة','Share screen'),'#4d6bfe,#8b5cf6',MON],['vAlb',T('الصور','Photos'),'#10b981,#22d3ee',K.icon('image',28)],['vFile',T('الملفات','Files'),'#f59e0b,#ef4444',K.icon('paperclip',28)],['vCm',T('الكاميرا','Camera'),'#ec4899,#f43f5e',K.icon('camera',28)],['vImg',T('إنشاء صورة','Create image'),'#8b5cf6,#d946ef',K.icon('sparkles',28)],['vShare',T('مشاركة الرد','Share reply'),'#0ea5e9,#3b82f6',K.icon('share',28)]].map(x=>'<button class="vtile" id="'+x[0]+'"><span class="vti" style="background:linear-gradient(145deg,'+x[2]+')">'+x[3]+'</span><span>'+x[1]+'</span></button>').join('')
  +'</div></div></div>';
  document.body.appendChild(d);
  $('vX').onclick=()=>V.close();$('vMic').onclick=()=>V.toggleMute();
@@ -54,6 +55,7 @@ function build(){
  $('vSheet').querySelector('.vsbd').onclick=()=>$('vSheet').classList.remove('show');
  const sh=()=>$('vSheet').classList.remove('show');
  $('vShare').onclick=()=>{sh();const c=S().cur,m=c&&[...c.msgs].reverse().find(x=>x.role==='assistant'&&x.c);if(m)K.native.share(m.c);else K.toast(T('لا يوجد رد لمشاركته','No reply to share yet'))};
+ $('vScr').onclick=async()=>{sh();const v=$('voice');v.style.visibility='hidden';await new Promise(r=>setTimeout(r,320));let r=null;try{r=await K.native.screenshot()}catch(e){}v.style.visibility='';if(r&&r.th){K.home.addAtt({kind:'img',th:r.th,b64:r.b64});K.toast(T('أُضيفت لقطة الشاشة إلى سؤالك','Screen capture added to your question'))}else K.toast(T('تعذّر التقاط الشاشة','Could not capture the screen'))};
  $('vAlb').onclick=()=>{sh();$('aAlb').click()};
  $('vFile').onclick=()=>{sh();$('aFile').click()};
  $('vCm').onclick=()=>{sh();$('aCam').click()};

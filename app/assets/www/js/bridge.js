@@ -39,6 +39,7 @@ K.native={
    const id=reg(handler,false);A.voiceStart(id);
    return {stop(){A.voiceStop();delete cbs[id]}};
  },
+ screenshot(){return new Promise(r=>{if(!A||!A.screenshot)return r(K.mock.images(1)[0]);const id=reg(r);A.screenshot(id)})},
  fetchImage(url,bearer,body){return new Promise(r=>{if(!A||!A.fetchImage)return r(null);const id=reg(r);A.fetchImage(id,url,bearer||'',body||'')})},
  scanUrl(url,deep){return new Promise(r=>{if(!A||!A.scanUrl)return r(K.mock.scanUrl(url,deep));const id=reg(r);A.scanUrl(id,url,!!deep)})},
  saveFile(name,mime,b64){return new Promise(r=>{if(A&&A.saveFile){r(A.saveFile(name,mime,b64));return}try{const bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500);r('ok')}catch(e){r('err')}})},
