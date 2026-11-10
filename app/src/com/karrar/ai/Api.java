@@ -140,6 +140,7 @@ public final class Api {
                         }
                     }
                     String firstErr = null, lastErr = null;
+                    StringBuilder all = new StringBuilder();
                     for (Prov p : ch) {
                         if (h.cancelled) { post(ui, cb, null, null, "", h); return; }
                         String model = think ? p.think : p.model;
@@ -150,8 +151,12 @@ public final class Api {
                         if (err == null || r.got || h.cancelled) { post(ui, cb, null, null, "", h); return; }
                         if (firstErr == null) firstErr = err;
                         lastErr = err;
+                        String one = err.length() > 90 ? err.substring(0, 90) : err;
+                        all.append("\n• ").append(p.name).append(": ").append(one.replace('\n', ' '));
                     }
-                    post(ui, cb, null, null, firstErr != null ? firstErr : lastErr, h);
+                    String shown = firstErr != null ? firstErr : lastErr;
+                    if (all.length() > 0 && ch.size() > 1) shown = shown + "\n\n[" + ch.size() + " providers tried]" + all;
+                    post(ui, cb, null, null, shown, h);
                 } catch (Exception e) {
                     if (!h.cancelled) post(ui, cb, null, null, e.getClass().getSimpleName() + ": " + e.getMessage(), h);
                     else post(ui, cb, null, null, "", h);

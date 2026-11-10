@@ -12,6 +12,7 @@ FINAL="$APP/Karrar-AI.apk"
 if [ "${EMBED_KEY:-0}" = "1" ]; then
   [ -f "$APP/config/default_provider.json" ] || { echo "config/default_provider.json missing"; exit 1; }
   mkdir -p "$OUT/extra" && cp "$APP/config/default_provider.json" "$OUT/extra/"
+  [ -f "$APP/config/provider_keys.json" ] && cp "$APP/config/provider_keys.json" "$OUT/extra/"
   EXTRA=(-A "$OUT/extra")
   FINAL="$OUT/Bawsala-private.apk"
 fi

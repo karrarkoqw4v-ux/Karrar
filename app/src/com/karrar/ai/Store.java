@@ -24,6 +24,26 @@ public final class Store {
         sp = c.getApplicationContext().getSharedPreferences("karrar_ai", Context.MODE_PRIVATE);
         Theme.rtl = "ar".equals(get("lang", "ar"));
         loadDefaultProvider(c);
+        loadProviderKeys(c);
+    }
+
+    /** Optional private-build keys (assets/provider_keys.json): {"groq":"gsk_..","openrouter":".."}; only fills keys the user has not set. */
+    private static void loadProviderKeys(Context c) {
+        try {
+            java.io.InputStream in = c.getAssets().open("provider_keys.json");
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] b = new byte[2048];
+            int n;
+            while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+            in.close();
+            org.json.JSONObject j = new org.json.JSONObject(bo.toString("UTF-8"));
+            java.util.Iterator<String> it = j.keys();
+            while (it.hasNext()) {
+                String name = it.next();
+                String v = j.optString(name, "").trim();
+                if (!v.isEmpty() && get("fk_" + name, "").trim().isEmpty()) put("fk_" + name, v);
+            }
+        } catch (Exception ignored) { }
     }
 
     /** Optional private-build defaults (assets/default_provider.json): only fills settings the user has not set. */
