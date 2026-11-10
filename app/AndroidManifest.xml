@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.karrar.ai"
+    package="com.bawsala.app"
     android:versionCode="2"
     android:versionName="2.0">
 
@@ -23,7 +23,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".WebActivity"
+            android:name="com.karrar.ai.WebActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden|fontScale|uiMode|locale|layoutDirection">
