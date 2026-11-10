@@ -15,7 +15,7 @@ function AIView(m,o){
  const el=this.el=document.createElement('div');el.className='msg ai'+(this.live?' live':' done');el._view=this;
  el.innerHTML='<div class="ai-head"><span class="logo">'+K.LOGO+'</span></div><div class="src"></div><div class="status shimmer hidden"></div><div class="dots hidden"><i></i><i></i><i></i></div>'
   +'<div class="think hidden"><button class="think-h">'+K.icon('atom',17)+'<span></span><span class="chev">'+K.icon('chevron-down',16)+'</span></button><div class="think-b"><div><p></p></div></div></div>'
-  +'<div class="md"></div><div class="gen hidden"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
+  +'<div class="md"></div><div class="errc hidden"></div><div class="gen hidden"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
   +'<div class="acts"><button data-a="copy">'+K.icon('copy',19)+'</button><button data-a="regen" class="'+(this.last?'':'hidden')+'">'+K.icon('refresh-cw',19)+'</button><button data-a="up">'+K.icon('thumbs-up',19)+'</button><button data-a="down">'+K.icon('thumbs-down',19)+'</button><button data-a="share">'+K.icon('share',19)+'</button><button data-a="speak">'+K.icon('volume-2',19)+'</button></div>';
  const self=this;
  el.querySelector('.think-h').onclick=function(){self.open=!self.open;self.render()};
@@ -43,6 +43,9 @@ AIView.prototype.render=function(){
  const gn=this.q('.gen');gn.classList.toggle('hidden',!m.gen);if(m.gen)gn.innerHTML=K.imggen.html(m.gen);
  const hasSrc=(m.src||[]).length>0;
  this.q('.md').innerHTML=K.mdEmoji(m.c||'',hasSrc)+(live&&m.c?'<span class="cursor"></span>':'');
+ {const ec=this.q('.errc');ec.classList.toggle('hidden',!m.err);if(m.err&&ec._k!==m.err.m){ec._k=m.err.m;const ar=K.lang()==='ar',net=/timeout|timed out|UnknownHost|Unable to resolve|ECONN|failed to connect|Network|SocketException|SSL|no providers/i.test(m.err.m);
+  ec.innerHTML='<span class="ei"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8a15 15 0 0 0-9-3.7"/><path d="M5 12.9a10 10 0 0 1 3.5-2.1M19 12.9a10 10 0 0 0-2.6-1.9"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M12 20h.01"/><path d="m2 2 20 20"/></svg></span><div class="et"><b>'+(net?(ar?'بوصلة غير متاحة حالياً':'Bawsala is unavailable right now'):(ar?'تعذّر الحصول على رد':'Could not get a reply'))+'</b><span>'+(net?(ar?'يُرجى التحقق من الاتصال بالإنترنت ثم إعادة المحاولة.':'Check your connection and try again.'):'')+'</span><details><summary>'+(ar?'التفاصيل':'Details')+'</summary><pre></pre></details><button class="eretry" data-eretry="1">'+(ar?'إعادة المحاولة':'Try again')+'</button></div>';
+  ec.querySelector('pre').textContent=String(m.err.m).slice(0,600)+(m.err.hint?'\n'+m.err.hint.replace(/^\n+/,''):'')}}
  this.el.classList.toggle('done',!live);this.el.classList.toggle('live',live);
  this.q('.demo-note').classList.toggle('hidden',!(m.demo&&!live));
  this.q('[data-a=up]').classList.toggle('on',m.v===1);this.q('[data-a=down]').classList.toggle('on',m.v===-1);
@@ -58,6 +61,7 @@ C.mount=function(){
   const t=e.target;
   const av=t.closest('[data-appv]');if(av){K.apps.open(av.dataset.appv);return}
   const as=t.closest('[data-apps]');if(as){K.apps.save(as.dataset.apps);return}
+  const er=t.closest('[data-eretry]');if(er){const vv=er.closest('.msg.ai')._view;if(vv&&!S.streaming){S.cur.msgs.pop();vv.el.remove();C.start()}return}
   const dcb=t.closest('[data-dcc],[data-dcs]');if(dcb){const raw=decodeURIComponent(dcb.closest('.docc').querySelector('.dc-body').dataset.raw||'');if(dcb.dataset.dcc!==undefined){K.native.copy(raw);K.toast(K.lang()==='ar'?'تم النسخ':'Copied')}else K.native.share(raw);return}
   const ab=t.closest('[data-appb]');if(ab){K.apps.browser(ab.dataset.appb);return}
   const ag=t.closest('[data-appg]');if(ag){K.apps.push(ag.dataset.appg);return}
@@ -179,7 +183,7 @@ C.start=function(){
    if(ev.t==='think'){if(!thinkNow){hid+=ev.d;return}ai.t+=ev.d;view.open=true;view.thinking=true;view.status='';view.dirty()}
    else if(ev.t==='text'){q+=ev.d;if(!tm)pump()}
    else if(ev.t==='done'){doneEv=ev;if(!tm)pump()}
-   else if(ev.t==='err'){clearTimeout(tm);tm=0;flushed=true;ai.c+=q;q='';ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m+K.errHint(ev.m);ai.s=ai.s||1;view.open=false;view.thinking=false;view.status='';C.finish(view)}
+   else if(ev.t==='err'){clearTimeout(tm);tm=0;flushed=true;ai.c+=q;q='';ai.err={m:ev.m,hint:K.errHint(ev.m)};ai.s=ai.s||1;view.open=false;view.thinking=false;view.status='';C.finish(view)}
   });
  };
  const withRepos=function(ctx){
@@ -198,7 +202,7 @@ C.start=function(){
 C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
  if(!view.m.c&&view.m.t){view.m.c=view.m.t;view.m.t='';view.m.s=view.m.s||1}
- if(!view.m.c)view.m.c='—';
+ if(!view.m.c&&!view.m.err)view.m.c='—';
  S.think=false;S.search=false;if(K.home&&K.home.paintPills)K.home.paintPills();
  view.status='';view.render();K.db.save();K.home.refreshComposer();
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);

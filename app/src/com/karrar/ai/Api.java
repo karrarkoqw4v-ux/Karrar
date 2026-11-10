@@ -141,7 +141,9 @@ public final class Api {
                     }
                     String firstErr = null, lastErr = null;
                     StringBuilder all = new StringBuilder();
+                    long t0 = System.currentTimeMillis();
                     for (Prov p : ch) {
+                        if (firstErr != null && System.currentTimeMillis() - t0 > 26000) break;
                         if (h.cancelled) { post(ui, cb, null, null, "", h); return; }
                         String model = think ? p.think : p.model;
                         if (model == null || model.isEmpty()) model = pickOpenModel(p, "", think);
@@ -215,7 +217,7 @@ public final class Api {
         h.conn = c;
         c.setRequestMethod("POST");
         c.setConnectTimeout(8000);
-        c.setReadTimeout(sse ? 35000 : 60000);
+        c.setReadTimeout(sse ? 16000 : 30000);
         c.setDoOutput(true);
         c.setRequestProperty("Content-Type", "application/json");
         c.setRequestProperty("Accept", sse ? "text/event-stream" : "application/json");
