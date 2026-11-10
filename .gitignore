@@ -1,0 +1,4 @@
+
+app/tools/bawsala-release.keystore
+app/tools/*.keystore
+app/config/signing.env

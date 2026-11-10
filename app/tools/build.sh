@@ -22,10 +22,10 @@ javac --release 8 -Xlint:-options -cp "$TOOLS/android-all.jar" -d "$OUT/classes"
 java -cp "$TOOLS/dx.jar" com.android.dx.command.Main --dex --min-sdk-version=24 --output="$OUT/dex/classes.dex" "$OUT/classes"
 (cd "$OUT/dex" && zip -q -j "$OUT/unsigned.apk" classes.dex)
 zipalign -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
-KS="$APP/tools/release.keystore"
-[ -f "$KS" ] || keytool -genkeypair -keystore "$KS" -storepass karrar123 -keypass karrar123 -alias karrar \
-  -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Karrar AI" >/dev/null 2>&1
-apksigner sign --ks "$KS" --ks-pass pass:karrar123 --key-pass pass:karrar123 --v1-signing-enabled true --v2-signing-enabled true \
+KS="$APP/tools/bawsala-release.keystore"
+[ -f "$APP/config/signing.env" ] && . "$APP/config/signing.env"
+[ -f "$KS" ] && [ -n "$KSPASS" ] || { echo "Missing keystore or app/config/signing.env (KSPASS)"; exit 1; }
+apksigner sign --ks "$KS" --ks-pass pass:"$KSPASS" --key-pass pass:"$KSPASS" --ks-key-alias bawsala --v1-signing-enabled true --v2-signing-enabled true \
   --out "$FINAL" "$OUT/aligned.apk"
 apksigner verify -v "$FINAL" | head -5
 ls -la "$FINAL"
