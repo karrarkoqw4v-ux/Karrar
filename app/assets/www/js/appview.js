@@ -19,6 +19,10 @@ function inlineFiles(f){const entry=f['index.html']?'index.html':Object.keys(f).
 function html(code){const f=parseFiles(code);if(f){const h=inlineFiles(f);if(h)return h}return code}
 function prep(code0){const code=html(code0);
  let c=code;if(!/<meta[^>]+viewport/i.test(c)){if(/<head[^>]*>/i.test(c))c=c.replace(/<head[^>]*>/i,m=>m+'<meta name="viewport" content="width=device-width,initial-scale=1">');else c='<meta name="viewport" content="width=device-width,initial-scale=1">'+c}
+ /* safety net for weak models: a low-priority base stylesheet placed first so the page's own CSS still wins */
+ const base='<style id="bw-base">*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;font-family:system-ui,-apple-system,Roboto,"Noto Sans Arabic",sans-serif;line-height:1.6;overflow-x:hidden}img,svg,video,canvas{max-width:100%}input,button,select,textarea{font:inherit;max-width:100%}nav ul,ul.nav,.nav-links{list-style:none;padding:0;margin:0}table{border-collapse:collapse;max-width:100%}pre{overflow:auto}</style>';
+ if(/<head[^>]*>/i.test(c))c=c.replace(/<head[^>]*>/i,m=>m+base);else c=base+c;
+ {const ar=(c.replace(/<[^>]*>/g,'').match(/[\u0600-\u06FF]/g)||[]).length,tot=c.replace(/<[^>]*>/g,'').replace(/\s/g,'').length||1;if(ar/tot>.25&&!/<html[^>]+dir=/i.test(c)){c=/<html[^>]*>/i.test(c)?c.replace(/<html/i,'<html dir="rtl"'):'<div dir="rtl">'+c+'</div>'}}
  return c}
 K.apps={
  card(name,code){
