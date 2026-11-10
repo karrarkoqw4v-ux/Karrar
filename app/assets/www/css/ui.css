@@ -127,3 +127,5 @@ html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
 .think-h{max-width:100%}
 .msg.ai .md{margin-top:4px}
 .msg.user{margin-top:6px}
+.sz,.gload,.jbl,#overlay,.lightbox,.lgl,.screen{padding-top:var(--sat)}
+.sz,.gload,.jbl{padding-bottom:var(--sab)}
