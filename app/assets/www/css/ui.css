@@ -131,3 +131,5 @@ html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
 .sz,.gload,.jbl{padding-bottom:var(--sab)}
 #toast{flex-direction:column;align-items:center;bottom:calc(var(--sab) + 110px)}
 #toast div{max-width:86vw;text-align:center;white-space:normal;border-radius:22px;line-height:1.5}
+/* soft fades instead of a hard clipping line under the header and above the composer */
+.scroll.chat,#scroll{-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 34px,#000 calc(100% - 26px),transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 34px,#000 calc(100% - 26px),transparent 100%)}
