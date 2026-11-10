@@ -341,6 +341,45 @@ public class Bridge {
         start(it, REQ_GOOGLE, id);
     }
 
+    /* Official Google sign-in: Google's own consent screen (app name + package/SHA-1 registered in Firebase), then verified profile from Google. */
+    private void officialGoogle(final int id, final String email) {
+        final String scope = "oauth2:openid email profile";
+        try {
+            android.accounts.AccountManager.get(act).getAuthToken(new android.accounts.Account(email, "com.google"), scope, null, act,
+                new android.accounts.AccountManagerCallback<Bundle>() {
+                    public void run(android.accounts.AccountManagerFuture<Bundle> f) {
+                        String tok = null, err = null;
+                        try { tok = f.getResult().getString(android.accounts.AccountManager.KEY_AUTHTOKEN); }
+                        catch (Exception e) { err = String.valueOf(e.getMessage()); }
+                        if (tok == null) { try { cb(id, new JSONObject().put("err", err == null ? "no token" : err).toString()); } catch (Exception ignored) { } return; }
+                        final String token = tok;
+                        new Thread(new Runnable() { public void run() {
+                            try {
+                                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL("https://www.googleapis.com/oauth2/v3/userinfo").openConnection();
+                                c.setConnectTimeout(12000); c.setReadTimeout(15000);
+                                c.setRequestProperty("Authorization", "Bearer " + token);
+                                int code = c.getResponseCode();
+                                java.io.InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                                byte[] b = new byte[4096]; int n; while (in != null && (n = in.read(b)) > 0) bo.write(b, 0, n);
+                                if (code >= 400) {
+                                    android.accounts.AccountManager.get(act).invalidateAuthToken("com.google", token);
+                                    cb(id, new JSONObject().put("err", "Google " + code).toString()); return;
+                                }
+                                JSONObject u = new JSONObject(bo.toString("UTF-8"));
+                                String mail = u.optString("email", email);
+                                JSONObject r = new JSONObject();
+                                r.put("email", mail).put("name", u.optString("name", nameFromEmail(mail))).put("picture", u.optString("picture", "")).put("verified", u.optBoolean("email_verified", false)).put("sub", u.optString("sub", ""));
+                                cb(id, r.toString());
+                            } catch (Exception e) { try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { } }
+                        } }).start();
+                    }
+                }, null);
+        } catch (Exception e) {
+            try { cb(id, new JSONObject().put("err", String.valueOf(e.getMessage())).toString()); } catch (Exception ignored) { }
+        }
+    }
+
     private static String nameFromEmail(String email) {
         String n = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
         n = n.replaceAll("[._\\-]+", " ").replaceAll("\\d+$", "").trim();
@@ -594,7 +633,7 @@ public class Bridge {
                 int id = idGoogle;
                 String email = data == null ? null : data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
                 if (res != ok || email == null) { cb(id, "{\"err\":\"cancel\"}"); return; }
-                cb(id, new JSONObject().put("name", nameFromEmail(email)).put("email", email).toString());
+                officialGoogle(id, email);
             } else if (req == REQ_VOICE) {
                 int id = idVoice;
                 String t = "";

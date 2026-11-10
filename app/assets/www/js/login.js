@@ -75,6 +75,6 @@ L.google=async function(){
  const r=await K.gsheet.pick();
  sp.remove();if(ic)ic.style.display='';btn.classList.remove('busy');L.busy=false;
  if(!r||r.err){K.gsheet.done();if(r&&r.err&&r.err!=='cancel')K.toast(r.err);return}
- K.native.setPref('name',r.name||r.email);K.native.setPref('user_email',(r.email||'').toLowerCase());K.native.setPref('user_google','1');K.native.setPref('logged','1');K.app.toHome();K.gsheet.done();
+ K.native.setPref('name',r.name||r.email);K.native.setPref('user_email',(r.email||'').toLowerCase());K.native.setPref('user_google','1');if(r.picture)K.native.setPref('user_pic',r.picture);K.native.setPref('user_sub',r.sub||'');K.native.setPref('logged','1');K.app.toHome();K.gsheet.done();
 };
 })();
