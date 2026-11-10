@@ -15,7 +15,7 @@ function frame(ts){
   const x=W*b[0]+Math.sin(t+i*2.1)*W*.22,y=H*b[1]+Math.cos(t+i*2.1)*H*.1,r=Math.max(W,H)*.62,g=cx.createRadialGradient(x,y,0,x,y,r);
   g.addColorStop(0,b[2].replace('A',dark?(i?.28:.4):.16));g.addColorStop(1,b[2].replace('A',0));cx.fillStyle=g;cx.fillRect(0,0,W,H)});
  if(mode===2){
-  cx.font='700 13px KAr, sans-serif';cx.textAlign='center';
+  cx.font='700 13px sans-serif';cx.textAlign='center';
   cols.forEach(function(c,ci){c.y+=c.s*dt;const rows=H/cell;if(c.y-11>rows*.8){c.y=-Math.random()*14;c.s=3+Math.random()*5}
    const base=pal[(ci+Math.floor(ts/1500))%4];
    for(let k=0;k<11;k++){const row=Math.floor(c.y)-k;if(row<0)continue;const y=row*cell+cell,f=1-y/(H*.78);if(f<=0)continue;

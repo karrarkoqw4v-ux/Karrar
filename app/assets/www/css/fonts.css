@@ -1,44 +1,4 @@
-/* Heavy Arabic (Noto Sans Arabic) + Latin (Inter / Noto Sans) — bundled locally, no network */
-@font-face{font-family:"KAr";font-weight:400;font-display:block;src:url(../fonts/ar-400.woff2) format("woff2")}
-@font-face{font-family:"KAr";font-weight:500;font-display:block;src:url(../fonts/ar-500.woff2) format("woff2")}
-@font-face{font-family:"KAr";font-weight:600;font-display:block;src:url(../fonts/ar-600.woff2) format("woff2")}
-@font-face{font-family:"KAr";font-weight:700;font-display:block;src:url(../fonts/ar-700.woff2) format("woff2")}
-@font-face{font-family:"KAr";font-weight:800;font-display:block;src:url(../fonts/ar-800.woff2) format("woff2")}
-@font-face{font-family:"KLat";font-weight:400;font-display:block;src:url(../fonts/lat-400.woff2) format("woff2")}
-@font-face{font-family:"KLat";font-weight:500;font-display:block;src:url(../fonts/lat-600.woff2) format("woff2")}
-@font-face{font-family:"KLat";font-weight:600;font-display:block;src:url(../fonts/lat-600.woff2) format("woff2")}
-@font-face{font-family:"KLat";font-weight:700;font-display:block;src:url(../fonts/lat-700.woff2) format("woff2")}
-@font-face{font-family:"KLat";font-weight:800;font-display:block;src:url(../fonts/lat-700.woff2) format("woff2")}
-@font-face{font-family:"KInter";font-weight:400;font-display:block;src:url(../fonts/en-400.woff2) format("woff2")}
-@font-face{font-family:"KInter";font-weight:500;font-display:block;src:url(../fonts/en-500.woff2) format("woff2")}
-@font-face{font-family:"KInter";font-weight:600;font-display:block;src:url(../fonts/en-600.woff2) format("woff2")}
-@font-face{font-family:"KInter";font-weight:700;font-display:block;src:url(../fonts/en-700.woff2) format("woff2")}
-@font-face{font-family:"KInter";font-weight:800;font-display:block;src:url(../fonts/en-800.woff2) format("woff2")}
-:root{--font-ar:"KAr","KLat",system-ui,sans-serif;--font-en:"KInter","KAr",system-ui,sans-serif;--font:var(--font-ar);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-html[lang=en]{--font:var(--font-en)}
-@font-face{font-family:"KPlex";font-weight:500;font-display:block;src:url(../fonts/plex-500.woff2) format("woff2")}
-@font-face{font-family:"KPlex";font-weight:600;font-display:block;src:url(../fonts/plex-600.woff2) format("woff2")}
-@font-face{font-family:"KPlex";font-weight:700;font-display:block;src:url(../fonts/plex-700.woff2) format("woff2")}
-@font-face{font-family:"KPlex";font-weight:800;font-display:block;src:url(../fonts/plex-700.woff2) format("woff2")}
-@font-face{font-family:"KPlex";font-weight:400;font-display:block;src:url(../fonts/plex-500.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:500;font-display:block;src:url(../fonts/cairo-600.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:600;font-display:block;src:url(../fonts/cairo-600.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:700;font-display:block;src:url(../fonts/cairo-700.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:800;font-display:block;src:url(../fonts/cairo-800.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:900;font-display:block;src:url(../fonts/cairo-900.woff2) format("woff2")}
-@font-face{font-family:"KCairo";font-weight:400;font-display:block;src:url(../fonts/cairo-600.woff2) format("woff2")}
-@font-face{font-family:"KAlmarai";font-weight:400;font-display:block;src:url(../fonts/almarai-400.woff2) format("woff2")}
-@font-face{font-family:"KAlmarai";font-weight:500;font-display:block;src:url(../fonts/almarai-700.woff2) format("woff2")}
-@font-face{font-family:"KAlmarai";font-weight:600;font-display:block;src:url(../fonts/almarai-700.woff2) format("woff2")}
-@font-face{font-family:"KAlmarai";font-weight:700;font-display:block;src:url(../fonts/almarai-700.woff2) format("woff2")}
-@font-face{font-family:"KAlmarai";font-weight:800;font-display:block;src:url(../fonts/almarai-800.woff2) format("woff2")}
-/* font choice (Settings -> Font) and thickness */
-html[data-font=plex]{--font-ar:"KPlex","KLat",system-ui,sans-serif}
-html[data-font=cairo]{--font-ar:"KCairo","KLat",system-ui,sans-serif}
-html[data-font=almarai]{--font-ar:"KAlmarai","KLat",system-ui,sans-serif}
-html[data-weight="0"]{--fw:500;--stroke:0px}
-html[data-weight="1"]{--fw:600;--stroke:.12px}
-html[data-weight="2"]{--fw:700;--stroke:.32px}
-html{--fw:600;--stroke:.12px}
-body{font-weight:var(--fw);-webkit-text-stroke:var(--stroke) currentColor}
+/* Device system font only (native Arabic font of the phone); no bundled/decorative fonts */
+:root{--font:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic","Droid Arabic Naskh",sans-serif;--font-ar:var(--font);--font-en:var(--font);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+html,body,button,input,textarea,select{font-family:var(--font)}
 .grad-text,.shimmer{-webkit-text-stroke:0}
