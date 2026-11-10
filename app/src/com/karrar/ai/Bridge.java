@@ -41,6 +41,9 @@ import java.util.Locale;
 
 /** Native services exposed to the HTML/JS UI as window.Android. */
 public class Bridge {
+    static final int REQ_NOTIF = 9;
+    volatile boolean visible = true;
+    private boolean askedNotif = false;
     static final int REQ_ALBUM = 1, REQ_CAMERA = 2, REQ_FILE = 3, REQ_VOICE = 4, REQ_PERM = 5, REQ_GOOGLE = 6, REQ_AUDIO = 7, REQ_SAVE = 8;
 
     private final Activity act;
@@ -139,16 +142,56 @@ public class Bridge {
                 if (im != null) for (int j = 0; j < im.length(); j++) m.images.add(im.getString(j));
                 list.add(m);
             }
+            if (Build.VERSION.SDK_INT >= 33 && !askedNotif && Store.bool("notify", true)
+                    && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                askedNotif = true;
+                act.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIF);
+            }
+            final StringBuilder acc = new StringBuilder();
             Api.Handle h = Api.chat(list, think, ctx, new Api.Cb() {
                 public void onThink(String d) { ev(id, "think", "d", d); }
-                public void onText(String d) { ev(id, "text", "d", d); }
-                public void onDone() { ev(id, "done", null, null); }
+                public void onText(String d) { acc.append(d); ev(id, "text", "d", d); }
+                public void onDone() { ev(id, "done", null, null); if (!visible && acc.length() > 0) notifyReply(acc.toString()); }
                 public void onError(String e) { ev(id, "err", "m", e); }
             }, ui);
             handles.put(id, h);
         } catch (Exception e) {
             ev(id, "err", "m", String.valueOf(e.getMessage()));
         }
+    }
+
+    /** Heads-up style notification with the app name and icon when the reply finishes while the app is in the background. */
+    private void notifyReply(String text) {
+        try {
+            if (!Store.bool("notify", true)) return;
+            if (Build.VERSION.SDK_INT >= 33 && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) return;
+            android.app.NotificationManager nm = (android.app.NotificationManager) act.getSystemService(Context.NOTIFICATION_SERVICE);
+            String clean = text.replaceAll("(?s)<think>.*?</think>", "").replaceAll("```[\\s\\S]*?```", " ").replaceAll("[#*`>|_]", "").replaceAll("\\s+", " ").trim();
+            if (clean.isEmpty()) return;
+            android.app.Notification.Builder nb;
+            if (Build.VERSION.SDK_INT >= 26) {
+                android.app.NotificationChannel ch = new android.app.NotificationChannel("replies", Theme.rtl ? "\u0631\u062f\u0648\u062f \u0628\u0648\u0635\u0644\u0629" : "Bawsala replies", android.app.NotificationManager.IMPORTANCE_HIGH);
+                nm.createNotificationChannel(ch);
+                nb = new android.app.Notification.Builder(act, "replies");
+            } else nb = new android.app.Notification.Builder(act);
+            int small = act.getResources().getIdentifier("ic_stat", "drawable", act.getPackageName());
+            int launcher = act.getResources().getIdentifier("ic_launcher", "mipmap", act.getPackageName());
+            nb.setSmallIcon(small != 0 ? small : launcher);
+            if (launcher != 0) nb.setLargeIcon(android.graphics.BitmapFactory.decodeResource(act.getResources(), launcher));
+            nb.setContentTitle(Theme.rtl ? "\u0628\u0648\u0635\u0644\u0629" : "Bawsala");
+            nb.setContentText(clean.length() > 140 ? clean.substring(0, 140) + "\u2026" : clean);
+            nb.setStyle(new android.app.Notification.BigTextStyle().bigText(clean.length() > 600 ? clean.substring(0, 600) + "\u2026" : clean));
+            nb.setAutoCancel(true);
+            nb.setColor(0xFF4D6BFE);
+            Intent it = new Intent(act, WebActivity.class);
+            it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            nb.setContentIntent(android.app.PendingIntent.getActivity(act, 0, it, android.app.PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? android.app.PendingIntent.FLAG_IMMUTABLE : 0)));
+            nm.notify(1001, nb.build());
+        } catch (Throwable ignored) { }
+    }
+
+    void clearNotif() {
+        try { ((android.app.NotificationManager) act.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(1001); } catch (Throwable ignored) { }
     }
 
     private void ev(int id, String t, String key, String val) {

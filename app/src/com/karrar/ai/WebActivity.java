@@ -133,9 +133,15 @@ public class WebActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (bridge != null) bridge.visible = false;
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
-        if (bridge != null) bridge.onResumeCheck();
+        if (bridge != null) { bridge.visible = true; bridge.clearNotif(); bridge.onResumeCheck(); }
     }
 
     @Override
