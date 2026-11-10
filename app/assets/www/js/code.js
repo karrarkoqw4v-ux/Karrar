@@ -100,6 +100,7 @@ K.code={
    if(go)K.native.open('https://github.com/settings/applications/new');
    const v=await K.ui.prompt({title:'GitHub OAuth Client ID',hint:'Ov23li…'});if(!v)return;
    cid=v.trim();K.pref.set('gh_client_id',cid)}
+  if(!/^(Ov23li|Iv1\.|Iv23li)/i.test(cid)){K.pref.set('gh_client_id','');K.ui.info(T('الـClient ID غير صحيح','Invalid Client ID'),T('يبدأ المعرّف الصحيح بـ Ov23li (من OAuth App في GitHub) — وليس مفتاح جوجل ولا رمز ghp_. أعد المحاولة.','A valid GitHub Client ID starts with Ov23li (from a GitHub OAuth App) — not a Google key or a ghp_ token. Try again.'));return}
   const hdr={'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'};
   const r0=await K.native.http('POST','https://github.com/login/device/code',hdr,'client_id='+encodeURIComponent(cid)+'&scope='+encodeURIComponent('repo read:user'));
   let d={};try{d=JSON.parse(r0.body)}catch(e){}

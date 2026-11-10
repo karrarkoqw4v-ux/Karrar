@@ -51,7 +51,7 @@ K.students={
   }
   d.innerHTML='<div class="sc-top"><button class="sc-ib" id="stBack">'+K.icon('chevron-right',24)+'</button><div class="sc-title">'+T('الطلاب','Students')+'</div><span class="sc-ib ph"></span></div><div class="sc-body">'+body+'</div>';
   $('stBack').onclick=()=>K.students.close();
-  d.querySelectorAll('.st-g').forEach(b=>b.onclick=()=>{K.pref.set('stu_grade',b.dataset.g);K.native.haptic();subj='';K.students.paint()});
+  d.querySelectorAll('.st-g').forEach(b=>b.onclick=()=>{K.pref.set('stu_grade',b.dataset.g);K.native.haptic();subj='';if(K.students.pending){K.students.pending=false;K.students.close();K.students.toggle();return}K.students.paint()});
   if(g){
    $('stChg').onclick=()=>{K.pref.set('stu_grade','');K.students.paint()};
    $('stChat').onclick=()=>K.students.enter(g,'');
@@ -80,5 +80,17 @@ K.students={
   r.forEach(i=>K.home.addAtt({kind:'img',th:i.th,b64:i.b64}));
   const ta=$('ta');ta.value='اقرأ السؤال الموجود في الصورة، اكتبه نصاً، ثم حلّه حلاً صحيحاً خطوة بخطوة مع الشرح.';ta.dispatchEvent(new Event('input'));K.chat.send()}
 };
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-act=students]');if(b){K.home.closeSheet();K.students.open()}});
+K.students.badge=function(){let b=$('stuBadge');const c=K.state&&K.state.cur,g=c&&c.stu&&gradeInfo(c.stu);
+ if(!g){b&&b.remove();return}
+ if(!b){b=document.createElement('button');b.id='stuBadge';document.body.appendChild(b);b.onclick=()=>K.students.open()}
+ b.innerHTML='🎓 '+T('وضع الطلاب','Student mode')+' · '+esc(g.name)+' <i>×</i>';
+ b.querySelector('i').onclick=e=>{e.stopPropagation();K.students.toggle()}};
+K.students.toggle=function(){let c=K.state.cur;if(!c){c=K.db.create();K.state.cur=c;K.pref.set('cur',c.id);K.db.convs.unshift(c);c.ts=Date.now()}
+ if(c.stu){delete c.stu;delete c.subj;K.db.save();K.students.badge();K.toast(T('أُوقف وضع الطلاب','Student mode off'));return}
+ const g=K.students.grade();
+ if(!g){K.students.pending=true;K.students.open();return}
+ c.stu=g.id;c.subj=c.subj||'';if(!c.msgs.length)c.title='🎓 '+g.name;K.db.save();K.students.badge();K.toast(T('فُعّل وضع الطلاب · '+g.name+' — المحادثة تُحفظ في قسم الطلاب','Student mode on · '+g.name))};
+const _pg=K.students.paint;K.students.paint=function(){_pg.call(this)};
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-act=students]');if(b){K.home.closeSheet();K.students.toggle()}});
+if(K.chat&&K.chat.show){const _s=K.chat.show;K.chat.show=function(){const r=_s.apply(this,arguments);K.students.badge();return r}}
 })();

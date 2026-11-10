@@ -6,8 +6,9 @@ function inline(s,hasSrc){
  s=esc(s);
  const codes=[];s=s.replace(/`([^`]+)`/g,(m,c)=>{codes.push(c);return '\u0001'+(codes.length-1)+'\u0002'});
  s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<em>$2</em>');
+ s=s.replace(/&lt;a\s[^&]*?href=(?:&quot;|")(https?:[^"&\s]+)(?:&quot;|")[^&]*?&gt;(.*?)&lt;\/a&gt;/gi,'[$2]($1)');
  s=s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" data-url="$2">$1</a>');
- s=s.replace(/<a [^>]*>.*?<\/a>|(https?:\/\/[^\s<>"')\]]+[^\s<>"')\].,;:!؟،])/g,function(m,u){if(!u)return m;let h=u;try{h=new URL(u).hostname.replace(/^www\./,'')}catch(e){}return '<a href="'+u+'" data-url="'+u+'" class="lnk">'+(K.lang()==='ar'?'فتح · ':'Open · ')+h+'</a>'});
+ s=s.replace(/<a [^>]*>.*?<\/a>|(https?:\/\/[^\s<>"')\]&]+[^\s<>"')\]&.,;:!؟،])/g,function(m,u){if(!u)return m;let h=u;try{h=new URL(u).hostname.replace(/^www\./,'')}catch(e){}return '<a href="'+u+'" data-url="'+u+'" class="lnk">'+(K.lang()==='ar'?'فتح · ':'Open · ')+h+'</a>'});
  if(hasSrc)s=s.replace(/\[(\d{1,2})\]/g,'<sup class="cite" data-i="$1">$1</sup>');
  return s.replace(/\u0001(\d+)\u0002/g,(m,i)=>'<code>'+codes[i]+'</code>');
 }

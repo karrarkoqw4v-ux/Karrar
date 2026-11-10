@@ -22,3 +22,5 @@
 .jb-i{max-width:420px;text-align:center;display:flex;flex-direction:column;gap:16px;align-items:center}.jb-i img{width:84px;height:84px;animation:lglPulse 2s ease-in-out infinite}
 .jb-i h2{font-size:1.8em;font-weight:800;color:#ff6b6b}.jb-i p{color:#ddd;line-height:1.8;font-weight:600}
 .jb-c{display:flex;flex-direction:column;gap:6px;padding:16px 22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700;font-size:.95em}
+#stuBadge{position:fixed;top:calc(env(safe-area-inset-top,0px) + 64px);left:50%;transform:translateX(-50%);z-index:20;background:#1d2547;color:#cfd8ff;border:1px solid #3b4a8f;border-radius:999px;padding:5px 12px;font:600 12.5px inherit;font-family:inherit;display:flex;gap:6px;align-items:center}
+#stuBadge i{font-style:normal;opacity:.7;padding:0 2px}
