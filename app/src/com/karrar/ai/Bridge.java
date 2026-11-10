@@ -237,6 +237,40 @@ public class Bridge {
         new Thread(new Runnable() { public void run() { cb(id, Api.diagnose()); } }).start();
     }
 
+    /** Small HTTP helper for OAuth device flow etc.: returns {"code":..,"body":..}. */
+    @JavascriptInterface
+    public void http(final int id, final String method, final String url, final String headersJson, final String body) {
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    c.setConnectTimeout(12000);
+                    c.setReadTimeout(25000);
+                    c.setRequestMethod(method);
+                    c.setRequestProperty("User-Agent", "Bawsala/2.0");
+                    try {
+                        JSONObject h = new JSONObject(headersJson == null || headersJson.isEmpty() ? "{}" : headersJson);
+                        java.util.Iterator<String> it = h.keys();
+                        while (it.hasNext()) { String k = it.next(); c.setRequestProperty(k, h.getString(k)); }
+                    } catch (Exception ignored) { }
+                    if (body != null && !body.isEmpty() && !method.equals("GET")) {
+                        c.setDoOutput(true);
+                        java.io.OutputStream os = c.getOutputStream();
+                        os.write(body.getBytes("UTF-8"));
+                        os.close();
+                    }
+                    int code = c.getResponseCode();
+                    java.io.InputStream in = code >= 400 ? c.getErrorStream() : c.getInputStream();
+                    java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                    if (in != null) { byte[] b = new byte[4096]; int n; while ((n = in.read(b)) > 0 && bo.size() < 200000) bo.write(b, 0, n); in.close(); }
+                    cb(id, new JSONObject().put("code", code).put("body", bo.toString("UTF-8")).toString());
+                } catch (Exception e) {
+                    try { cb(id, new JSONObject().put("code", 0).put("body", "").put("err", e.getClass().getSimpleName() + ": " + e.getMessage()).toString()); } catch (Exception ignored) { }
+                }
+            }
+        }).start();
+    }
+
     @JavascriptInterface
     public void scanUrl(final int id, final String url, final boolean deep) {
         new Thread(new Runnable() {

@@ -122,14 +122,27 @@ C.start=function(){
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
  const run=function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
-  let t0=0,first=1;view.setStatus(K.t('thinking'));
+  const T0=Date.now(),lu=(lastUser&&lastUser.c)||'';
+  /* calm pacing: think 4-10 s depending on the question, then reveal the answer gently */
+  let want=3600+Math.min(5400,lu.trim().split(/\s+/).filter(Boolean).length*230);
+  if(/(اكتب|برمج|كود|اشرح|شرح|قارن|حلل|code|write|explain|compare|build)/i.test(lu))want+=1800;
+  if(lastUser&&((lastUser.files&&lastUser.files.length)||(lastUser.imgs&&lastUser.imgs.length)))want+=1500;
+  want=Math.min(10000,want);
+  let q='',doneEv=null,tm=0,flushed=false;
+  view.setStatus(K.t('thinking'));
+  const pump=function(){tm=0;if(view.finished)return;
+   const left=want-(Date.now()-T0);
+   if(!flushed&&left>0){tm=setTimeout(pump,Math.min(left,250));return}
+   if(!flushed){flushed=true;ai.s=Math.max(1,Math.round((Date.now()-T0)/1000));view.open=false;view.thinking=false;view.status='';view.dirty()}
+   if(q){const n=2+Math.floor(q.length/70);ai.c+=q.slice(0,n);q=q.slice(n);view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c);tm=setTimeout(pump,34);return}
+   if(doneEv){doneEv=null;C.finish(view)}
+  };
   S.handle=K.native.chat(hist,S.think,ctx,function(ev){
    if(view.finished)return;
-   if(first){first=0;view.status='';}
-   if(ev.t==='think'){if(!t0)t0=Date.now();ai.t+=ev.d;view.open=true;view.thinking=true;view.dirty()}
-   else if(ev.t==='text'){if(!ai.c&&t0&&!ai.s){ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));view.open=false;view.thinking=false}ai.c+=ev.d;view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c)}
-   else if(ev.t==='done'){if(t0&&!ai.s)ai.s=Math.max(1,Math.round((Date.now()-t0)/1000));C.finish(view)}
-   else if(ev.t==='err'){ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m+K.errHint(ev.m);if(t0&&!ai.s)ai.s=1;C.finish(view)}
+   if(ev.t==='think'){ai.t+=ev.d;view.open=true;view.thinking=true;view.status='';view.dirty()}
+   else if(ev.t==='text'){q+=ev.d;if(!tm)pump()}
+   else if(ev.t==='done'){doneEv=ev;if(!tm)pump()}
+   else if(ev.t==='err'){clearTimeout(tm);tm=0;flushed=true;ai.c+=q;q='';ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m+K.errHint(ev.m);ai.s=ai.s||1;view.open=false;view.thinking=false;view.status='';C.finish(view)}
   });
  };
  const withRepos=function(ctx){
@@ -148,6 +161,7 @@ C.start=function(){
 C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
  if(!view.m.c&&!view.m.t)view.m.c='—';
+ S.think=false;S.search=false;if(K.home&&K.home.paintPills)K.home.paintPills();
  view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
 };

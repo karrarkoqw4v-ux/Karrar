@@ -67,13 +67,16 @@ K.code={
    +'<p class="cd-p">'+(ok?T('حسابك مرتبط. يمكنك اختيار مستودع لجلساتك أو قطع الاتصال.','Your account is linked. Pick a repository for your sessions or disconnect.')
      :T('يقوم التطبيق برفع مشاريعك وملفاتك وتحديثاتك على GitHub. اعلم أن GitHub هو الأفضل لتتبّع المشاريع وتحسين تحديثات تطبيقاتك، فقم بالاتصال لتبدأ.','The app uploads your projects, files and updates to GitHub. GitHub is the best place to track projects and improve your app updates, so connect to get started.'))+'</p>'
    +(ok?'':'<p class="cd-terms">'+T('بالمتابعة فإنك توافق على ','By continuing you accept the ')+'<u id="cdTerms">'+T('الشروط','terms')+'</u></p>')
-   +'<button class="cd-gh" id="cdGh"><span class="gi">'+GH(20,'#000')+'</span><span>'+(ok?T('اختيار مستودع','Choose repository'):T('اتصال بـ GitHub','Connect to GitHub'))+'</span></button>'
-   +(ok?'<button class="cd-sec danger" id="cdOff">'+T('قطع الاتصال','Disconnect')+'</button>':'')
+   +'<button class="cd-gh" id="cdGh"><span class="gi">'+GH(20,'#000')+'</span><span>'+(ok?T('اختيار مستودع','Choose repository'):T('تسجيل الدخول بحساب GitHub','Sign in with GitHub'))+'</span></button>'
+   +(ok?'<button class="cd-sec danger" id="cdOff">'+T('قطع الاتصال','Disconnect')+'</button>':'<button class="cd-sec" id="cdTok">'+T('استخدام رمز وصول (متقدّم)','Use an access token (advanced)')+'</button>')
    +'<button class="cd-cancel" id="cdX">'+T('إلغاء ورجوع','Cancel & back')+'</button>','gh');
   w.querySelector('#cdX').onclick=w.close;
   const tm=w.querySelector('#cdTerms');if(tm)tm.onclick=()=>K.legal.open('terms');
   const off=w.querySelector('#cdOff');if(off)off.onclick=()=>{K.pref.set('gh_token','');K.pref.set('gh_sel','[]');P.repo='';w.close();K.code.paint()};
   w.querySelector('#cdGh').onclick=async()=>{
+   if(ok){w.close();K.code.repos(after);return}
+   w.close();K.code.deviceLogin(after)};
+  const tk=w.querySelector('#cdTok');if(tk)tk.onclick=async()=>{
    if(ok){w.close();K.code.repos(after);return}
    const btn=w.querySelector('#cdGh'),lab=btn.querySelector('span:last-child'),orig=lab.textContent;
    const wait=t=>{btn.classList.add('wait');btn.querySelector('.gi').innerHTML='<i class="sp"></i>';lab.textContent=t};
@@ -88,6 +91,42 @@ K.code={
    try{const u=await K.gh.user();K.toast(T('تم الاتصال: ','Connected: ')+u.login);w.close();K.code.paint();K.code.repos(after)}
    catch(e){rest();K.pref.set('gh_token','');K.ui.info(T('تعذّر الاتصال','Connection failed'),T('الرمز غير صالح أو لا يوجد اتصال بالإنترنت. أنشئ رمز وصول شخصي من GitHub ← Settings ← Developer settings ← Personal access tokens.','The token is invalid or you are offline. Create a personal access token in GitHub → Settings → Developer settings → Personal access tokens.'))}
   };
+ },
+ /* GitHub OAuth device flow: no password or token pasted; the user approves on github.com with a short code */
+ async deviceLogin(after){
+  let cid=K.pref.get('gh_client_id','').trim();
+  if(!cid){
+   const go=await K.ui.confirm(T('لتسجيل الدخول بحساب GitHub أنشئ مرة واحدة «OAuth App» من github.com/settings/developers وفعّل «Enable Device Flow»، ثم الصق الـClient ID هنا (معرّف عام وليس سرّاً). هل تريد فتح صفحة الإنشاء؟','To sign in with GitHub, create an “OAuth App” once at github.com/settings/developers, enable “Device Flow”, then paste its Client ID here (a public identifier, not a secret). Open the creation page?'));
+   if(go)K.native.open('https://github.com/settings/applications/new');
+   const v=await K.ui.prompt({title:'GitHub OAuth Client ID',hint:'Ov23li…'});if(!v)return;
+   cid=v.trim();K.pref.set('gh_client_id',cid)}
+  const hdr={'Accept':'application/json','Content-Type':'application/x-www-form-urlencoded'};
+  const r0=await K.native.http('POST','https://github.com/login/device/code',hdr,'client_id='+encodeURIComponent(cid)+'&scope='+encodeURIComponent('repo read:user'));
+  let d={};try{d=JSON.parse(r0.body)}catch(e){}
+  if(!d.user_code){K.ui.info(T('تعذّر بدء تسجيل الدخول','Could not start sign-in'),(d.error_description||d.error||r0.err||'HTTP '+r0.code)+(d.error==='device_flow_disabled'?'\n'+T('فعّل «Enable Device Flow» في إعدادات تطبيق OAuth.','Enable “Device Flow” in the OAuth App settings.'):''));if(d.error==='incorrect_client_credentials')K.pref.set('gh_client_id','');return}
+  let alive=true;
+  const w=sheet('<div class="cd-art"><div class="screen"><span class="gm">'+GH(54,'#fff')+'</span></div></div><h3 class="cd-h">'+T('أدخل هذا الرمز في GitHub','Enter this code on GitHub')+'</h3>'
+   +'<div class="cd-code" dir="ltr">'+esc(d.user_code)+'</div>'
+   +'<p class="cd-p">'+T('اضغط «فتح GitHub» وأدخل الرمز ثم وافق على الصلاحيات. يتصل التطبيق تلقائياً بعد الموافقة.','Tap “Open GitHub”, enter the code and approve. The app connects automatically afterwards.')+'</p>'
+   +'<div class="cd-wt"><i class="sp"></i><span id="cdSt">'+T('بانتظار موافقتك…','Waiting for your approval…')+'</span></div>'
+   +'<button class="cd-gh" id="cdOpen"><span class="gi">'+GH(20,'#000')+'</span><span>'+T('فتح GitHub','Open GitHub')+'</span></button>'
+   +'<button class="cd-sec" id="cdCp">'+T('نسخ الرمز','Copy code')+'</button><button class="cd-cancel" id="cdX">'+T('إلغاء','Cancel')+'</button>','gh');
+  const stop=()=>{alive=false;w.close()};
+  w.querySelector('#cdX').onclick=stop;w.querySelector('.cd-bd').onclick=stop;
+  w.querySelector('#cdCp').onclick=()=>K.native.copy(d.user_code);
+  w.querySelector('#cdOpen').onclick=()=>{K.native.copy(d.user_code);K.native.open(d.verification_uri||'https://github.com/login/device')};
+  let iv=(d.interval||5)*1000;const t0=Date.now(),ttl=(d.expires_in||900)*1000;
+  while(alive&&Date.now()-t0<ttl){
+   await new Promise(x=>setTimeout(x,iv));if(!alive)return;
+   const r=await K.native.http('POST','https://github.com/login/oauth/access_token',hdr,'client_id='+encodeURIComponent(cid)+'&device_code='+encodeURIComponent(d.device_code)+'&grant_type='+encodeURIComponent('urn:ietf:params:oauth:grant-type:device_code'));
+   let t={};try{t=JSON.parse(r.body)}catch(e){}
+   if(t.access_token){alive=false;K.pref.set('gh_token',t.access_token);K.pref.set('gh_scope',t.scope||'');w.close();
+    try{const u=await K.gh.user();K.toast(T('تم تسجيل الدخول: ','Signed in: ')+u.login)}catch(e){K.toast(T('تم تسجيل الدخول','Signed in'))}
+    K.code.paint();K.code.repos(after);return}
+   if(t.error==='slow_down')iv+=5000;
+   else if(t.error==='expired_token'||t.error==='access_denied'){alive=false;w.close();K.toast(t.error==='access_denied'?T('رُفضت الموافقة','Approval was denied'):T('انتهت صلاحية الرمز، أعد المحاولة','The code expired, try again'));return}
+  }
+  if(alive){w.close();K.toast(T('انتهت المهلة','Timed out'))}
  },
  repos(after){
   const w=sheet('<h3 class="cd-h">'+T('اختر مستودعاً','Choose a repository')+'</h3><div class="cd-rl" id="cdRl"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><button class="cd-cancel" id="cdX">'+T('رجوع','Back')+'</button>');

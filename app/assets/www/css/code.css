@@ -65,3 +65,5 @@
 .cd-main{display:flex;flex-direction:column;flex:1;min-height:0}
 .cd-sheet>*{flex-shrink:0}.cd-gh.wait{pointer-events:none;opacity:.85}.cd-gh .sp{width:16px;height:16px;border-radius:50%;border:2.5px solid #000;border-top-color:transparent;animation:spin .7s linear infinite}
 .dlg>*{flex-shrink:0}
+.cd-code{align-self:center;font-size:2.4em;font-weight:800;letter-spacing:.14em;padding:8px 26px;border-radius:20px;background:#111;border:1px solid #333;color:#fff;font-family:var(--mono,monospace)}
+.cd-wt{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--text2);font-weight:700}.cd-wt .sp{width:16px;height:16px;border-radius:50%;border:2.5px solid currentColor;border-top-color:transparent;animation:spin .8s linear infinite}
