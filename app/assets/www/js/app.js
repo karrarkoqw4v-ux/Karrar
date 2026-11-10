@@ -7,7 +7,8 @@ const A=K.app={};
 A.bars=function(){const d=document.documentElement,dark=d.dataset.theme==='dark',vo=K.voice&&K.voice.active;
  const c=vo?'#000000':(K.settings&&K.settings.depth()?(dark?'#1c1c1e':'#f2f2f7'):(dark?'#0f0f10':'#ffffff'));
  K.native.setBars(c,!dark&&!vo)};
-A.apply=function(){
+A.accent=function(){const c=K.pref.get('accent','');const r=document.documentElement.style;if(!c||c==='#4d6bfe'){['--accent','--accent-text','--accent-soft'].forEach(k=>r.removeProperty(k));return}const h=c.replace('#','');const n=parseInt(h,16);const rgb=[(n>>16)&255,(n>>8)&255,n&255];r.setProperty('--accent',c);r.setProperty('--accent-text',c);r.setProperty('--accent-soft','rgba('+rgb.join(',')+',.2)')};
+A.apply=function(){A.accent();
  const d=document.documentElement;
  d.dataset.font=K.pref.get('font_f','noto');d.dataset.weight=K.pref.get('font_w','1');d.lang=K.lang();d.dir=K.lang()==='ar'?'rtl':'ltr';let th=K.pref.get('theme','dark');if(th==='system')th=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';d.dataset.theme=th==='light'?'light':'dark';d.dataset.motion=K.pref.bool('reduce_motion',false)?'off':'on';
  let sc=1;if(K.pref.bool('font_sys',false))sc=1;else sc=0.84+0.07*(+K.pref.get('font_i','2'));

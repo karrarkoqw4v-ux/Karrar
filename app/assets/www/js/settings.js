@@ -10,7 +10,7 @@ const stack=[];
 const S=K.settings={};
 function mask(k){if(!k)return K.t('s_not_set');return k.length<=8?'••••••••':k.slice(0,3)+'••••••••'+k.slice(-4)}
 function maskEmail(e){const a=e.indexOf('@');return a<5?e:e.slice(0,4)+'••••••'+e.slice(a-2)}
-function titleOf(p){return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses'),oss:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),tasks:K.t('tk_title')}[p]}
+function titleOf(p){const ar=K.lang()==='ar';const hv=HUB().flat().find(h=>h[3]===p);if(hv)return ar?hv[1]:hv[2];return {main:K.t('settings'),account:K.t('s_acc'),data:K.t('s_data'),custom:K.t('s_custom'),font:K.t('s_font'),apps:K.t('connected_apps'),github:K.t('gh_title'),prompts:K.t('t_prompts'),memory:K.t('t_memory'),stats:K.t('t_stats'),licenses:K.t('t_licenses'),oss:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),tasks:K.t('tk_title')}[p]}
 
 /* ----- builders ----- */
 function sec(parent,label){if(label){const t=document.createElement('div');t.className='sec-t';t.textContent=label;parent.appendChild(t)}const c=document.createElement('div');c.className='card';parent.appendChild(c);return c}
@@ -42,33 +42,12 @@ function after(p){K.app.apply();S.rerender();if(p&&p.remount)K.app.remount()}
 function build(el,p){
  if(p==='font'){fontPage(el);return}
  const body=document.createElement('div');body.className='pbody stagger';el.appendChild(body);
- ({main:mainPage,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage,oss:ossPage,tasks:tasksPage})[p](body);
+ ({main:mainPage,general:sp_general,notif:sp_notif,sound:sp_sound,ai:sp_ai,security:sp_security,storage:sp_storage,about:sp_about,tools:sp_tools,privacy:sp_privacy,account:accountPage,data:dataPage,custom:customPage,apps:appsPage,github:githubPage,prompts:promptsPage,memory:memoryPage,stats:statsPage,licenses:licensesPage,oss:ossPage,tasks:tasksPage})[p](body);
  K.emojifyEl(body);
 }
 
-function mainPage(b){
- let c=sec(b,'');c.classList.add('upg-card');
- row(c,{icon:'crown',title:(K.lang()==='ar'?'الاشتراك والترقية':'Subscription & Upgrade'),sub:(K.lang()==='ar'?'احصل على Bawsala Go':'Get Bawsala Go'),onclick:()=>K.plans.open()}).classList.add('upg');
- c=sec(b,K.t('s_profile'));
- row(c,{icon:'user',title:K.t('s_acc'),onclick:()=>S.open('account')});
- row(c,{icon:'database',title:K.t('s_data'),onclick:()=>S.open('data')});
- c=sec(b,K.t('s_link'));
- row(c,{icon:'plug',title:K.t('connected_apps'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('apps')});
- row(c,{icon:'atom',title:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),sub:(K.lang()==='ar'?'اتصال تلقائي ومفاتيح مجانية':'Auto-connect and free keys'),value:K.pref.bool('auto',true)?(K.lang()==='ar'?'تلقائي':'Auto'):'',onclick:()=>S.open('oss')});
- c=sec(b,K.t('s_tools'));
- row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
- row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
- row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
- toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
- row(c,{icon:'atom',title:(K.lang()==='ar'?'كتالوج النماذج (43)':'Model catalog (43)'),sub:(K.lang()==='ar'?'Llama وQwen وGemma وMistral وDeepSeek وGPT-OSS…':'Llama, Qwen, Gemma, Mistral, DeepSeek, GPT-OSS…'),onclick:()=>K.catalog.open()});
- row(c,{icon:'audio-lines',title:(K.lang()==='ar'?'اللهجة والصوت':'Dialect & voice'),sub:(K.lang()==='ar'?'28 لهجة ولغة وأصوات الهاتف':'28 dialects & languages, phone voices'),onclick:()=>K.dialect.open()});
- toggle(c,{icon:'sparkles',title:(K.lang()==='ar'?'مكتبة المهارات (75)':'Skills library (75)'),sub:(K.lang()==='ar'?'يطبّق المهارة المناسبة لطلبك تلقائياً':'Applies the right skills to your request'),key:'skills',def:true});
- toggle(c,{icon:'atom',title:(K.lang()==='ar'?'فريق الذكاء لبناء التطبيقات':'AI team for app builds'),sub:(K.lang()==='ar'?'معماري ← مصمم ← مسؤول تفاصيل ← مبرمج':'Architect → designer → details → developer'),key:'team',def:true});
- row(c,{icon:'mic',title:(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style'),value:K.pref.get('dict_style','bar')==='orb'?(K.lang()==='ar'?'كرة':'Orb'):(K.lang()==='ar'?'شريط':'Bar'),onclick:async()=>{const k=await K.ui.choose(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style',K.lang()==='ar'?['شريط (يحلّ محل مربع الرسالة)','كرة نابضة (لوحة من الأسفل)']:['Bar (replaces the message box)','Pulsing orb (bottom sheet)'],K.pref.get('dict_style','bar')==='orb'?1:0);if(k!==null){K.pref.set('dict_style',k===1?'orb':'bar');S.rerender()}}});
- toggle(c,{icon:'atom',title:K.t('t_plan'),sub:K.t('t_plan_s'),key:'plan',def:true});
- toggle(c,{icon:'arrow-up',title:K.t('t_enter'),sub:K.t('t_enter_s'),key:'enter_send',def:false});
- const MT=['0','512','1024','2048','4096'];
- row(c,{icon:'a-large-small',title:K.t('t_maxtok'),value:K.pref.get('max_tokens','0')==='0'?K.t('t_auto'):K.pref.get('max_tokens','0'),onclick:async()=>{const i=await K.ui.choose(K.t('t_maxtok'),MT.map(x=>x==='0'?K.t('t_auto'):x),Math.max(0,MT.indexOf(K.pref.get('max_tokens','0'))));if(i!=null){K.pref.set('max_tokens',MT[i]);S.rerender()}}});
+function sp_general(b){
+ let c;
  c=sec(b,K.t('s_app'));
  row(c,{icon:'globe',title:K.t('s_lang'),value:K.lang()==='ar'?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],K.lang()==='ar'?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}});
  const thv=K.pref.get('theme','dark');
@@ -79,12 +58,38 @@ function mainPage(b){
  row(c,{icon:'pencil',title:K.t('s_weight'),value:K.t('s_w'+K.pref.get('font_w','1')),onclick:async()=>{const i=await K.ui.choose(K.t('s_weight'),[K.t('s_w0'),K.t('s_w1'),K.t('s_w2')],+K.pref.get('font_w','1'));if(i!=null){K.pref.set('font_w',String(i));after()}}});
  toggle(c,{icon:'sparkles',title:K.t('s_motion'),sub:K.t('s_motion_s'),key:'reduce_motion',def:false,after:()=>K.app.apply()});
  row(c,{icon:'wand-sparkles',title:K.t('s_custom'),onclick:()=>S.open('custom')});
+ toggle(c,{icon:'arrow-up',title:K.t('t_enter'),sub:K.t('t_enter_s'),key:'enter_send',def:false});
+}
+function sp_sound(b){
+ let c;
  c=sec(b,K.t('s_audio'));
+ row(c,{icon:'audio-lines',title:(K.lang()==='ar'?'اللهجة والصوت':'Dialect & voice'),sub:(K.lang()==='ar'?'28 لهجة ولغة وأصوات الهاتف':'28 dialects & languages, phone voices'),onclick:()=>K.dialect.open()});
+ row(c,{icon:'mic',title:(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style'),value:K.pref.get('dict_style','bar')==='orb'?(K.lang()==='ar'?'كرة':'Orb'):(K.lang()==='ar'?'شريط':'Bar'),onclick:async()=>{const k=await K.ui.choose(K.lang()==='ar'?'شكل الإملاء الصوتي':'Dictation style',K.lang()==='ar'?['شريط (يحلّ محل مربع الرسالة)','كرة نابضة (لوحة من الأسفل)']:['Bar (replaces the message box)','Pulsing orb (bottom sheet)'],K.pref.get('dict_style','bar')==='orb'?1:0);if(k!==null){K.pref.set('dict_style',k===1?'orb':'bar');S.rerender()}}});
  row(c,{icon:'mic',title:K.t('s_main_lang'),value:K.pref.get('voice_lang','ar')==='en'?'English':'العربية',onclick:async()=>{const i=await K.ui.choose(K.t('s_main_lang'),['العربية','English'],K.pref.get('voice_lang','ar')==='en'?1:0);if(i!=null){K.pref.set('voice_lang',i===0?'ar':'en');S.rerender()}}});
  const RATES=['0.75','1.0','1.25','1.5'],RN=()=>[K.t('s_slow'),K.t('s_normal'),K.t('s_fast'),K.t('s_vfast')];
  row(c,{icon:'audio-lines',title:K.t('s_rate'),value:RN()[Math.max(0,RATES.indexOf(K.pref.get('tts_rate','1.0')))],onclick:async()=>{const i=await K.ui.choose(K.t('s_rate'),RN(),Math.max(0,RATES.indexOf(K.pref.get('tts_rate','1.0'))));if(i!=null){K.pref.set('tts_rate',RATES[i]);S.rerender()}}});
  toggle(c,{icon:'volume-2',title:K.t('s_sound'),sub:K.t('s_sound_sub'),key:'sound',def:false,after:()=>K.home.paintSound()});
  note(b,K.t('s_audio_note'));
+}
+function sp_ai(b){
+let c=sec(b,K.t('s_ai'));
+ row(c,{icon:'atom',title:(K.lang()==='ar'?'نماذج مفتوحة المصدر':'Open-source models'),sub:(K.lang()==='ar'?'اتصال تلقائي ومفاتيح مجانية':'Auto-connect and free keys'),value:K.pref.bool('auto',true)?(K.lang()==='ar'?'تلقائي':'Auto'):'',onclick:()=>S.open('oss')});
+ row(c,{icon:'atom',title:(K.lang()==='ar'?'كتالوج النماذج (43)':'Model catalog (43)'),sub:(K.lang()==='ar'?'Llama وQwen وGemma وMistral وDeepSeek وGPT-OSS…':'Llama, Qwen, Gemma, Mistral, DeepSeek, GPT-OSS…'),onclick:()=>K.catalog.open()});
+ toggle(c,{icon:'sparkles',title:(K.lang()==='ar'?'مكتبة المهارات (75)':'Skills library (75)'),sub:(K.lang()==='ar'?'يطبّق المهارة المناسبة لطلبك تلقائياً':'Applies the right skills to your request'),key:'skills',def:true});
+ toggle(c,{icon:'atom',title:(K.lang()==='ar'?'فريق الذكاء لبناء التطبيقات':'AI team for app builds'),sub:(K.lang()==='ar'?'معماري ← مصمم ← مسؤول تفاصيل ← مبرمج':'Architect → designer → details → developer'),key:'team',def:true});
+ toggle(c,{icon:'atom',title:K.t('t_plan'),sub:K.t('t_plan_s'),key:'plan',def:true});
+ const MT=['0','512','1024','2048','4096'];
+ row(c,{icon:'a-large-small',title:K.t('t_maxtok'),value:K.pref.get('max_tokens','0')==='0'?K.t('t_auto'):K.pref.get('max_tokens','0'),onclick:async()=>{const i=await K.ui.choose(K.t('t_maxtok'),MT.map(x=>x==='0'?K.t('t_auto'):x),Math.max(0,MT.indexOf(K.pref.get('max_tokens','0'))));if(i!=null){K.pref.set('max_tokens',MT[i]);S.rerender()}}});
+}
+function sp_tools(b){
+let c=sec(b,'');
+ row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
+ row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
+ row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
+ toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
+}
+function sp_security(b){
+ let c;
  c=sec(b,K.t('s_privacy'));
  row(c,{icon:'lock',title:K.t('s_lock'),value:K.lock.has()?K.t('s_lock_on'):K.t('s_lock_off'),onclick:async()=>{
   if(K.lock.has()){const i=await K.ui.choose(K.t('s_lock'),[K.t('s_lock_change'),K.t('s_lock_disable')]);if(i==null)return;
@@ -92,30 +97,108 @@ function mainPage(b){
   else K.lock.show('set',()=>S.rerender())}});
  const ADK=['0','7','30','90'];
  row(c,{icon:'clock',title:K.t('s_autodel'),value:K.t('s_ad'+K.pref.get('auto_del','0')),onclick:async()=>{const i=await K.ui.choose(K.t('s_autodel'),ADK.map(k=>K.t('s_ad'+k)),Math.max(0,ADK.indexOf(K.pref.get('auto_del','0'))));if(i!=null){K.pref.set('auto_del',ADK[i]);K.db.load();S.rerender()}}});
+ c=sec(b,'');c.style.marginTop='22px';
+ row(c,{icon:'log-out',title:K.t('s_logout'),onclick:async()=>{if(await K.ui.confirm(K.t('s_logout_q'))){K.native.logout();K.app.toLogin()}}});
+}
+function sp_storage(b){
+ let c;
  c=sec(b,K.t('t_backup'));
  row(c,{icon:'share',title:K.t('t_export'),onclick:()=>{K.native.share(JSON.stringify({v:1,app:'karrar',convs:K.db.convs,prompts:JSON.parse(K.pref.get('prompts','[]')),memories:JSON.parse(K.pref.get('memories','[]'))}))}});
  row(c,{icon:'database',title:K.t('t_import'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('t_import'),hint:K.t('t_import_h'),multi:true});if(!v)return;try{const o=JSON.parse(v);if(o.app!=='karrar')throw 0;(o.convs||[]).forEach(c=>{if(!K.db.find(c.id))K.db.convs.push(c)});if(o.prompts&&o.prompts.length)K.pref.set('prompts',JSON.stringify(o.prompts));if(o.memories&&o.memories.length)K.pref.set('memories',JSON.stringify(o.memories));K.db.save();K.toast(K.t('t_import_ok'))}catch(e){K.toast(K.t('t_import_bad'))}}});
+}
+function sp_about(b){
+ let c;
  c=sec(b,K.t('s_about'));
  row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
- row(c,{icon:'file-text',title:K.t('s_terms'),onclick:()=>K.legal.open('terms')});
  row(c,{icon:'info',title:K.t('t_licenses'),sub:K.t('t_licenses_s'),onclick:()=>S.open('licenses')});
  row(c,{icon:'share',title:K.t('t_share'),onclick:()=>K.native.share(K.t('t_share_t'))});
  c=sec(b,'');c.style.marginTop='22px';
  row(c,{icon:'circle-help',title:K.t('s_help'),onclick:()=>K.legal.open('contact')});
- c=sec(b,'');c.style.marginTop='22px';
- row(c,{icon:'log-out',title:K.t('s_logout'),onclick:async()=>{if(await K.ui.confirm(K.t('s_logout_q'))){K.native.logout();K.app.toLogin()}}});
- const f=document.createElement('div');f.className='foot';f.textContent=K.t('s_footer');b.appendChild(f);
 }
+function sp_privacy(b){
+let c=sec(b,'');
+row(c,{icon:'file-text',title:K.t('s_terms'),onclick:()=>K.legal.open('terms')});
+row(c,{icon:'shield-check',title:(K.lang()==='ar'?'سياسة الخصوصية':'Privacy policy'),onclick:()=>K.native.open('https://karrarkoqw4v-ux.github.io/Karrar/privacy.html')});
+row(c,{icon:'file-text',title:(K.lang()==='ar'?'شروط الخدمة (الويب)':'Terms of service (web)'),onclick:()=>K.native.open('https://karrarkoqw4v-ux.github.io/Karrar/terms.html')});
+note(b,K.lang()==='ar'?'بياناتك ومحادثاتك تبقى على جهازك.':'Your data and chats stay on your device.');
+}
+
+const HUB=()=>{const ar=K.lang()==='ar';return [
+ [['settings','عام','General','general'],['smartphone','الإشعارات والاهتزاز','Notifications & haptics','notif'],['audio-lines','الصوت واللهجات','Sound & dialects','sound'],['atom','النماذج والذكاء الاصطناعي','Models & AI','ai'],['graduation-cap','الطلاب','Students','students'],['shield-check','الأمان وتسجيل الدخول','Security & sign-in','security'],['plug','التطبيقات الموصولة','Connected apps','apps'],['wand-sparkles','التخصيص والأدوات','Personalization & tools','tools']],
+ [['database','التخزين والنسخ الاحتياطي','Storage & backup','storage'],['lock','مركز الخصوصية','Privacy center','privacy'],['clock','السجل والبيانات','History & data','data'],['circle-help','الإبلاغ عن خطأ','Report a bug','bug'],['info','حول','About','about']]]};
+function sp_notif(b){const c=sec(b,'');toggle(c,{icon:'smartphone',title:K.t('s_haptic'),key:'haptic',def:true});toggle(c,{icon:'volume-2',title:K.t('s_sound'),sub:K.t('s_sound_sub'),key:'sound',def:false,after:()=>K.home.paintSound()});note(b,K.lang()==='ar'?'الإشعارات خارج التطبيق غير مفعّلة حالياً.':'Out-of-app notifications are not enabled yet.')}
+function hubOpen(k){if(k==='students')K.students.open();else if(k==='bug')K.legal.open('contact');else S.open(k)}
+function avatarHTML(sz){const pic=K.pref.get('user_av','')||K.pref.get('user_pic','');const nm=(K.pref.get('name','')||K.pref.get('user_email','')||'B').trim();
+ return '<span class="avt" style="width:'+sz+'px;height:'+sz+'px;font-size:'+Math.round(sz*.42)+'px">'+(pic?'<img src="'+esc(pic)+'" referrerpolicy="no-referrer" onerror="this.remove()">':'')+'<b>'+esc(nm[0].toUpperCase())+'</b></span>'}
+S.avatarHTML=avatarHTML;
+function mainPage(b){
+ const ar=K.lang()==='ar',nm=K.pref.get('name','')||(ar?'ضيف':'Guest'),em=K.pref.get('user_email','');
+ const pc=document.createElement('button');pc.className='pcard';
+ pc.innerHTML=avatarHTML(58)+'<span class="pt"><b>'+esc(nm)+'</b><small>'+esc((em||(ar?'بدون حساب':'No account'))+' · '+(ar?'الباقة المجانية':'Free plan'))+'</small></span><span class="rc">'+K.icon('chevron-left',20).replace('class="ic"','class="ic flip-ltr"')+'</span>';
+ pc.onclick=()=>S.open('account');b.appendChild(pc);
+ const idx=[];
+ (ar?['لون التمييز','المظهر','اللغة','الاستخدام والحدود','ترقية الخطة','الاشتراك','الملف الشخصي','الاسم','صورة الملف الشخصي']:['Accent color','Appearance','Language','Usage & limits','Upgrade plan','Subscription','Profile','Name','Profile picture']).forEach(t=>idx.push({t:t,p:'account',g:ar?'الحساب':'Account'}));
+ HUB().forEach(g=>{const c=document.createElement('div');c.className='card hub';b.appendChild(c);
+  g.forEach(x=>{const r=row(c,{icon:x[0],title:ar?x[1]:x[2],onclick:()=>hubOpen(x[3])});if(x[3]==='bug')r.querySelector('.rt').style.color='#7da2ff';idx.push({t:ar?x[1]:x[2],p:x[3],g:''})})});
+ const f=document.createElement('div');f.className='foot';f.textContent=K.t('s_footer');b.appendChild(f);
+ /* floating search */
+ const sb=document.createElement('div');sb.className='sbar';sb.innerHTML='<button class="sx hidden">'+K.icon('x',20)+'</button><label class="sp">'+K.icon('search',20)+'<input type="text" placeholder="'+(ar?'البحث في الإعدادات':'Search settings')+'" enterkeyhint="search"></label>';
+ b.parentNode.appendChild(sb);
+ const inp=sb.querySelector('input'),sx=sb.querySelector('.sx');let res=null;
+ const pages=['general','notif','sound','ai','security','storage','about','tools','privacy'];
+ const deep=()=>{const o=[];pages.forEach(pg=>{const d=document.createElement('div');try{({general:sp_general,notif:sp_notif,sound:sp_sound,ai:sp_ai,security:sp_security,storage:sp_storage,about:sp_about,tools:sp_tools,privacy:sp_privacy})[pg](d)}catch(e){return}
+   d.querySelectorAll('.row .rt').forEach(t=>{const tt=t.childNodes[0]?t.childNodes[0].textContent:'';if(tt)o.push({t:tt,p:pg,g:(HUB().flat().find(h=>h[3]===pg)||[])[ar?1:2]||''})})});return idx.concat(o)};
+ let all=null;
+ const run=()=>{const q=inp.value.trim().toLowerCase();sx.classList.toggle('hidden',!q&&document.activeElement!==inp);if(res){res.remove();res=null}
+  b.classList.toggle('searching',!!q);if(!q)return;if(!all)all=deep();
+  const hit=all.filter(x=>x.t.toLowerCase().includes(q)).slice(0,30);
+  res=document.createElement('div');res.className='card sres';
+  res.innerHTML=hit.length?hit.map((x,i)=>'<button class="row" data-i="'+i+'"><span class="rt">'+esc(x.t)+(x.g?'<small>'+esc(x.g)+'</small>':'')+'</span></button>').join(''):'<div class="note">'+(ar?'لا نتائج':'No results')+'</div>';
+  res.querySelectorAll('button').forEach(bt=>bt.onclick=()=>{inp.blur();hubOpen(hit[+bt.dataset.i].p)});b.insertBefore(res,b.firstChild)};
+ inp.oninput=run;inp.onfocus=()=>{sb.classList.add('on');sx.classList.remove('hidden')};
+ sx.onclick=()=>{inp.value='';inp.blur();sb.classList.remove('on');sx.classList.add('hidden');run()};
+ inp.onblur=()=>setTimeout(()=>{if(!inp.value)sb.classList.remove('on')},150);
+}
+
 function accountPage(b){
- const email=K.pref.get('user_email','');
- let c=sec(b,K.t('s_profile'));
- row(c,{icon:'user',title:K.t('s_name'),value:K.pref.get('name',''),onclick:async()=>{const v=await K.ui.prompt({title:K.t('s_name'),value:K.pref.get('name','')});if(v){K.pref.set('name',v);S.rerender()}}});
- row(c,{icon:'mail',title:K.t('s_email'),value:email?maskEmail(email):K.t('guest')});
+ const ar=K.lang()==='ar',email=K.pref.get('user_email','');
+ const hero=document.createElement('button');hero.className='ahero';hero.innerHTML=avatarHTML(112)+'<i class="pen">'+K.icon('pencil',17)+'</i>';hero.onclick=()=>profileSheet();b.appendChild(hero);
+ const nm=document.createElement('div');nm.className='aname';nm.textContent=K.pref.get('name','')||(ar?'ضيف':'Guest');b.appendChild(nm);
+ let c=sec(b,ar?'الحساب':'Account');
+ const chev=r=>r;
+ row(c,{icon:'sparkles',title:ar?'ترقية الخطة':'Upgrade plan',onclick:()=>K.plans.open()}).querySelector('.rt').style.color='#7da2ff';
+ chev(row(c,{icon:'crown',title:ar?'الاشتراك':'Subscription',value:'Free',onclick:()=>K.plans.open()}));
+ chev(row(c,{icon:'clock',title:ar?'الاستخدام والحدود':'Usage & limits',onclick:()=>S.open('stats')}));
+ row(c,{icon:'mail',title:K.t('s_email'),sub:email||K.t('guest')});
  if(K.pref.bool('user_google',false))row(c,{html:G_SVG,title:'Google',value:K.t('s_connected')});
+ const AC=[['#4d6bfe',ar?'أزرق':'Blue'],['#8b5cf6',ar?'بنفسجي':'Purple'],['#10b981',ar?'أخضر':'Green'],['#f59e0b',ar?'برتقالي':'Orange'],['#ef4444',ar?'أحمر':'Red'],['#ec4899',ar?'وردي':'Pink']];
+ const cur=K.pref.get('accent','#4d6bfe'),ca=AC.find(x=>x[0]===cur)||AC[0];
+ c=sec(b,'');
+ const thv=K.pref.get('theme','dark');
+ chev(row(c,{icon:'sun',title:K.t('s_theme'),value:thv==='system'?K.t('s_th_sys'):thv==='light'?K.t('s_light'):K.t('s_dark'),onclick:async()=>{const keys=['dark','light','system'];const i=await K.ui.choose(K.t('s_theme'),[K.t('s_dark'),K.t('s_light'),K.t('s_th_sys')],Math.max(0,keys.indexOf(thv)));if(i!=null){K.pref.set('theme',keys[i]);after()}}}));
+ chev(row(c,{icon:'wand-sparkles',title:ar?'لون التمييز':'Accent color',html:'<span class="appic" style="background:'+ca[0]+';width:26px;height:26px;border-radius:50%"></span>',value:ca[1],onclick:async()=>{const i=await K.ui.choose(ar?'لون التمييز':'Accent color',AC.map(x=>x[1]),Math.max(0,AC.indexOf(ca)));if(i!=null){K.pref.set('accent',AC[i][0]);K.app.accent&&K.app.accent();S.rerender()}}}));
+ chev(row(c,{icon:'globe',title:K.t('s_lang'),value:ar?'العربية':'English',onclick:async()=>{const i=await K.ui.choose(K.t('s_lang'),['العربية','English'],ar?0:1);if(i!=null){K.pref.set('lang',i===0?'ar':'en');after({remount:true})}}}));
  c=sec(b,K.t('s_security'));
  row(c,{icon:'smartphone',title:K.t('s_devices'),onclick:()=>K.ui.info(K.t('s_devices'),'• '+K.t('s_this_device')+' ('+K.native.model()+')')});
  const d=document.createElement('button');d.className='delete-acc';d.textContent=K.t('s_del_acc');
  d.onclick=async()=>{if(await K.ui.confirm(K.t('s_del_acc_q'),true)){K.native.deleteAccount(email);localStorage.removeItem('convs_'+(email||'guest'));K.native.logout();K.app.toLogin()}};b.appendChild(d);
+}
+function profileSheet(){
+ const ar=K.lang()==='ar';let av=K.pref.get('user_av','');
+ const w=document.createElement('div');w.className='psheet';
+ w.innerHTML='<div class="pbd"></div><div class="psh"><i class="grab"></i><button class="pavb"><span id="pavh"></span><i class="cam">'+K.icon('camera',18)+'</i></button>'
+  +'<input class="pfld" id="pfN" placeholder="'+(ar?'الاسم':'Name')+'" value="'+esc(K.pref.get('name',''))+'"><input class="pfld" id="pfU" dir="ltr" placeholder="'+(ar?'اسم المستخدم':'Username')+'" value="'+esc(K.pref.get('username',''))+'">'
+  +'<p>'+(ar?'يساعد ملفك الشخصي الآخرين على التعرّف عليك.':'Your profile helps others recognize you.')+'</p><button class="pbtn" id="pfS">'+(ar?'حفظ الملف الشخصي':'Save profile')+'</button><button class="pcan" id="pfC">'+(ar?'إلغاء':'Cancel')+'</button></div>';
+ document.body.appendChild(w);
+ const paint=()=>{const pic=av||K.pref.get('user_pic','');const nmv=($('pfN').value||K.pref.get('user_email','')||'B').trim();$('pavh').innerHTML='<span class="avt" style="width:120px;height:120px;font-size:50px">'+(pic?'<img src="'+esc(pic)+'" referrerpolicy="no-referrer">':'')+'<b>'+esc(nmv[0].toUpperCase())+'</b></span>'};paint();
+ const close=()=>{w.classList.add('out');setTimeout(()=>w.remove(),220)};
+ w.querySelector('.pbd').onclick=close;$('pfC').onclick=close;
+ $('pfN').oninput=()=>{if(!av)paint()};
+ w.querySelector('.pavb').onclick=async()=>{const i=await K.ui.choose(ar?'صورة الملف الشخصي':'Profile picture',[ar?'من الألبوم':'From album',ar?'الكاميرا':'Camera',ar?'إزالة الصورة':'Remove photo']);if(i==null)return;
+  if(i===2){av='';paint();return}
+  const r=await (i===0?K.native.pickImages():K.native.camera());if(r&&r[0]){const src=r[0].b64?'data:image/jpeg;base64,'+r[0].b64:r[0].th;
+   const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=cv.height=256;const x=cv.getContext('2d');const m=Math.min(im.width,im.height);x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,256,256);av=cv.toDataURL('image/jpeg',.85);paint()};im.src=src}};
+ $('pfS').onclick=()=>{const n=$('pfN').value.trim();if(n)K.pref.set('name',n);K.pref.set('username',$('pfU').value.trim().replace(/^@/,''));K.pref.set('user_av',av);close();K.toast(ar?'تم حفظ الملف الشخصي':'Profile saved');S.rerender();if(K.home&&K.home.paintProfile)K.home.paintProfile()};
 }
 function dataPage(b){
  const c=sec(b,K.t('s_ctl_hist'));
