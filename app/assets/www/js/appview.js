@@ -22,10 +22,10 @@ function prep(code0){const code=html(code0);
  return c}
 K.apps={
  card(name,code){
-  name=name.replace(/[<>]/g,'').slice(0,60)||'App';const id='a'+(++n);reg[id]={name,code};const pf=parseFiles(code),nf=pf?Object.keys(pf).length:1;
+  name=name.replace(/[<>]/g,'').slice(0,60)||'App';const id='a'+(++n);reg[id]={name,code};const pf=parseFiles(code),nf=pf?Object.keys(pf).length:1;const web=!pf||Object.keys(pf).some(k=>/\.html?$/i.test(k));const lang=pf?T('مشروع','Project'):'';
   const c=hue(name);
-  return '<div class="appcard" style="--ac:'+c+'"><span class="ai-tile">'+esc((name.match(/[\p{L}\p{N}]/u)||['A'])[0].toUpperCase())+'</span><div class="an"><b>'+esc(name)+'</b><small>'+(nf>1?T('مشروع · '+nf+' ملفات','Project · '+nf+' files'):T('تطبيق ويب · HTML','Web app · HTML'))+' · '+(new Blob([code]).size/1024).toFixed(1)+' KB</small></div>'
-   +'<div class="ab"><button class="view" data-appv="'+id+'">'+K.icon('smartphone',17)+'<span>'+T('عرض','Preview')+'</span></button><button data-apps="'+id+'" title="'+T('حفظ','Save')+'">'+K.icon('arrow-up',17).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button><button data-appc="'+id+'" title="'+T('نسخ','Copy')+'">'+K.icon('copy',17)+'</button><button data-appb="'+id+'" title="'+T('فتح في المتصفح','Open in browser')+'">'+K.icon('globe',17)+'</button><button data-appg="'+id+'" title="GitHub">'+K.icon('git-branch',17)+'</button></div></div>'},
+  return '<div class="appcard" style="--ac:'+c+'"><span class="ai-tile">'+esc((name.match(/[\p{L}\p{N}]/u)||['A'])[0].toUpperCase())+'</span><div class="an"><b>'+esc(name)+'</b><small>'+(nf>1?T('مشروع · '+nf+' ملفات','Project · '+nf+' files')+(web?'':' · '+T('بدون معاينة','no preview')):T('تطبيق ويب · HTML','Web app · HTML'))+' · '+(new Blob([code]).size/1024).toFixed(1)+' KB</small></div>'
+   +'<div class="ab">'+(web?'<button class="view" data-appv="'+id+'">'+K.icon('smartphone',17)+'<span>'+T('عرض','Preview')+'</span></button>':'')+'<button data-apps="'+id+'" title="'+T('حفظ','Save')+'">'+K.icon('arrow-up',17).replace('<svg ','<svg style="transform:rotate(180deg)" ')+'</button><button data-appc="'+id+'" title="'+T('نسخ','Copy')+'">'+K.icon('copy',17)+'</button>'+(web?'<button data-appb="'+id+'" title="'+T('فتح في المتصفح','Open in browser')+'">'+K.icon('globe',17)+'</button>':'')+'<button data-appg="'+id+'" title="GitHub">'+K.icon('git-branch',17)+'</button></div></div>'},
  slug(a){return a.name.replace(/[\\/:*?"<>|\s]+/g,'-').toLowerCase()||'app'},
  async save(id){const a=reg[id];if(!a)return;const multi=!!parseFiles(a.code);
   const r=multi?await K.files.saveNamed(K.apps.slug(a)+'.zip',a.code):await K.files.saveNamed(K.apps.slug(a)+'.html',a.code);

@@ -32,10 +32,22 @@ K.gh={
 };
 
 /* system-prompt additions from Settings -> Personalization */
+K.STACKS=[['web','HTML / CSS / JavaScript','Single-file web app (default)',''],
+ ['kotlin','Kotlin — Android (Jetpack Compose)','Android app in Kotlin with Jetpack Compose, Gradle Kotlin DSL (build.gradle.kts, settings.gradle.kts), AndroidManifest.xml, MVVM, Room, Retrofit/Ktor'],
+ ['swift','Swift — iOS (SwiftUI)','iOS app in Swift with SwiftUI, MVVM, async/await, SwiftData, Swift Package Manager'],
+ ['flutter','Dart — Flutter (Android + iOS)','Flutter app in Dart: pubspec.yaml, lib/ folders (screens, widgets, models, services), Riverpod or Bloc'],
+ ['rn','TypeScript — React Native (Expo)','React Native app with Expo and TypeScript: package.json, app.json, tsconfig.json, src/ folders, React Navigation'],
+ ['react','TypeScript — React + Vite','Web app with React, TypeScript and Vite: package.json, tsconfig.json, vite.config.ts, src/ components, Tailwind CSS'],
+ ['next','TypeScript — Next.js','Full-stack Next.js (App Router) with TypeScript, Tailwind, API routes'],
+ ['node','TypeScript — Node.js (NestJS/Express)','Backend API in TypeScript with Node.js: package.json, tsconfig, src/ modules/controllers/services, validation, tests'],
+ ['python','Python — FastAPI','Backend in Python with FastAPI: requirements.txt, app/ package (routers, models, schemas, services), pytest tests, Dockerfile'],
+ ['go','Go','Backend in Go: go.mod, cmd/ and internal/ packages, HTTP handlers, tests, Dockerfile'],
+ ['rust','Rust','Rust project with Cargo.toml, src/main.rs and modules, error handling with Result, tests'],
+ ['java','Java — Spring Boot','Spring Boot backend in Java: pom.xml, controllers/services/repositories, JPA entities, tests']];
 K.persona=function(){
  const p=K.pref,st=+p.get('reply_style','1'),lg=p.get('reply_lang','auto'),nm=p.get('nickname','').trim(),ab=p.get('about_me','').trim(),a=['Always be polite and respectful to the user: never insult, curse, or call them names (even jokingly, even in a dialect). Keep a warm, friendly tone.'];
 const MP={enc:'',apps:'Role: senior mobile/app engineer. Help the user design and build apps (Android, iOS, Flutter, React Native): architecture, complete working code, debugging and publishing. Ask a short clarifying question when requirements are unclear.',biz:'Role: business strategist. Help the user plan a commercial project: idea validation, business model, market and competitors, pricing, marketing, simple financial projections and a step-by-step action plan.',web:'Role: senior web developer. Help build websites: HTML/CSS/JS and frameworks, responsive design, SEO, performance and hosting. Give complete, working code.'};
- const md=K.state&&K.state.cur&&K.state.cur.mode;if(md&&MP[md])a.push(MP[md]);if(K.state&&K.state.cur&&K.state.cur.enc)a.push(K.enc.persona(K.state.cur.enc));if(K.state&&K.state.cur&&K.state.cur.stu)a.push(K.students.persona(K.state.cur));
+ const md=K.state&&K.state.cur&&K.state.cur.mode;if(md&&MP[md])a.push(MP[md]);{const st=K.STACKS.find(x=>x[0]===K.pref.get('dev_stack','web'));if(st&&st[0]!=='web'&&(md==='apps'||(K.intent&&K.state.cur&&K.state.cur.msgs.length&&K.intent.build((K.state.cur.msgs.filter(m=>m.role==='user').slice(-1)[0]||{}).c))))a.push('STACK: build with '+st[2]+'. This overrides the single-HTML rule. Output the whole project as ONE fenced block starting with ```app:<Project Name>, containing every file, each file introduced by a line exactly like === path/to/file.ext === . Include build/config files, a README.md with run instructions, and real production-quality code (no placeholders). The in-app preview only works for web stacks, so mention how to run it.')}if(K.state&&K.state.cur&&K.state.cur.enc)a.push(K.enc.persona(K.state.cur.enc));if(K.state&&K.state.cur&&K.state.cur.stu)a.push(K.students.persona(K.state.cur));
  if(nm)a.push('Address the user as "'+nm+'".');
  if(ab)a.push('About the user: '+ab);
 

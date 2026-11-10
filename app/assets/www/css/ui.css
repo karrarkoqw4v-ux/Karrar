@@ -70,3 +70,21 @@ html[data-weight]{--fw:inherit}
 @keyframes aurh{from{filter:blur(26px) hue-rotate(0)}to{filter:blur(26px) hue-rotate(360deg)}}
 body.aur #main,body.aur .scroll,body.aur .chat{background:transparent}
 #aurora{z-index:0}
+
+/* no outlines on the header buttons and the composer */
+.topbar .icon-btn,.bar{border:0!important;box-shadow:none!important}
+.bar:focus-within{box-shadow:none!important}
+/* compact model menu under the title */
+.md-box{top:calc(env(safe-area-inset-top,0px) + 70px);inset-inline-end:auto;inset-inline-start:50%;transform:translateX(-50%) !important;min-width:236px;max-width:78vw;padding:6px 4px;border-radius:26px}
+html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
+.md-it{padding:10px 16px;border-radius:18px}.md-it b{font-size:1.04em}.md-it small{font-size:.84em}.md-more b{font-size:.92em}
+/* richer, smoother aurora */
+#aurora{height:78vh;top:-6vh;opacity:0;background:
+ radial-gradient(60% 40% at 12% 18%,rgba(255,196,64,.95),transparent 70%),
+ radial-gradient(55% 38% at 88% 14%,rgba(235,70,90,.9),transparent 70%),
+ radial-gradient(70% 48% at 50% 8%,rgba(66,110,255,.95),transparent 72%),
+ radial-gradient(60% 40% at 30% 40%,rgba(160,90,255,.7),transparent 70%);
+ -webkit-mask-image:linear-gradient(#000 0%,#000 30%,transparent 92%);mask-image:linear-gradient(#000 0%,#000 30%,transparent 92%);animation:aurh 16s linear infinite,aurd 9s ease-in-out infinite alternate}
+#aurora.on{opacity:.95}
+@keyframes aurh{from{filter:blur(34px) hue-rotate(0)}to{filter:blur(34px) hue-rotate(360deg)}}
+@keyframes aurd{from{transform:translateX(-4%) scale(1.02)}to{transform:translateX(4%) scale(1.1)}}

@@ -176,7 +176,7 @@ K.code={
  newSession(){
   const w=sheet('<h3 class="cd-h">'+T('جلسة جديدة','New session')+'</h3>'
    +'<textarea class="cd-ta" id="cdTa" rows="3" placeholder="'+T('ماذا تريد أن تبني؟ مثال: تطبيق مهام بواجهة داكنة','What do you want to build? e.g. a to-do app with a dark UI')+'"></textarea>'
-   +'<div class="cd-chips"><button class="cd-chip" id="cdRepo"></button><button class="cd-chip" id="cdEnv"></button></div>'
+   +'<div class="cd-chips"><button class="cd-chip" id="cdRepo"></button><button class="cd-chip" id="cdEnv"></button><button class="cd-chip" id="cdStk"></button></div>'
    +'<div class="cd-hint" id="cdHint"></div>'
    +'<button class="cd-go" id="cdGo">'+T('ابدأ الجلسة','Start session')+'</button>'
    +'<button class="cd-cancel" id="cdX">'+T('إلغاء العملية','Cancel')+'</button>','ns');
@@ -184,6 +184,7 @@ K.code={
   const upd=()=>{
    const gh=!!K.gh.tok(),repo=P.repo,txt=ta.value.trim();
    w.querySelector('#cdRepo').innerHTML='<span>'+(repo?esc(repo.split('/').pop()):T('اختر مستودعاً','Pick repo'))+'</span>'+GH(18);
+   {const st=K.STACKS.find(x=>x[0]===K.pref.get('dev_stack','web'))||K.STACKS[0];w.querySelector('#cdStk').innerHTML='<span>'+esc(st[1].split(' — ')[0])+'</span>'+K.icon('code-xml',18)}
    w.querySelector('#cdEnv').innerHTML='<span>'+envShort(P.env)+'</span>'+K.icon('cloud',18);
    const ready=gh&&!!repo&&!!txt;go.disabled=!ready;
    w.querySelector('#cdHint').textContent=!gh?T('اربط GitHub أولاً لتفعيل الزر','Connect GitHub first to enable the button'):!repo?T('اختر مستودعاً لمتابعة الجلسة','Pick a repository to continue'):!txt?T('اكتب ما تريد بناءه','Describe what you want to build'):'';
@@ -192,6 +193,7 @@ K.code={
   w.querySelector('#cdX').onclick=w.close;
   w.querySelector('#cdRepo').onclick=()=>{K.gh.tok()?K.code.repos(upd):K.code.github(upd)};
   w.querySelector('#cdEnv').onclick=()=>K.code.server(upd);
+  w.querySelector('#cdStk').onclick=async()=>{const i=await K.ui.choose(T('لغة / تقنية المشروع','Project language / stack'),K.STACKS.map(x=>x[1]),Math.max(0,K.STACKS.findIndex(x=>x[0]===K.pref.get('dev_stack','web'))));if(i!=null){K.pref.set('dev_stack',K.STACKS[i][0]);upd()}};
   go.onclick=()=>{
    if(go.disabled)return;const txt=ta.value.trim(),repo=P.repo;
    const c=K.db.create();c.code=1;c.repo=repo;c.env=P.env;c.mode='apps';

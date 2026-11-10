@@ -80,6 +80,7 @@ let c=sec(b,K.t('s_ai'));
 }
 function sp_tools(b){
 let c=sec(b,'');
+ row(c,{icon:'code-xml',title:K.lang()==='ar'?'لغة بناء التطبيقات':'App build language',value:(K.STACKS.find(x=>x[0]===K.pref.get('dev_stack','web'))||K.STACKS[0])[1].split(' — ')[0],onclick:async()=>{const i=await K.ui.choose(K.lang()==='ar'?'لغة بناء التطبيقات':'App build language',K.STACKS.map(x=>x[1]),Math.max(0,K.STACKS.findIndex(x=>x[0]===K.pref.get('dev_stack','web'))));if(i!=null){K.pref.set('dev_stack',K.STACKS[i][0]);S.rerender()}}});
  row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
  row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
