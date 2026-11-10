@@ -72,7 +72,7 @@ H.paintPills=function(){
 H.refreshComposer=function(){
  if(K.voice&&K.voice.refreshAtts)setTimeout(K.voice.refreshAtts,0);
  const ta=$('ta'),has=ta.value.trim().length>0||S().atts.length>0,b=$('bSend');
- let icon='audio-lines';if(S().streaming)icon='square';else if(has)icon='arrow-up';
+ let icon='audio-lines';if(has)icon='arrow-up';else if(S().streaming)icon='square';
  if(b.dataset.s!==icon){b.dataset.s=icon;b.innerHTML=K.icon(icon,icon==='square'?15:21);b.classList.remove('pulse');void b.offsetWidth;if(icon!=='audio-lines')b.classList.add('pulse')}
  if(!ta.value&&!S().atts.length)$('composer').classList.remove('multi');else if(S().atts.length)$('composer').classList.add('multi');
  const pv=$('previews');pv.innerHTML=S().atts.map((a,i)=>'<div class="pv">'+(a.kind==='img'?'<img src="'+a.th+'">':K.files.card(a,'sm'))+'<button class="x" data-i="'+i+'">'+K.icon('x',13,3)+'</button></div>').join('');

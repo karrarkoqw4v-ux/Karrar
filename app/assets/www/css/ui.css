@@ -24,3 +24,7 @@
 .jb-c{display:flex;flex-direction:column;gap:6px;padding:16px 22px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700;font-size:.95em}
 #stuBadge{position:fixed;top:calc(env(safe-area-inset-top,0px) + 64px);left:50%;transform:translateX(-50%);z-index:20;background:#1d2547;color:#cfd8ff;border:1px solid #3b4a8f;border-radius:999px;padding:5px 12px;font:600 12.5px inherit;font-family:inherit;display:flex;gap:6px;align-items:center}
 #stuBadge i{font-style:normal;opacity:.7;padding:0 2px}
+.msg.user .uacts{display:flex;gap:4px;justify-content:flex-start;margin-top:4px;opacity:.75}
+.msg.user .uacts button{background:none;border:0;color:var(--mut,#9aa);padding:5px 7px;border-radius:8px}
+.msg.user .uacts button:active{background:rgba(255,255,255,.08)}
+.msg.user.queued .bubble{opacity:.55;border:1px dashed #4d6bfe}

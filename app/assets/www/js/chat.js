@@ -79,7 +79,25 @@ C.addUser=function(m){
  let h='';
  if((m.imgs&&m.imgs.length)||(m.files&&m.files.length)){h+='<div class="att-row">'+(m.imgs||[]).map(s=>'<img class="att-img" src="'+s+'">').join('')+(m.files||[]).map(f=>K.files.card(f)).join('')+'</div>'}
  if(m.c)h+='<div class="bubble">'+K.emojify(esc(m.c))+'</div>';
- d.innerHTML=h;$('msgs').appendChild(d);return d};
+ h+='<div class="uacts"><button data-u="copy" title="'+T2('نسخ','Copy')+'">'+K.icon('copy',16)+'</button><button data-u="edit" title="'+T2('تعديل','Edit')+'">'+K.icon('pencil',16)+'</button><button data-u="retry" title="'+T2('إعادة المحاولة','Retry')+'">'+K.icon('refresh-cw',16)+'</button></div>';
+ d.innerHTML=h;d._m=m;$('msgs').appendChild(d);
+ d.querySelectorAll('[data-u]').forEach(b=>b.onclick=e=>{e.stopPropagation();C.userAction(d,b.dataset.u)});return d};
+function T2(a,e){return K.lang()==='ar'?a:e}
+C.userAction=function(d,a){
+ const m=d._m,conv=S.cur;if(!m||!conv)return;
+ if(a==='copy'){K.native.copy(m.c||'');K.toast(T2('تم النسخ','Copied'));return}
+ const i=conv.msgs.indexOf(m);
+ if(S.streaming)C.stop();
+ S.queue=[];
+ if(i<0){/* still queued, not sent yet */ if(a==='edit'){d.remove();const ta=$('ta');ta.value=m.c||'';ta.dispatchEvent(new Event('input'));ta.focus()}return}
+ /* drop this message's reply and everything after it */
+ const all=[...$('msgs').children],at=all.indexOf(d);
+ all.slice(a==='edit'?at:at+1).forEach(x=>x.remove());
+ conv.msgs.splice(a==='edit'?i:i+1);
+ K.db.save();
+ if(a==='edit'){const ta=$('ta');ta.value=m.c||'';ta.dispatchEvent(new Event('input'));ta.focus();K.home.refreshComposer()}
+ else{C.start()}
+};
 C.show=function(conv){
  K.state.cur=conv;const box=$('msgs');box.innerHTML='';
  const lastAi=conv.msgs.map(m=>m.role).lastIndexOf('assistant');
@@ -91,16 +109,17 @@ C.show=function(conv){
 function toApi(msgs){return msgs.filter(function(m){return !m.gen}).map(m=>({role:m.role==='assistant'?'assistant':'user',content:((m.ft?m.ft+'\n\n':'')+(m.c||'')),images:m._b64||[]})).filter(x=>x.content||x.images.length)}
 function buildCtx(a){if(!a.length)return '';return 'Web search results (cite them in your answer as [1], [2] when you use them):\n'+a.map((s,i)=>(i+1)+'. '+s.title+' - '+(s.snippet||'')+' ('+s.url+')').join('\n')}
 C.send=function(){
- if(S.streaming){C.stop();return}
  if(K.guard.locked()){K.guard.showLock();return}
  const ta=$('ta'),text=ta.value.trim(),atts=S.atts.slice();
  if(!text&&!atts.length)return;
  if(S.imgMode&&!S.img){K.imggen.sizes();return}
  K.native.haptic();
+ if(S.streaming&&!text&&!atts.length){C.stop();return}
  const files=atts.filter(a=>a.kind==='file');
  const m={role:'user',c:text,imgs:atts.filter(a=>a.kind==='img').map(a=>a.th),files:files.map(f=>({n:f.name,size:f.size,pages:f.pages})),ft:files.map(f=>'[File: '+f.name+']\n```\n'+f.text+'\n```').join('\n\n')};
  m._b64=atts.filter(a=>a.kind==='img'&&a.b64).map(a=>a.b64);
  ta.value='';ta.style.height='';S.atts=[];K.home.refreshComposer();K.home.closeSheet();
+ if(S.streaming){/* queue: runs right after the current answer */ (S.queue=S.queue||[]).push(m);const qd=C.addUser(m);qd.classList.add('queued');K.toast(T2('أُضيفت للدور','Queued'));C.scrollEnd(true);return}
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
@@ -174,10 +193,12 @@ C.start=function(){
 };
 C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
- if(!view.m.c&&!view.m.t)view.m.c='—';
+ if(!view.m.c&&view.m.t){view.m.c=view.m.t;view.m.t='';view.m.s=view.m.s||1}
+ if(!view.m.c)view.m.c='—';
  S.think=false;S.search=false;if(K.home&&K.home.paintPills)K.home.paintPills();
  view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
+ if(S.queue&&S.queue.length){const nm=S.queue.shift(),conv=S.cur;conv.msgs.push(nm);document.querySelectorAll('.msg.user.queued').forEach((x,k)=>{if(x._m===nm)x.classList.remove('queued')});conv.ts=Date.now();K.db.save();setTimeout(()=>C.start(),350)}
 };
 C.AIView=AIView;
 K.errHint=function(m){m=String(m||'');const ar=K.lang()==='ar';let h='';
