@@ -15,7 +15,7 @@ K.chatui={
   K.chatui.close();const c=S().cur;if(!c)return;
   const items=[['share',T('مشاركة','Share'),'sh'],[c.pinned?'pin-off':'pin',c.pinned?T('إلغاء التثبيت','Unpin'):T('تثبيت','Pin'),'pin'],['lock',c.locked?T('إلغاء قفل الدردشة','Unlock chat'):T('قفل الدردشة','Lock chat'),'lock'],
    ['folder-git-2',T('إضافة إلى المشروع','Add to project'),'proj'],['paperclip',T('الملفات التي تم تحميلها','Uploaded files'),'files'],['search',T('البحث في الدردشة','Search in chat'),'find'],
-   [K.pref.bool('sound',false)?'volume-2':'volume-x',T('قراءة الردود تلقائياً: ','Auto read replies: ')+(K.pref.bool('sound',false)?T('مفعّل','On'):T('متوقف','Off')),'snd'],
+   [K.pref.bool('sound',false)?'volume-2':'volume-x',T('قراءة الردود تلقائياً','Auto read replies')+(K.pref.bool('sound',false)?' ✓':''),'snd'],
    ['archive',T('أرشفة','Archive'),'arc'],['trash-2',T('حذف','Delete'),'del']];
   const m=document.createElement('div');m.className='ctx cmenu';m.id='cmenu';
   m.innerHTML='<div class="cm-t">'+(c.title?c.title.replace(/[<>&]/g,''):T('محادثة جديدة','New chat'))+'</div>'+items.map(i=>'<button data-k="'+i[2]+'" class="'+(i[2]==='del'?'danger':'')+'"><span>'+i[1]+'</span>'+K.icon(i[0],22)+'</button>').join('');
