@@ -3,6 +3,7 @@ package com.karrar.ai;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
@@ -21,6 +22,13 @@ public class WebActivity extends Activity {
     private static final String HOST = "appassets.local";
     private WebView wv;
     private Bridge bridge;
+    private int insetTop = 0, insetBottom = 0;
+
+    void pushInsets() {
+        if (wv == null) return;
+        final String js = "document.documentElement.style.setProperty('--sat','" + insetTop + "px');document.documentElement.style.setProperty('--sab','" + insetBottom + "px')";
+        wv.post(new Runnable() { public void run() { wv.evaluateJavascript(js, null); } });
+    }
 
     @Override
     protected void onCreate(Bundle b) {
@@ -28,12 +36,29 @@ public class WebActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         Store.init(this);
         getWindow().getDecorView().setBackgroundColor(0xFF0F0F10);
-        getWindow().setStatusBarColor(0xFF0F0F10);
-        getWindow().setNavigationBarColor(0xFF0F0F10);
+        getWindow().setStatusBarColor(0);
+        getWindow().setNavigationBarColor(0);
+        if (Build.VERSION.SDK_INT >= 29) {
+            try { getWindow().setNavigationBarContrastEnforced(false); getWindow().setStatusBarContrastEnforced(false); } catch (Throwable ignored) { }
+        }
+        // edge-to-edge: the app draws under the status and navigation bars
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(0xFF0F0F10);
-        root.setFitsSystemWindows(true);
+        root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public android.view.WindowInsets onApplyWindowInsets(View v, android.view.WindowInsets in) {
+                float d = getResources().getDisplayMetrics().density;
+                int top = in.getStableInsetTop(), nav = in.getStableInsetBottom(), bottom = in.getSystemWindowInsetBottom();
+                boolean ime = bottom - nav > 100 * d / 2;
+                v.setPadding(0, 0, 0, ime ? bottom : 0);
+                insetTop = Math.round(top / d);
+                insetBottom = ime ? 0 : Math.round(nav / d);
+                pushInsets();
+                return in;
+            }
+        });
         wv = new WebView(this);
         wv.setBackgroundColor(0xFF0F0F10);
         wv.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -64,6 +89,9 @@ public class WebActivity extends Activity {
                 }
                 return null;
             }
+
+            @Override
+            public void onPageFinished(WebView v, String url) { pushInsets(); v.postDelayed(new Runnable() { public void run() { pushInsets(); } }, 600); }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {

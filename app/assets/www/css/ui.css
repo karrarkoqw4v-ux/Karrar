@@ -88,3 +88,12 @@ html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
 #aurora.on{opacity:.95}
 @keyframes aurh{from{filter:blur(34px) hue-rotate(0)}to{filter:blur(34px) hue-rotate(360deg)}}
 @keyframes aurd{from{transform:translateX(-4%) scale(1.02)}to{transform:translateX(4%) scale(1.1)}}
+/* edge-to-edge: content draws under the system bars; safe area comes from --sat / --sab (set by the app) */
+:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+.home,.page,.sc,.gal-pg,.cd,#login .lg,.dict,.sc-run,.sc-res,.pl,.lgl,.apv,.gs,.voice,.lock,.lightbox{padding-top:var(--sat)}
+.home,.page,.sc,.gal-pg,.cd,.dict,.pl,.apv,.voice{padding-bottom:var(--sab)}
+.dlg,.ms-sh,.psh,.vsheet{padding-bottom:calc(var(--sab) + 16px)}
+#ttsbar,#stuBadge{top:calc(var(--sat) + 10px)}#stuBadge{top:calc(var(--sat) + 64px)}
+.md-box{top:calc(var(--sat) + 70px)}
+.sbar{bottom:calc(var(--sab) + 18px)}
+.vtopL{top:calc(var(--sat) + 18px)}

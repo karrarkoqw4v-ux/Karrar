@@ -882,8 +882,8 @@ public class Bridge {
             public void run() {
                 try {
                     int c = android.graphics.Color.parseColor(bg);
-                    act.getWindow().setStatusBarColor(c);
-                    act.getWindow().setNavigationBarColor(c);
+                    act.getWindow().setStatusBarColor(0);
+                    act.getWindow().setNavigationBarColor(0);
                     View d = act.getWindow().getDecorView();
                     int f = d.getSystemUiVisibility();
                     if (darkIcons) {
