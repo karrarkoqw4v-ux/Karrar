@@ -22,7 +22,7 @@ H.mount=function(){
  K.chat.mount();
  $('bMenu').onclick=()=>H.openDrawer();
  $('bNew').onclick=()=>H.newChat();
- $('bSound').onclick=()=>{const on=!K.pref.bool('sound',false);K.pref.setBool('sound',on);if(!on)K.native.stopSpeak();H.paintSound();K.toast(K.t('s_sound')+(on?' ✓':' ✕'))};
+ $('bSound').onclick=()=>K.chatui.menu($('bSound'));
  $('mImg').onclick=()=>{H.toggleSheet(false);if(S().imgMode){S().imgMode=false;H.paintPills();$('ta').placeholder=K.t('hint')}else K.imggen.enter();K.native.haptic()};
  $('mThink').onclick=()=>{S().think=!S().think;H.paintPills();H.toggleSheet(false);K.native.haptic()};
  $('mSearch').onclick=()=>{S().search=!S().search;H.paintPills();H.toggleSheet(false);K.native.haptic()};
@@ -60,7 +60,7 @@ ta.addEventListener('focus',()=>{H.toggleSheet(false);$('composer').classList.ad
   if(!H.drawerOpen&&opening&&edge)H.openDrawer();else if(H.drawerOpen&&!opening)H.closeDrawer()},{passive:true});
  H.paintSound();H.paintPills();H.refreshComposer();
 };
-H.paintSound=function(){$('bSound').innerHTML=K.icon(K.pref.bool('sound',false)?'volume-2':'volume-x',22)};
+H.paintSound=function(){$('bSound').innerHTML='<svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg>'};
 H.paintPills=function(){
  $('mImg').classList.toggle('on',!!S().imgMode);$('mThink').classList.toggle('on',S().think);$('mSearch').classList.toggle('on',S().search);
  const c=$('mchips');c.classList.toggle('enc',!!(S().cur&&S().cur.enc));c.innerHTML=(S().cur&&S().cur.enc?K.enc.chips(S().cur.enc):'')+(S().imgMode?K.imggen.chips():'')+(S().think?'<button class="mchip" data-m="think">'+K.icon('atom',16)+'<span>'+K.t('think')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'')+(S().search?'<button class="mchip" data-m="search">'+K.icon('globe',16)+'<span>'+K.t('web_search')+'</span><span class="xx">'+K.icon('x',14,2.6)+'</span></button>':'');
@@ -138,7 +138,7 @@ H.openDrawer=function(){H.renderList();$('pname').textContent=K.pref.get('name',
 H.closeDrawer=function(){if(!H.drawerOpen)return;H.drawerOpen=false;if(H.selMode)H.exitSel();$('drawer').classList.remove('open');$('scrim').classList.remove('show');$('main').classList.remove('shift')};
 H.renderList=function(){
  const box=$('dlist');box.innerHTML='';const q=H.q;
- let all=K.db.convs.filter(c=>c.msgs.length&&!c.enc&&!c.stu&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
+ let all=K.db.convs.filter(c=>c.msgs.length&&!c.enc&&!c.stu&&!c.archived&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
  all.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.ts-a.ts);
  if(!all.length){box.innerHTML='<div class="dempty">'+K.t('no_history')+'</div>';return}
  const now=Date.now();let last='',first=true;const frag=document.createDocumentFragment();let idx=0;
@@ -147,7 +147,7 @@ H.renderList=function(){
    if(first){gh.querySelector('[data-ms]').onclick=()=>H.enterSel(null)}first=false;frag.appendChild(gh)}
   const it=document.createElement('div');const sel=H.sel.includes(c);
   it.className='ditem'+(sel?' sel':'')+(c===S().cur&&!H.selMode?' cur':'');it.style.animation='fadeUp .4s '+Math.min(idx++,10)*30+'ms var(--ease) both';
-  it.innerHTML=(H.selMode?'<span class="ck">'+(sel?K.icon('check',14,3.5):'')+'</span>':'')+'<span class="t"><b></b><small></small></span>'+(c.code?'<span class="pn cdb">'+K.icon('code-xml',17)+'</span>':'')+(c.pinned?'<span class="pn">'+K.icon('pin',17)+'</span>':'');
+  it.innerHTML=(H.selMode?'<span class="ck">'+(sel?K.icon('check',14,3.5):'')+'</span>':'')+'<span class="t"><b></b><small></small></span>'+(c.code?'<span class="pn cdb">'+K.icon('code-xml',17)+'</span>':'')+(c.locked?'<span class="pn">'+K.icon('lock',16)+'</span>':'')+(c.pinned?'<span class="pn">'+K.icon('pin',17)+'</span>':'');
   it.querySelector('.t b').textContent=c.title||K.t('new_chat');
   {const lm=[...c.msgs].reverse().find(m=>m.role==='assistant'&&m.c)||c.msgs[c.msgs.length-1]||{};const pv=(lm.c||'').replace(/```[\s\S]*?```/g,' ⟨code⟩ ').replace(/[#*`>|_\[\]]/g,'').replace(/\s+/g,' ').trim().slice(0,70);
    const d=new Date(c.ts),tm=age<864e5?d.toLocaleTimeString(K.lang()==='ar'?'ar':'en',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString(K.lang()==='ar'?'ar':'en',{day:'numeric',month:'short'});
@@ -178,7 +178,7 @@ H.enterSel=function(c){H.selMode=true;H.sel=c?[c]:[];H.updSel();H.renderList()};
 H.exitSel=function(){H.selMode=false;H.sel=[];H.updSel();H.renderList()};
 H.updSel=function(){const b=$('delbar');b.classList.toggle('hidden',!H.selMode);b.textContent=K.t('del')+' ('+H.sel.length+')';$('dprof').classList.toggle('hidden',H.selMode)};
 H.deleteSel=function(){if(!H.sel.length){H.exitSel();return}const gone=H.sel.includes(S().cur);H.sel.forEach(c=>{const i=K.db.convs.indexOf(c);if(i>=0)K.db.convs.splice(i,1)});K.db.save();H.exitSel();if(gone)H.newChat()};
-H.openConv=function(c){if(S().streaming)K.chat.stop();S().cur=c;K.pref.set('cur',c.id);K.chat.show(c);H.closeDrawer()};
+H.openConv=function(c){const go=function(){if(S().streaming)K.chat.stop();S().cur=c;K.pref.set('cur',c.id);K.chat.show(c);H.closeDrawer()};if(c.locked&&K.lock.has())K.lock.show('verify',ok=>{if(ok)go()});else go()};
 H.newChat=function(){if(S().streaming)K.chat.stop();const c=K.db.create();S().cur=c;K.pref.set('cur',c.id);K.chat.show(c);H.closeDrawer();H.closeSheet()};
 H.start=function(){
  S().think=K.pref.bool('def_think',false);S().search=K.pref.bool('def_search',false);H.paintPills();

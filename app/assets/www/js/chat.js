@@ -16,12 +16,13 @@ function AIView(m,o){
  el.innerHTML='<div class="ai-head"><span class="logo">'+K.LOGO+'</span></div><div class="src"></div><div class="status shimmer hidden"></div><div class="dots hidden"><i></i><i></i><i></i></div>'
   +'<div class="think hidden"><button class="think-h">'+K.icon('atom',17)+'<span></span><span class="chev">'+K.icon('chevron-down',16)+'</span></button><div class="think-b"><div><p></p></div></div></div>'
   +'<div class="md"></div><div class="gen hidden"></div><div class="demo-note hidden">'+K.icon('info',15)+'<span>'+K.t('demo_badge')+'</span></div>'
-  +'<div class="acts"><button data-a="copy">'+K.icon('copy',19)+'</button><button data-a="regen" class="'+(this.last?'':'hidden')+'">'+K.icon('refresh-cw',19)+'</button><button data-a="up">'+K.icon('thumbs-up',19)+'</button><button data-a="down">'+K.icon('thumbs-down',19)+'</button><button data-a="share">'+K.icon('share',19)+'</button></div>';
+  +'<div class="acts"><button data-a="copy">'+K.icon('copy',19)+'</button><button data-a="regen" class="'+(this.last?'':'hidden')+'">'+K.icon('refresh-cw',19)+'</button><button data-a="up">'+K.icon('thumbs-up',19)+'</button><button data-a="down">'+K.icon('thumbs-down',19)+'</button><button data-a="share">'+K.icon('share',19)+'</button><button data-a="speak">'+K.icon('volume-2',19)+'</button></div>';
  const self=this;
  el.querySelector('.think-h').onclick=function(){self.open=!self.open;self.render()};
  this.renderSources();this.render();
 }
 AIView.prototype.q=function(s){return this.el.querySelector(s)};
+setInterval(function(){document.querySelectorAll('.think-h>span').forEach(function(e){const t=e.querySelector('.tm');if(t&&e._s)t.textContent=Math.round((Date.now()-e._s)/1000)+'s'});document.querySelectorAll('.status:not(.hidden)').forEach(function(e){const t=e.querySelector('.tm');if(t&&e._s)t.textContent=Math.max(0,Math.round((Date.now()-e._s)/1000))+'s'})},1000);
 AIView.prototype.setStatus=function(t){this.status=t||'';this.render()};
 AIView.prototype.dirty=function(){if(this._q)return;this._q=1;const s=this;requestAnimationFrame(function(){s._q=0;s.render();if(K.chat.nearBottom)K.chat.scrollEnd()})};
 AIView.prototype.renderSources=function(){
@@ -36,8 +37,8 @@ AIView.prototype.render=function(){
  const m=this.m,hasT=!!m.t,live=!this.done;
  const th=this.q('.think');th.classList.toggle('hidden',!hasT);
  if(hasT){this.q('.think-b p').textContent=m.t;th.classList.toggle('open',this.open);th.classList.toggle('live',this.thinking);
-  th.querySelector('.think-h>span').textContent=this.thinking?K.t('thinking'):K.t('thought_for',Math.max(1,m.s||1))}
- const st=this.q('.status');st.classList.toggle('hidden',!this.status);st.textContent=this.status;
+  {const ls=th.querySelector('.think-h>span');if(this.thinking){if(!ls._d){ls._d=1;ls._s=Date.now();ls.innerHTML='<span class="td"><i></i><i></i><i></i></span><span class="tt"></span><span class="tm">0s</span>';ls.querySelector('.tt').textContent=K.t('thinking')}th.classList.add('tk')}else{ls._d=0;ls.textContent=K.t('thought_for',Math.max(1,m.s||1))}}}
+ const st=this.q('.status');st.classList.toggle('hidden',!this.status);if(this.status){if(st._t!==this.status){st._t=this.status;st._s=Date.now();st.innerHTML='<span class="td"><i></i><i></i><i></i></span><span class="tt"></span><span class="tm"></span>';st.querySelector('.tt').textContent=this.status}}else st._t='';
  this.q('.dots').classList.toggle('hidden',!!(m.c||m.t||m.gen||this.status||!live));
  const gn=this.q('.gen');gn.classList.toggle('hidden',!m.gen);if(m.gen)gn.innerHTML=K.imggen.html(m.gen);
  const hasSrc=(m.src||[]).length>0;
@@ -72,6 +73,7 @@ C.mount=function(){
   const im=t.closest('.att-img');if(im){K.ui.lightbox(im.src)}
  });
 };
+C.topScroll=function(d){const sc=$('scroll');S.pinTop=d;$('msgs').style.paddingBottom=Math.round(sc.clientHeight*.7)+'px';requestAnimationFrame(function(){sc.scrollTo({top:Math.max(0,sc.scrollTop+d.getBoundingClientRect().top-sc.getBoundingClientRect().top-8),behavior:'smooth'})})};
 C.scrollEnd=function(smooth){const sc=$('scroll');sc.scrollTo({top:sc.scrollHeight,behavior:smooth?'smooth':'auto'})};
 C.addUser=function(m){
  $('empty').classList.add('hidden');
@@ -99,7 +101,7 @@ C.userAction=function(d,a){
  else{C.start()}
 };
 C.show=function(conv){
- K.state.cur=conv;const box=$('msgs');box.innerHTML='';
+ K.state.cur=conv;const box=$('msgs');box.innerHTML='';box.style.paddingBottom='';
  const lastAi=conv.msgs.map(m=>m.role).lastIndexOf('assistant');
  conv.msgs.forEach(function(m,i){if(m.role==='user')C.addUser(m);else{const v=new AIView(m,{last:i===lastAi,live:false});box.appendChild(v.el)}});
  $('empty').classList.toggle('hidden',conv.msgs.length>0);
@@ -123,7 +125,7 @@ C.send=function(){
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
- K.pref.set('cur',conv.id);C.addUser(m);if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
+ K.pref.set('cur',conv.id);const ud=C.addUser(m);C.topScroll(ud);if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
 };
 C.isDevQ=function(t){t=(t||'').trim();if(!t||t.length>140)return false;
  const who=/(مطور|المطور|مبرمج|صاحب|مالك|مسؤول|المسؤول|من\s+(صنع|سوى|برمج|طور|عمل|انشأ|أنشأ)|مين\s+(صنع|سوى|برمج|طور|عمل)|تواصل|حسابات|developer|owner|admin|who\s+(made|built|created|developed|owns|runs)|contact)/i;
@@ -142,7 +144,7 @@ C.start=function(){
  conv.msgs.forEach(()=>0);
  document.querySelectorAll('.msg.ai [data-a=regen]').forEach(b=>b.classList.add('hidden'));
  const ai={role:'assistant',c:'',t:'',s:0,src:[],v:0,demo:!K.native.hasKey()};conv.msgs.push(ai);
- const view=new AIView(ai,{last:true,live:true});$('msgs').appendChild(view.el);S.live=view;S.streaming=true;K.home.refreshComposer();C.scrollEnd(true);
+ const view=new AIView(ai,{last:true,live:true});$('msgs').appendChild(view.el);S.live=view;S.streaming=true;K.home.refreshComposer();
  const hist=toApi(conv.msgs.slice(0,-1));
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
  const lu0=(lastUser&&lastUser.c)||'';
@@ -196,7 +198,7 @@ C.finish=function(view){
  if(!view.m.c&&view.m.t){view.m.c=view.m.t;view.m.t='';view.m.s=view.m.s||1}
  if(!view.m.c)view.m.c='—';
  S.think=false;S.search=false;if(K.home&&K.home.paintPills)K.home.paintPills();
- view.status='';view.render();K.db.save();K.home.refreshComposer();C.scrollEnd(true);
+ view.status='';view.render();K.db.save();K.home.refreshComposer();
  if(S.voiceMode&&K.voice.active)K.voice.onReply(view.m.c);else if(K.pref.bool('sound',false))K.native.speak(view.m.c);
  if(S.queue&&S.queue.length){const nm=S.queue.shift(),conv=S.cur;conv.msgs.push(nm);document.querySelectorAll('.msg.user.queued').forEach((x,k)=>{if(x._m===nm)x.classList.remove('queued')});conv.ts=Date.now();K.db.save();setTimeout(()=>C.start(),350)}
 };
@@ -211,6 +213,7 @@ C.stop=function(){if(S.handle)S.handle.cancel();K.native.stopSpeak();if(S.live){
 C.action=function(v,a){
  if(a==='copy'){K.native.copy(v.m.c)}
  else if(a==='share'){K.native.share(v.m.c)}
+ else if(a==='speak'){K.chatui.speak(v.m.c)}
  else if(a==='up'){v.m.v=v.m.v===1?0:1;v.render();K.db.save()}
  else if(a==='down'){v.m.v=v.m.v===-1?0:-1;v.render();K.db.save()}
  else if(a==='regen'){if(S.streaming)return;const conv=S.cur;conv.msgs.pop();v.el.remove();C.start()}
