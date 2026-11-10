@@ -5,6 +5,9 @@ const T=(a,e)=>K.lang()==='ar'?a:e;
 const $=id=>document.getElementById(id);
 const S=()=>K.state;
 let bar=null,tick=0,t0=0,cur='',paused=false;
+const au=document.createElement('div');au.id='aurora';document.body.insertBefore(au,document.body.firstChild);
+setInterval(()=>{const on=!!(S()&&S().streaming);au.classList.toggle('on',on);document.body.classList.toggle('aur',on)},300);
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#title')&&!e.target.closest('#tBrand'))K.models.open()});
 K.chatui={
  close(){['cmenu','cmenubd'].forEach(i=>{const e=$(i);if(e)e.remove()})},
  menu(anchor){

@@ -50,3 +50,23 @@
 .think-h .td{display:inline-flex;gap:4px;margin-inline-end:8px}
 .think-h .td i:nth-child(2){animation-delay:.18s}.think-h .td i:nth-child(3){animation-delay:.36s}
 .think-h .tm{margin-inline-start:8px;opacity:.7;font-variant-numeric:tabular-nums}
+/* system Arabic font, a bit larger */
+html:root,html[lang],html[data-font]{--font:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic","Droid Arabic Naskh",sans-serif;--fs:calc(16.2px*var(--scale))}
+html[data-weight]{--fw:inherit}
+/* model dropdown */
+.mdrop{position:fixed;inset:0;z-index:70;animation:fadeIn .15s both}.mdrop.out{opacity:0;transition:opacity .2s}
+.md-bd{position:absolute;inset:0}
+.md-box{position:absolute;top:calc(env(safe-area-inset-top,0px) + 74px);inset-inline-end:16px;min-width:270px;max-width:84vw;background:#1e1e20;border-radius:30px;padding:10px 6px;box-shadow:0 18px 50px #000c;animation:pop .22s var(--spring) both;transform-origin:top right}
+.md-it{display:flex;align-items:center;gap:14px;width:100%;padding:13px 20px;text-align:start;border-radius:20px}.md-it:active{background:rgba(255,255,255,.06)}
+.md-it .mt{flex:1;display:flex;flex-direction:column;gap:2px}.md-it b{font-size:1.2em;font-weight:500}.md-it small{color:var(--text2);font-size:.95em}.md-it .mk{width:26px;display:grid;place-items:center;color:var(--text)}
+.md-more b{font-size:1.02em;color:var(--text2)}
+.md-sep{height:1px;background:rgba(255,255,255,.1);margin:8px 18px}.md-tl .chv{transition:transform .2s}.md-tl .chv.up{transform:rotate(180deg)}
+.md-lv.hidden{display:none}
+/* Gemini-like aurora while the answer is being prepared */
+#aurora{position:fixed;left:0;right:0;top:0;height:68vh;z-index:1;pointer-events:none;opacity:0;transition:opacity 1.4s ease;
+ background:radial-gradient(130% 55% at 15% 0%,rgba(245,194,66,.85),transparent 62%),radial-gradient(100% 60% at 95% 5%,rgba(224,84,60,.8),transparent 60%),radial-gradient(140% 75% at 50% -5%,rgba(59,91,219,.9),transparent 72%);
+ -webkit-mask-image:linear-gradient(#000 25%,transparent 100%);mask-image:linear-gradient(#000 25%,transparent 100%);animation:aurh 14s linear infinite}
+#aurora.on{opacity:.9}
+@keyframes aurh{from{filter:blur(26px) hue-rotate(0)}to{filter:blur(26px) hue-rotate(360deg)}}
+body.aur #main,body.aur .scroll,body.aur .chat{background:transparent}
+#aurora{z-index:0}

@@ -153,7 +153,7 @@ C.start=function(){
  const hist=toApi(conv.msgs.slice(0,-1));
  const lastUser=[...conv.msgs].reverse().find(m=>m.role==='user');
  const lu0=(lastUser&&lastUser.c)||'';
- const thinkNow=S.think||K.intent.think(lu0);
+ const thinkNow=S.think||K.pref.get('think_level','auto')==='always'||K.intent.think(lu0);
  const run=async function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
