@@ -16,6 +16,7 @@ K.skills={
   return 'Apply these skills to the task (follow them silently, do not list them):\n'+hits.map(h=>'- '+h.s.id+': '+h.s.p).join('\n')}
 };
 K.intent={
+ write(t){t=t||'';return t.length>6&&/(اكتب|اكتبلي|اكتب لي|سوي لي|اعمل لي|أريد|اريد|عطني|اعطني|حل|حلل).{0,40}(موضوع|تعبير|رسالة|رساله|مقال|خطبة|خطبه|تقرير|بحث|ملخص|كتاب|قصة|قصه|قصيدة|خاطرة|إذاعة|اذاعة|فقرة|حل الواجب|حل الاسئلة|واجب|essay|letter|speech|report|summary|story|poem|chapter|composition)|(موضوع تعبير|تعبير عن|رسالة إلى|رساله الى|اكتب موضوع)/i.test(t)},
  search(t){return /(ابحث|بحث عن|ابحثلي|دوّر|دور لي|دور على|search (for|the web)|look up|google it|آخر الأخبار|latest news)/i.test(t||'')},
  think(t){return /(فكّر|فكر لي|فكر في|فكر بالموضوع|think (about|through|hard)|reason (about|through)|تفكير عميق)/i.test(t||'')},
  build(t){t=t||'';return t.length>10&&/(اعمل|سوي|صمم|ابني|انشئ|أنشئ|اكتب لي|برمج|build|make|create|design|develop).{0,40}(تطبيق|موقع|لعبة|صفحة|لوحة|app|website|site|game|landing|dashboard)/i.test(t)},

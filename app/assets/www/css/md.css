@@ -55,3 +55,13 @@ html[data-theme=light] .tk-k{color:#af00db}html[data-theme=light] .tk-s{color:#a
 .md th,.md td{min-width:64px;word-break:normal;overflow-wrap:break-word;vertical-align:top}
 .md td{line-height:1.7}
 .md table{font-size:13.5px}
+.docc{margin:.6em 0;border-radius:18px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);overflow:hidden}
+.dc-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 4px;color:var(--text2,#9aa)}
+.dc-t{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600}
+.dc-b{display:inline-flex;gap:6px}
+.dc-b button{background:none;border:0;color:inherit;padding:7px;border-radius:10px;display:grid;place-items:center}
+.dc-b button:active{background:rgba(255,255,255,.08)}
+.dc-body{padding:2px 16px 16px;line-height:1.95;font-size:16.5px}
+.dc-body h1,.dc-body h2{font-size:1.45em;margin:.5em 0 .5em;font-weight:700}
+.dc-body p{margin:.8em 0}
+.think-h{white-space:nowrap;width:max-content;max-width:100%;gap:8px}

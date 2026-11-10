@@ -12,7 +12,7 @@ function inline(s,hasSrc){
  if(hasSrc)s=s.replace(/\[(\d{1,2})\]/g,'<sup class="cite" data-i="$1">$1</sup>');
  return s.replace(/\u0001(\d+)\u0002/g,(m,i)=>'<code>'+codes[i]+'</code>');
 }
-K.md=function(text,hasSrc){
+const mdBase=function(text,hasSrc){
  const lines=text.split('\n');let out='',i=0,para=[];
  const flush=()=>{if(para.length){out+='<p>'+para.map(l=>inline(l,hasSrc)).join('<br>')+'</p>';para=[]}};
  while(i<lines.length){
@@ -39,5 +39,15 @@ K.md=function(text,hasSrc){
  }
  flush();return out;
 };
+/* ":::doc" blocks render as a writing card (title, copy, share) like a document */
+K.md=function(text,hasSrc){
+ if(text.indexOf(':::doc')<0)return mdBase(text,hasSrc);
+ const re=/(^|\n):::doc[^\n]*\n?([\s\S]*?)(?:\n:::[ \t]*(?=\n|$)|$)/;let out='',rest=text,n=0;
+ while(true){const m=re.exec(rest);if(!m)break;
+  const pre=rest.slice(0,m.index);if(pre.trim())out+=mdBase(pre,hasSrc);
+  const body=m[2].replace(/^\s+/,'');
+  out+='<div class="docc"><div class="dc-h"><span class="dc-t"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>'+(K.lang()==='ar'?'الكتابة':'Writing')+'</span><span class="dc-b"><button data-dcs="'+n+'" title="share"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button><button data-dcc="'+n+'" title="copy"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h10"/></svg></button></span></div><div class="dc-body" data-raw="'+encodeURIComponent(body).replace(/"/g,'%22')+'">'+mdBase(body,hasSrc)+'</div></div>';
+  n++;rest=rest.slice(m.index+m[0].length)}
+ if(rest.trim())out+=mdBase(rest,hasSrc);return out};
 K.mdEmoji=function(text,hasSrc){return K.emojify(K.md(text,hasSrc))};
 })();

@@ -58,6 +58,7 @@ C.mount=function(){
   const t=e.target;
   const av=t.closest('[data-appv]');if(av){K.apps.open(av.dataset.appv);return}
   const as=t.closest('[data-apps]');if(as){K.apps.save(as.dataset.apps);return}
+  const dcb=t.closest('[data-dcc],[data-dcs]');if(dcb){const raw=decodeURIComponent(dcb.closest('.docc').querySelector('.dc-body').dataset.raw||'');if(dcb.dataset.dcc!==undefined){K.native.copy(raw);K.toast(K.lang()==='ar'?'تم النسخ':'Copied')}else K.native.share(raw);return}
   const ab=t.closest('[data-appb]');if(ab){K.apps.browser(ab.dataset.appb);return}
   const ag=t.closest('[data-appg]');if(ag){K.apps.push(ag.dataset.appg);return}
   const ac=t.closest('[data-appc]');if(ac){K.apps.copy(ac.dataset.appc);return}
@@ -152,6 +153,7 @@ C.start=function(){
  const run=async function(ctx){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
+  if(K.intent.write(lu0)||(S.cur&&S.cur.stu&&K.intent.write(lu0)))ctx+=(ctx?'\n\n':'')+'FORMAT: when you write a finished piece for the user (composition, essay, letter, speech, report, summary, book chapter, worked solution), put the piece itself inside a block that starts with a line :::doc and ends with a line :::, with a first line "# Title" inside. Keep any short intro or closing note outside the block. Do not use the block for casual chat or code.';
   const dl=K.dialect&&K.dialect.hint?K.dialect.hint(lu0):'';if(dl)ctx+=(ctx?'\n\n':'')+dl;
   try{const tn=await K.team.run(lu0,view);if(tn)ctx+='\n\n'+tn}catch(e){}
   if(view.finished)return;
@@ -162,19 +164,19 @@ C.start=function(){
   if(lastUser&&((lastUser.files&&lastUser.files.length)||(lastUser.imgs&&lastUser.imgs.length)))want+=1500;
   want=Math.min(10000,want);
   const hasAtt=!!(lastUser&&((lastUser.files&&lastUser.files.length)||(lastUser.imgs&&lastUser.imgs.length)));
-  if(K.intent.simple(lu,hasAtt)&&!thinkNow)want=1100;else if(thinkNow)want=Math.max(want,6000);
-  let q='',doneEv=null,tm=0,flushed=false;
-  view.setStatus(K.t('thinking'));
+  if(!thinkNow)want=Math.min(want,1400);else want=Math.max(want,6000);
+  let q='',doneEv=null,tm=0,flushed=false,hid='';
+  view.setStatus(thinkNow?K.t('thinking'):(K.lang()==='ar'?'لحظة من فضلك…':'One moment…'));
   const pump=function(){tm=0;if(view.finished)return;
    const left=want-(Date.now()-T0);
    if(!flushed&&left>0){tm=setTimeout(pump,Math.min(left,250));return}
    if(!flushed){flushed=true;ai.s=Math.max(1,Math.round((Date.now()-T0)/1000));view.open=false;view.thinking=false;view.status='';view.dirty()}
    if(q){const n=2+Math.floor(q.length/70);ai.c+=q.slice(0,n);q=q.slice(n);view.dirty();if(S.voiceMode&&K.voice.active)K.voice.onStream(ai.c);tm=setTimeout(pump,34);return}
-   if(doneEv){doneEv=null;C.finish(view)}
+   if(doneEv){doneEv=null;if(!ai.c&&hid&&!ai.t)ai.c=hid;C.finish(view)}
   };
   S.handle=K.native.chat(hist,thinkNow,ctx,function(ev){
    if(view.finished)return;
-   if(ev.t==='think'){ai.t+=ev.d;view.open=true;view.thinking=true;view.status='';view.dirty()}
+   if(ev.t==='think'){if(!thinkNow){hid+=ev.d;return}ai.t+=ev.d;view.open=true;view.thinking=true;view.status='';view.dirty()}
    else if(ev.t==='text'){q+=ev.d;if(!tm)pump()}
    else if(ev.t==='done'){doneEv=ev;if(!tm)pump()}
    else if(ev.t==='err'){clearTimeout(tm);tm=0;flushed=true;ai.c+=q;q='';ai.c+=(ai.c?'\n\n':'')+'⚠ '+ev.m+K.errHint(ev.m);ai.s=ai.s||1;view.open=false;view.thinking=false;view.status='';C.finish(view)}
