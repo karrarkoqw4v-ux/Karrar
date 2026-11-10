@@ -191,8 +191,27 @@ public class Bridge {
             Intent it = new Intent(act, WebActivity.class);
             it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             nb.setContentIntent(android.app.PendingIntent.getActivity(act, 0, it, android.app.PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? android.app.PendingIntent.FLAG_IMMUTABLE : 0)));
+            // actions: Reply (inline text) and Open
+            int mut = Build.VERSION.SDK_INT >= 31 ? 0x02000000 : 0;
+            Intent ri = new Intent(act, WebActivity.class).setAction("com.bawsala.app.REPLY");
+            ri.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            android.app.PendingIntent rpi = android.app.PendingIntent.getActivity(act, 2, ri, android.app.PendingIntent.FLAG_UPDATE_CURRENT | mut);
+            android.app.RemoteInput rin = new android.app.RemoteInput.Builder("reply").setLabel(Theme.rtl ? "\u0627\u0643\u062a\u0628 \u0631\u062f\u0643" : "Type your reply").build();
+            android.graphics.drawable.Icon ic = android.graphics.drawable.Icon.createWithResource(act, small != 0 ? small : launcher);
+            nb.addAction(new android.app.Notification.Action.Builder(ic, Theme.rtl ? "\u0631\u062f" : "Reply", rpi).addRemoteInput(rin).build());
+            Intent oi = new Intent(act, WebActivity.class);
+            oi.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            android.app.PendingIntent opi = android.app.PendingIntent.getActivity(act, 3, oi, android.app.PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? android.app.PendingIntent.FLAG_IMMUTABLE : 0));
+            nb.addAction(new android.app.Notification.Action.Builder(ic, Theme.rtl ? "\u0641\u062a\u062d" : "Open", opi).build());
             nm.notify(1001, nb.build());
         } catch (Throwable ignored) { }
+    }
+
+    /** Text typed in the notification's Reply box: send it as a new message once the page is ready. */
+    void deliverReply(String text) {
+        if (text == null || text.trim().isEmpty()) return;
+        final String js = "(function f(){if(window.K&&K.chat&&K.chat.external&&K.state&&document.getElementById('ta')){K.chat.external(" + JSONObject.quote(text.trim()) + ")}else setTimeout(f,500)})()";
+        ui.postDelayed(new Runnable() { public void run() { wv.evaluateJavascript(js, null); } }, 400);
     }
 
     void clearNotif() {

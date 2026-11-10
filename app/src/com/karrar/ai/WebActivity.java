@@ -73,6 +73,7 @@ public class WebActivity extends Activity {
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         bridge = new Bridge(this, wv);
         wv.addJavascriptInterface(bridge, "Android");
+        handleReply(getIntent());
         wv.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
@@ -129,7 +130,17 @@ public class WebActivity extends Activity {
     protected void onNewIntent(Intent it) {
         super.onNewIntent(it);
         setIntent(it);
-        if (bridge != null) bridge.onNewIntent(it);
+        if (bridge != null) { bridge.onNewIntent(it); handleReply(it); }
+    }
+
+    private void handleReply(Intent it) {
+        try {
+            android.os.Bundle r = android.app.RemoteInput.getResultsFromIntent(it);
+            if (r != null && bridge != null) {
+                CharSequence t = r.getCharSequence("reply");
+                if (t != null) bridge.deliverReply(t.toString());
+            }
+        } catch (Throwable ignored) { }
     }
 
     @Override

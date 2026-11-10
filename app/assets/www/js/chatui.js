@@ -8,6 +8,7 @@ let bar=null,tick=0,t0=0,cur='',paused=false;
 const au=document.createElement('div');au.id='aurora';document.body.insertBefore(au,document.body.firstChild);
 setInterval(()=>{const on=!!(S()&&S().streaming);au.classList.toggle('on',on);document.body.classList.toggle('aur',on)},300);
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#title')&&!e.target.closest('#tBrand'))K.models.open()});
+K.chat.external=function(t){const ta=document.getElementById('ta');if(!ta||!t)return;if(K.state.streaming)K.chat.stop();ta.value=t;ta.dispatchEvent(new Event('input'));K.chat.send()};
 K.chatui={
  close(){['cmenu','cmenubd'].forEach(i=>{const e=$(i);if(e)e.remove()})},
  menu(anchor){
