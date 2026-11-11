@@ -179,4 +179,33 @@
       navigator.clipboard.writeText(v).then(function () { b.textContent = "تم النسخ ✓"; setTimeout(function () { b.textContent = old; }, 1800); }, function () {});
     });
   });
+  /* developer download gate: the APK link is stored ENCRYPTED (AES-GCM, key = PBKDF2(code)); it is only revealed in the browser after the right code. */
+  var gate = $("#gate");
+  if (gate) {
+    var msg = $("#gmsg"), dl = $("#gdl"), input = $("#gcode"), fails = 0, busy = false;
+    var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
+    var show = function (url) { dl.href = url; dl.hidden = false; gate.querySelector(".row").hidden = true; gate.querySelector("label").hidden = true; msg.className = "gmsg ok"; msg.textContent = "تم فتح التحميل ✓"; };
+    try { var kept = sessionStorage.getItem("apk"); if (kept) show(kept); } catch (e) {}
+    gate.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (busy) return;
+      var L = (window.SITE && SITE.app && SITE.app.apkLocked), code = input.value.trim();
+      if (!L || !window.crypto || !crypto.subtle) { msg.className = "gmsg err"; msg.textContent = "المتصفح لا يدعم التحقق. افتح الموقع عبر https."; return; }
+      if (!code) { msg.className = "gmsg err"; msg.textContent = "أدخل الرمز."; return; }
+      busy = true; msg.className = "gmsg"; msg.textContent = "جارٍ التحقق…";
+      crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveKey"]).then(function (k) {
+        return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(L.salt), iterations: L.iter, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+      }).then(function (key) {
+        return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(L.iv), additionalData: new TextEncoder().encode("bawsala-apk") }, key, b64(L.ct));
+      }).then(function (buf) {
+        var url = new TextDecoder().decode(buf);
+        try { sessionStorage.setItem("apk", url); } catch (x) {}
+        input.value = ""; show(url); busy = false;
+      }, function () {
+        fails++; input.value = "";
+        msg.className = "gmsg err"; msg.textContent = "الرمز غير صحيح." + (fails > 2 ? " انتظر قليلاً قبل المحاولة التالية." : "");
+        setTimeout(function () { busy = false; }, Math.min(8000, 800 * fails * fails));
+      });
+    });
+  }
 })();
