@@ -142,6 +142,11 @@ public class WebActivity extends Activity {
                 if (t != null) bridge.deliverReply(t.toString());
             }
         } catch (Throwable ignored) { }
+        if (it != null && it.getBooleanExtra("bawsala_overlay_voice", false) && wv != null) {
+            wv.postDelayed(new Runnable() { public void run() {
+                wv.evaluateJavascript("window.K&&K.voice&&K.voice.open&&K.voice.open()", null);
+            } }, 500);
+        }
     }
 
     @Override

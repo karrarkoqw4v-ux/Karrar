@@ -10,6 +10,9 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,6 +28,12 @@ import android.speech.tts.TextToSpeech;
 import android.util.Base64;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import android.net.Uri;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -1035,6 +1044,168 @@ public class Bridge {
                 });
             }
         });
+    }
+
+    /** Real installed version, read from the APK itself (not hardcoded), for the in-app update checker. */
+    @JavascriptInterface
+    public String appVersion() {
+        try {
+            android.content.pm.PackageInfo pi = act.getPackageManager().getPackageInfo(act.getPackageName(), 0);
+            int code = Build.VERSION.SDK_INT >= 28 ? (int) pi.getLongVersionCode() : pi.versionCode;
+            return "{\"name\":\"" + pi.versionName + "\",\"code\":" + code + "}";
+        } catch (Exception e) {
+            return "{\"name\":\"?\",\"code\":0}";
+        }
+    }
+
+    /** Opens another installed app by its visible name (e.g. "واتساب", "الكاميرا", "YouTube"). This ONLY
+     *  launches the app, the same as tapping its icon on the home screen; it never reads, types into, or
+     *  controls that app afterwards. Matching uses the launcher app list only (android.permission.
+     *  QUERY_ALL_PACKAGES is never requested). Returns JSON: {"ok":true,"label":".."} or {"ok":false,"reason":..,"options":[..]}. */
+    @JavascriptInterface
+    public String openApp(String query) {
+        try {
+            String q = normalize(query);
+            if (q.isEmpty()) return "{\"ok\":false,\"reason\":\"empty\"}";
+            Intent main = new Intent(Intent.ACTION_MAIN, null);
+            main.addCategory(Intent.CATEGORY_LAUNCHER);
+            List<ResolveInfo> apps = act.getPackageManager().queryIntentActivities(main, 0);
+            ResolveInfo best = null;
+            List<String> candidates = new ArrayList<>();
+            for (ResolveInfo ri : apps) {
+                String label = normalize(ri.loadLabel(act.getPackageManager()).toString());
+                if (label.equals(q)) { best = ri; break; }
+                if (label.contains(q) || q.contains(label)) candidates.add(ri.loadLabel(act.getPackageManager()).toString());
+            }
+            if (best == null && candidates.size() == 1) {
+                for (ResolveInfo ri : apps) if (normalize(ri.loadLabel(act.getPackageManager()).toString()).equals(normalize(candidates.get(0)))) { best = ri; break; }
+            }
+            if (best == null) {
+                JSONObject o = new JSONObject();
+                o.put("ok", false);
+                o.put("reason", candidates.isEmpty() ? "not-found" : "ambiguous");
+                JSONArray arr = new JSONArray();
+                for (String c : candidates.subList(0, Math.min(5, candidates.size()))) arr.put(c);
+                o.put("options", arr);
+                return o.toString();
+            }
+            final ResolveInfo fb = best;
+            final String label = fb.loadLabel(act.getPackageManager()).toString();
+            ui.post(new Runnable() { public void run() {
+                try {
+                    Intent launch = act.getPackageManager().getLaunchIntentForPackage(fb.activityInfo.packageName);
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        act.startActivity(launch);
+                    }
+                } catch (Exception ignored) { }
+            } });
+            JSONObject o = new JSONObject();
+            o.put("ok", true);
+            o.put("label", label);
+            return o.toString();
+        } catch (Exception e) {
+            return "{\"ok\":false,\"reason\":\"" + e.getMessage() + "\"}";
+        }
+    }
+
+    private static String normalize(String s) {
+        return s == null ? "" : s.trim().toLowerCase(Locale.ROOT).replaceAll("[\u064B-\u0652ـ]", "");
+    }
+
+    /** --- Device Admin    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
+     *  system screen shows exactly these policies and the user taps "Activate" or "Cancel" there — nothing
+     *  here can self-grant it. There is no path from this API to reading or typing into other apps. */
+    private DevicePolicyManager dpm() { return (DevicePolicyManager) act.getSystemService(Context.DEVICE_POLICY_SERVICE); }
+    private ComponentName adminComponent() { return new ComponentName(act, BawsalaDeviceAdminReceiver.class); }
+
+    @JavascriptInterface
+    public boolean deviceAdminActive() {
+        try { return dpm().isAdminActive(adminComponent()); } catch (Exception e) { return false; }
+    }
+
+    @JavascriptInterface
+    public void deviceAdminRequestActivation() {
+        Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+        i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent());
+        i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                "بوصلة تطلب قفل الشاشة فوراً عند الأمر، وفرض سياسة كلمة سر، وتعطيل الكاميرا عند الحاجة. لا يعطي هذا دخولاً لأي تطبيق آخر.");
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        act.startActivity(i);
+    }
+
+    @JavascriptInterface
+    public String deviceAdminLockNow() {
+        if (!deviceAdminActive()) return "err:not-active";
+        try { dpm().lockNow(); return "ok"; } catch (Exception e) { return "err:" + e.getMessage(); }
+    }
+
+    @JavascriptInterface
+    public void deviceAdminRevoke() {
+        try {
+            Intent i = new Intent(Settings.ACTION_SECURITY_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+        } catch (Exception ignored) { }
+    }
+
+    /** --- Floating bubble + edge-glow overlay    /** --- Floating bubble + edge-glow overlay: draws over other apps only to show a small shortcut button
+     *  and a colored border while Bawsala itself is listening/acting. No accessibility service, no reading or
+     *  injecting input into other apps. Requires the normal "Display over other apps" permission (a visible
+     *  system settings screen the user grants or denies themselves, like any app with a chat-head bubble). */
+    @JavascriptInterface
+    public boolean overlayPermitted() {
+        return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(act);
+    }
+
+    @JavascriptInterface
+    public void overlayRequestPermission() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + act.getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        act.startActivity(i);
+    }
+
+    @JavascriptInterface
+    public String overlayStart() {
+        if (!overlayPermitted()) return "err:no-permission";
+        try { act.startService(new Intent(act, OverlayService.class)); return "ok"; }
+        catch (Exception e) { return "err:" + e.getMessage(); }
+    }
+
+    @JavascriptInterface
+    public void overlayStop() {
+        act.stopService(new Intent(act, OverlayService.class));
+    }
+
+    @JavascriptInterface
+    public boolean overlayRunning() { return OverlayService.instance != null; }
+
+    /** state: "listening" | "thinking" | "speaking" | "" (hide) */
+    @JavascriptInterface
+    public void overlayGlow(final String state) {
+        ui.post(new Runnable() { public void run() {
+            if (OverlayService.instance != null) OverlayService.instance.setGlowState(state);
+        } });
+    }
+
+    /** Standard, visible "ignore battery optimizations" dialog, so Bawsala is not killed in the background.
+     *  This is NOT device-admin: the user sees Android's own prompt and can refuse it. */
+    @JavascriptInterface
+    public boolean batteryUnrestricted() {
+        PowerManager pm = (PowerManager) act.getSystemService(Context.POWER_SERVICE);
+        return Build.VERSION.SDK_INT < 23 || pm.isIgnoringBatteryOptimizations(act.getPackageName());
+    }
+
+    @JavascriptInterface
+    public void batteryRequestUnrestricted() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        try {
+            Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + act.getPackageName()));
+            act.startActivity(i);
+        } catch (Exception e) {
+            act.startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+        }
     }
 
     /** Saves a file (base64) into Downloads/Bawsala. Returns "ok:<where>" or "err:<reason>". */
