@@ -140,3 +140,10 @@ html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
 .brief .bc{padding:9px 15px;border-radius:22px;background:#3a3a3e;color:var(--text);font-size:.94em;border:1px solid transparent}
 .brief .bc.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text);font-weight:700}
 .brief textarea{width:100%;background:transparent;border:1px solid #5a5a60;border-radius:20px;padding:12px 16px;color:var(--text);font:inherit;outline:0;resize:none}
+.ag-card{background:var(--card);border-radius:22px;padding:16px;margin:12px 0}.ag-card p{color:var(--text2);margin-top:6px;font-size:.93em;line-height:1.7}
+.ag-card label{display:block;font-weight:700;color:var(--text2);font-size:.9em;margin:10px 0 6px}
+.ag-card textarea,.ag-card input{width:100%;background:transparent;border:1px solid #5a5a60;border-radius:16px;padding:12px 14px;color:var(--text);font:inherit;outline:0;resize:none}
+.ag-st{display:flex;justify-content:space-between;font-weight:700}.ag-bar{height:10px;border-radius:6px;background:var(--card2,#1c1c1e);margin:10px 0;overflow:hidden}.ag-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#a855f7);transition:width .4s}
+.ag-n{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ag-n div{background:var(--card2,#1c1c1e);border-radius:16px;padding:12px}.ag-n b{display:block;font-size:1.25em}.ag-n small{color:var(--text2)}
+.ag-note{color:var(--text2);font-size:.85em;line-height:1.7;margin:12px 6px}
+#agent .pbtn,#agent .pcan{width:100%;display:block}#agent .pcan{margin-top:8px;color:#ff6b6b}

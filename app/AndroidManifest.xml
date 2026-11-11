@@ -7,6 +7,9 @@
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -40,5 +43,6 @@
                 <data android:scheme="com.googleusercontent.apps.141595198139-dk1njht8r2j8h184e8053d5m070d1ijp" />
             </intent-filter>
         </activity>
+        <service android:name="com.karrar.ai.AgentService" android:exported="false" android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

@@ -60,9 +60,25 @@ public class Bridge {
     public Bridge(Activity a, WebView w) {
         act = a;
         wv = w;
+        cur = this;
     }
 
     // ------------------------------------------------------------------ helpers
+    static Bridge cur;
+    static void pushAgent(String json) { if (cur != null) cur.js("window.__agent&&window.__agent(" + json + ")"); }
+
+    @JavascriptInterface
+    public void agentStart(String cfg) {
+        Intent it = new Intent(act, AgentService.class).putExtra("cfg", cfg);
+        if (Build.VERSION.SDK_INT >= 26) act.startForegroundService(it); else act.startService(it);
+    }
+
+    @JavascriptInterface
+    public void agentStop() { act.startService(new Intent(act, AgentService.class).setAction("stop")); }
+
+    @JavascriptInterface
+    public String agentStatus() { return Store.get("agent_status", "{}"); }
+
     private void js(final String script) {
         ui.post(new Runnable() { public void run() { wv.evaluateJavascript(script, null); } });
     }
