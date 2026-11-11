@@ -1,0 +1,8 @@
+{
+  "train_tokens": 17399,
+  "val_tokens": 881,
+  "documents": 399,
+  "dropped_lines": 0,
+  "duplicate_lines": 443,
+  "target": 2000000000
+}

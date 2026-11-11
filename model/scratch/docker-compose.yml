@@ -1,0 +1,14 @@
+# Whole environment in one command:  docker compose run --rm trainer make data  /  make train ...   then  docker compose up serve
+# Needs an NVIDIA GPU + nvidia-container-toolkit for training. Generated code is only executed by eval_code.py inside this container.
+services:
+  trainer:
+    build: .
+    volumes: [".:/bawsala"]
+    deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+    command: ["make", "help"]
+  serve:
+    build: .
+    volumes: [".:/bawsala"]
+    ports: ["8000:8000"]
+    environment: { BAWSALA_KEY: "CHANGE_ME" }
+    command: ["python", "serve.py", "--ckpt", "out/chat.pt", "--port", "8000"]

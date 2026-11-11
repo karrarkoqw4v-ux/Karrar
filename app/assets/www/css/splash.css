@@ -1,0 +1,10 @@
+#splash{position:fixed;inset:0;z-index:300;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:background-color .55s ease,opacity .45s}
+#splash.go{background-color:transparent}
+#splash.out{opacity:0}
+.sp2-g{display:flex;flex-direction:column;align-items:center;animation:spIn .7s var(--spring) backwards;will-change:transform}
+.sp2-mk{width:120px;height:120px}.sp2-mk svg{width:100%;height:100%}
+.sp2-nm{font-size:3.1em;font-weight:800;color:#8aa2f0;margin-top:6px}
+@keyframes spIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:none}}
+/* login hides its own logo/buttons until the splash hands over */
+#login.sp-wait .lg-top,#login.sp-wait .lg-logo,#login.sp-wait .lg-btns{visibility:hidden}
+#login.sp-logo-hide .lg-mk,#login.sp-logo-hide .lg-wm{visibility:hidden}

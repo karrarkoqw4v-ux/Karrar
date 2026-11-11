@@ -1,0 +1,5 @@
+out/
+data/bin/
+data/raw/*
+!data/raw/.gitkeep
+__pycache__/

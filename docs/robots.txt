@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://karrarkoqw4v-ux.github.io/Karrar/sitemap.xml

@@ -1,0 +1,11 @@
+# Needs a machine with an NVIDIA GPU. Exposes an OpenAI-compatible API at :8000/v1
+services:
+  bawsala:
+    image: vllm/vllm-openai:latest
+    command: ["--model", "/models/bawsala-merged", "--served-model-name", "bawsala", "--max-model-len", "8192", "--api-key", "CHANGE_ME"]
+    volumes: ["../out:/models"]
+    ports: ["8000:8000"]
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]

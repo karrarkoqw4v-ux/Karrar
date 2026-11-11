@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: http://bawsala.unaux.com/sitemap.xml

@@ -1,0 +1,1 @@
+# one URL per line. ONLY add pages you own or that explicitly allow reuse. robots.txt is always respected.
