@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +30,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.PowerManager;
 import android.provider.Settings;
@@ -1056,7 +1058,62 @@ public class Bridge {
         }
     }
 
-    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
+    /** Opens another installed app by its visible name (e.g. "واتساب", "الكاميرا", "YouTube"). This ONLY
+     *  launches the app, the same as tapping its icon on the home screen; it never reads, types into, or
+     *  controls that app afterwards. Matching uses the launcher app list only (android.permission.
+     *  QUERY_ALL_PACKAGES is never requested). Returns JSON: {"ok":true,"label":".."} or {"ok":false,"reason":..,"options":[..]}. */
+    @JavascriptInterface
+    public String openApp(String query) {
+        try {
+            String q = normalize(query);
+            if (q.isEmpty()) return "{\"ok\":false,\"reason\":\"empty\"}";
+            Intent main = new Intent(Intent.ACTION_MAIN, null);
+            main.addCategory(Intent.CATEGORY_LAUNCHER);
+            List<ResolveInfo> apps = act.getPackageManager().queryIntentActivities(main, 0);
+            ResolveInfo best = null;
+            List<String> candidates = new ArrayList<>();
+            for (ResolveInfo ri : apps) {
+                String label = normalize(ri.loadLabel(act.getPackageManager()).toString());
+                if (label.equals(q)) { best = ri; break; }
+                if (label.contains(q) || q.contains(label)) candidates.add(ri.loadLabel(act.getPackageManager()).toString());
+            }
+            if (best == null && candidates.size() == 1) {
+                for (ResolveInfo ri : apps) if (normalize(ri.loadLabel(act.getPackageManager()).toString()).equals(normalize(candidates.get(0)))) { best = ri; break; }
+            }
+            if (best == null) {
+                JSONObject o = new JSONObject();
+                o.put("ok", false);
+                o.put("reason", candidates.isEmpty() ? "not-found" : "ambiguous");
+                JSONArray arr = new JSONArray();
+                for (String c : candidates.subList(0, Math.min(5, candidates.size()))) arr.put(c);
+                o.put("options", arr);
+                return o.toString();
+            }
+            final ResolveInfo fb = best;
+            final String label = fb.loadLabel(act.getPackageManager()).toString();
+            ui.post(new Runnable() { public void run() {
+                try {
+                    Intent launch = act.getPackageManager().getLaunchIntentForPackage(fb.activityInfo.packageName);
+                    if (launch != null) {
+                        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        act.startActivity(launch);
+                    }
+                } catch (Exception ignored) { }
+            } });
+            JSONObject o = new JSONObject();
+            o.put("ok", true);
+            o.put("label", label);
+            return o.toString();
+        } catch (Exception e) {
+            return "{\"ok\":false,\"reason\":\"" + e.getMessage() + "\"}";
+        }
+    }
+
+    private static String normalize(String s) {
+        return s == null ? "" : s.trim().toLowerCase(Locale.ROOT).replaceAll("[\u064B-\u0652ـ]", "");
+    }
+
+    /** --- Device Admin    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
      *  system screen shows exactly these policies and the user taps "Activate" or "Cancel" there — nothing
      *  here can self-grant it. There is no path from this API to reading or typing into other apps. */
     private DevicePolicyManager dpm() { return (DevicePolicyManager) act.getSystemService(Context.DEVICE_POLICY_SERVICE); }

@@ -137,6 +137,7 @@ C.send=async function(){
  K.pref.set('cur',conv.id);const ud=C.addUser(m);C.topScroll(ud);
  if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());
  else if(K.devmode&&!atts.length&&await (async()=>{const r=await K.devmode.localAnswer(text);if(r)C.localReply(conv,r);return !!r})())return;
+ else if(K.openapp&&!atts.length&&await (async()=>{const r=await K.openapp.run(text);if(r)C.localReply(conv,r);return !!r})())return;
  else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
 };
 C.isDevQ=function(t){t=(t||'').trim();if(!t||t.length>140)return false;
