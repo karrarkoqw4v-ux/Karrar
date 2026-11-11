@@ -1,0 +1,9 @@
+{
+  // Cloudflare Workers static-assets config: serves the website in ./docs and uses docs/404.html for unknown pages.
+  "name": "karrar",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./docs",
+    "not_found_handling": "404-page"
+  }
+}

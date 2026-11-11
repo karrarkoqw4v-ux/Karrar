@@ -10,10 +10,10 @@
 
 ## ما يجب أن تفعله أنت (الخطوات المؤثرة فعلاً)
 1. **سجّل الموقع في Google Search Console** (search.google.com/search-console) بحسابك:
-   * أضف «Domain/URL prefix» بالعنوان `https://karrarkoqw4v-ux.github.io/Karrar/`.
+   * أضف «Domain/URL prefix» بالعنوان `https://karrar.karrarkooqw90.workers.dev/`.
    * اختر التحقق «وسم HTML» وانسخ قيمة `content` فقط، وضعها بدل `PUT-YOUR-GOOGLE-VERIFICATION-CODE-HERE` في كل ملفات `.html` (بحث واستبدال واحد)، ثم ارفع الملفات واضغط «تحقق».
 2. من القائمة **Sitemaps** أضف `sitemap.xml`.
-3. من **فحص الرابط (URL Inspection)** الصق `https://karrarkoqw4v-ux.github.io/Karrar/` واضغط **طلب الفهرسة**، وكرّر لصفحات المزايا والشروحات والتحميل.
+3. من **فحص الرابط (URL Inspection)** الصق `https://karrar.karrarkooqw90.workers.dev/` واضغط **طلب الفهرسة**، وكرّر لصفحات المزايا والشروحات والتحميل.
 4. كرّر نفس الخطوات في **Bing Webmaster Tools** (يغذّي نتائج بحث أخرى).
 5. **ضع رابط الموقع في كل مكان تملكه**: وصف TikTok وInstagram وX، ومستودع GitHub، وفيديوهاتك. الروابط من حسابات حقيقية تساعد جوجل على اكتشاف الموقع.
 6. فعّل **SSL (https)** من لوحة الاستضافة وبدّل العناوين من `http://` إلى `https://` في الملفات (config.js وsitemap وrobots وcanonical). جوجل يفضّل https.

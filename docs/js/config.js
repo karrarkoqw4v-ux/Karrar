@@ -11,6 +11,6 @@ window.SITE = {
     instagram: "https://www.instagram.com/10s.i2",
     x: "https://x.com/Compassv4"
   },
-  url: "https://karrarkoqw4v-ux.github.io/Karrar/",
+  url: "https://karrar.karrarkooqw90.workers.dev/",
   year: 2026
 };
