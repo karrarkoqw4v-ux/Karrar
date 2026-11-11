@@ -1,7 +1,7 @@
 {
-  "code": 5,
-  "name": "5.0",
+  "code": 6,
+  "name": "6.0",
   "apk": "https://github.com/karrarkoqw4v-ux/Karrar/raw/main/app/Bawsala.apk",
-  "notes_ar": "أضفت زر «إعادة تعيين كلمة سر وضع المطوّر» في الإعدادات ← حول، لمن نسي كلمة سره المحلية.",
-  "notes_en": "Added a \"Reset developer-mode password\" button under Settings → About, for anyone who forgot their local password."
+  "notes_ar": "تشخيص الجهاز (البطارية والرام والتخزين والإصدار)، فتح التطبيقات بالعربي والإنجليزي ومرادفاتها، أوامر منبّه/مؤقّت/موعد، وإرسال نص جاهز لواتساب (يبقى الإرسال بيدك).",
+  "notes_en": "Device diagnostics (battery/RAM/storage/version), open apps by Arabic/English name and aliases, alarm/timer/calendar commands, and handing text to WhatsApp (you still tap Send)."
 }
