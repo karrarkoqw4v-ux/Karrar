@@ -13,7 +13,12 @@ import android.graphics.BitmapFactory;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.pm.ResolveInfo;
+import android.app.AlarmManager;
+import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.os.BatteryManager;
+import android.os.Environment;
+import android.os.StatFs;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -31,7 +36,12 @@ import android.view.View;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.pm.ResolveInfo;
+import android.app.AlarmManager;
+import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.os.BatteryManager;
+import android.os.Environment;
+import android.os.StatFs;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.webkit.JavascriptInterface;
@@ -1113,7 +1123,108 @@ public class Bridge {
         return s == null ? "" : s.trim().toLowerCase(Locale.ROOT).replaceAll("[\u064B-\u0652ـ]", "");
     }
 
-    /** --- Device Admin    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
+    /** --- Device diagnostics: battery/RAM/storage/version only. Deliberately NOT included: reading
+     *  notifications or message content from other apps (that needs Notification Access, a sensitive
+     *  permission this app never requests). */
+    @JavascriptInterface
+    public String deviceDiag() {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("androidVersion", Build.VERSION.RELEASE);
+            o.put("sdk", Build.VERSION.SDK_INT);
+            o.put("model", Build.MANUFACTURER + " " + Build.MODEL);
+            Intent batt = act.registerReceiver(null, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            int level = batt != null ? batt.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) : -1;
+            int scale = batt != null ? batt.getIntExtra(BatteryManager.EXTRA_SCALE, 100) : 100;
+            int status = batt != null ? batt.getIntExtra(BatteryManager.EXTRA_STATUS, -1) : -1;
+            o.put("batteryPercent", scale > 0 ? Math.round(level * 100f / scale) : -1);
+            o.put("charging", status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL);
+            android.app.ActivityManager am = (android.app.ActivityManager) act.getSystemService(Context.ACTIVITY_SERVICE);
+            android.app.ActivityManager.MemoryInfo mi = new android.app.ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            o.put("ramTotalMB", mi.totalMem / (1024 * 1024));
+            o.put("ramAvailMB", mi.availMem / (1024 * 1024));
+            o.put("lowMemory", mi.lowMemory);
+            StatFs fs = new StatFs(act.getFilesDir().getPath());
+            long blockSize = fs.getBlockSizeLong();
+            o.put("storageFreeMB", (fs.getAvailableBlocksLong() * blockSize) / (1024 * 1024));
+            o.put("storageTotalMB", (fs.getBlockCountLong() * blockSize) / (1024 * 1024));
+            return o.toString();
+        } catch (Exception e) {
+            return "{\"err\":\"" + e.getMessage() + "\"}";
+        }
+    }
+
+    /** Opens the system Clock app's "set alarm" screen, prefilled. The user still confirms there. */
+    @JavascriptInterface
+    public String setAlarm(int hour, int minute, String label) {
+        try {
+            Intent i = new Intent(android.provider.AlarmClock.ACTION_SET_ALARM);
+            i.putExtra(android.provider.AlarmClock.EXTRA_HOUR, hour);
+            i.putExtra(android.provider.AlarmClock.EXTRA_MINUTES, minute);
+            if (label != null && !label.isEmpty()) i.putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+            return "ok";
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
+    /** Opens the system Clock app's "set timer" screen, prefilled. */
+    @JavascriptInterface
+    public String setTimer(int seconds, String label) {
+        try {
+            Intent i = new Intent(android.provider.AlarmClock.ACTION_SET_TIMER);
+            i.putExtra(android.provider.AlarmClock.EXTRA_LENGTH, seconds);
+            if (label != null && !label.isEmpty()) i.putExtra(android.provider.AlarmClock.EXTRA_MESSAGE, label);
+            i.putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, false);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+            return "ok";
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
+    /** Opens the Calendar app's "new event" screen, prefilled with a title and a start time. The user still
+     *  has to review and tap Save there — this never writes to the calendar silently. */
+    @JavascriptInterface
+    public String addCalendarEvent(String title, long startMillis) {
+        try {
+            Intent i = new Intent(Intent.ACTION_INSERT).setData(android.provider.CalendarContract.Events.CONTENT_URI);
+            i.putExtra(android.provider.CalendarContract.Events.TITLE, title);
+            i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME, startMillis);
+            i.putExtra(android.provider.CalendarContract.EXTRA_EVENT_END_TIME, startMillis + 60 * 60 * 1000);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+            return "ok";
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
+    /** Opens another app (e.g. WhatsApp) with text pre-filled via the normal Android share sheet, so the
+     *  user picks the recipient and taps Send themselves inside that app. This never sends anything by
+     *  itself and never types or clicks inside the other app. */
+    @JavascriptInterface
+    public String shareToApp(String pkg, String text) {
+        try {
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_TEXT, text);
+            if (pkg != null && !pkg.isEmpty()) i.setPackage(pkg);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+            return "ok";
+        } catch (ActivityNotFoundException e) {
+            return "err:not-installed";
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
+    /** --- Device Admin    /** --- Device Admin    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
      *  system screen shows exactly these policies and the user taps "Activate" or "Cancel" there — nothing
      *  here can self-grant it. There is no path from this API to reading or typing into other apps. */
     private DevicePolicyManager dpm() { return (DevicePolicyManager) act.getSystemService(Context.DEVICE_POLICY_SERVICE); }

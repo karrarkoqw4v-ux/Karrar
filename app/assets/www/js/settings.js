@@ -150,6 +150,24 @@ function sp_storage(b){
 function sp_about(b){
  let c;const ar=K.lang()==='ar';
  c=sec(b,K.t('s_about'));
+  row(c,{icon:'cpu',title:K.lang()==='ar'?'تشخيص الجهاز':'Device diagnostics',onclick:async()=>{
+  if(!window.Android||!window.Android.deviceDiag){K.toast(K.lang()==='ar'?'متاح داخل التطبيق فقط':'Available in the app only');return}
+  let d={};try{d=JSON.parse(await window.Android.deviceDiag())}catch(e){}
+  const ar=K.lang()==='ar';
+  if(d.err){K.ui.info(ar?'تشخيص الجهاز':'Device diagnostics',ar?'تعذّر القراءة: '+d.err:'Could not read: '+d.err);return}
+  const lines=ar?[
+   'الجهاز: '+d.model,'إصدار أندرويد: '+d.androidVersion+' (API '+d.sdk+')',
+   'البطارية: '+d.batteryPercent+'٪'+(d.charging?' (يشحن)':''),
+   'الذاكرة (RAM): '+Math.round(d.ramAvailMB)+' متاح من '+Math.round(d.ramTotalMB)+' ميغابايت'+(d.lowMemory?' — تحذير: الذاكرة منخفضة':''),
+   'المساحة: '+Math.round(d.storageFreeMB/1024)+' غيغابايت متاح من '+Math.round(d.storageTotalMB/1024)+' غيغابايت'
+  ]:[
+   'Device: '+d.model,'Android: '+d.androidVersion+' (API '+d.sdk+')',
+   'Battery: '+d.batteryPercent+'%'+(d.charging?' (charging)':''),
+   'RAM: '+Math.round(d.ramAvailMB)+' free of '+Math.round(d.ramTotalMB)+' MB'+(d.lowMemory?' — warning: low memory':''),
+   'Storage: '+Math.round(d.storageFreeMB/1024)+' GB free of '+Math.round(d.storageTotalMB/1024)+' GB'
+  ];
+  K.ui.info(ar?'تشخيص الجهاز':'Device diagnostics',lines.join('\n'));
+ }});
  row(c,{icon:'info',title:K.t('s_update'),id:'verRow',value:'…',onclick:async(btn)=>{
   let v={name:'?',code:0};try{v=JSON.parse(await window.Android.appVersion())}catch(e){}
   const rv=btn.querySelector('.rv');if(rv)rv.textContent=v.name+' ('+v.code+')';else{const s2=document.createElement('span');s2.className='rv';s2.textContent=v.name+' ('+v.code+')';btn.appendChild(s2)}
