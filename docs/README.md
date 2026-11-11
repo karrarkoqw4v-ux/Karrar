@@ -52,3 +52,4 @@ img/                الشعار ولقطات الشاشة (webp)
 
 ## نسخة GitHub Pages
 هذا المجلد (`docs/` في المستودع) هو نسخة الموقع المهيّأة لـ GitHub Pages على العنوان `https://karrarkoqw4v-ux.github.io/Karrar/`. فيه `.nojekyll` وكل الروابط نسبية فلا تظهر أخطاء 404 داخل المسار الفرعي `/Karrar/`.
+<!-- rebuild 1794402515 -->
