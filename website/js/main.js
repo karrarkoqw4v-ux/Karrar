@@ -188,24 +188,23 @@
       e.preventDefault();
       if (busy) return;
       var L = window.SITE && SITE.app && SITE.app.apkLocked, code = pw.value.trim();
-      if (!L || !window.crypto || !crypto.subtle) { msg.className = "gmsg err"; msg.textContent = "افتح الموقع عبر https ليعمل التحقق."; return; }
+      if (!L || !window.BawsalaLock) { msg.className = "gmsg err"; msg.textContent = "تعذّر تحميل ملفات التحقق. أعد تحميل الصفحة."; return; }
       if (!code) { msg.className = "gmsg err"; msg.textContent = "أدخل كلمة السر."; return; }
       busy = true; msg.className = "gmsg"; msg.textContent = "جارٍ التحقق…";
-      crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveKey"]).then(function (k) {
-        return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(L.salt), iterations: L.iter, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
-      }).then(function (key) {
-        return crypto.subtle.decrypt({ name: "AES-GCM", iv: b64(L.iv), additionalData: new TextEncoder().encode("bawsala-apk") }, key, b64(L.ct));
-      }).then(function (buf) {
-        var url = new TextDecoder().decode(buf);
-        try { sessionStorage.setItem("apk", url); } catch (x) {}
-        msg.className = "gmsg ok"; msg.textContent = "تم ✓ جارٍ بدء التحميل…"; busy = false;
-        start(url); setTimeout(close, 1200);
-      }, function () {
-        fails++; pw.value = "";
-        msg.className = "gmsg err"; msg.textContent = "كلمة السر غير صحيحة.";
-        form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
-        setTimeout(function () { busy = false; }, Math.min(8000, 700 * fails * fails));
-      });
+      setTimeout(function () {
+        var url = null;
+        try { url = BawsalaLock.unlock(code, L); } catch (x) { url = null; }
+        if (url) {
+          try { sessionStorage.setItem("apk", url); } catch (x) {}
+          msg.className = "gmsg ok"; msg.textContent = "تم ✓ جارٍ بدء التحميل…"; busy = false;
+          start(url); setTimeout(close, 1200);
+        } else {
+          fails++; pw.value = "";
+          msg.className = "gmsg err"; msg.textContent = "كلمة السر غير صحيحة.";
+          form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+          setTimeout(function () { busy = false; }, Math.min(8000, 700 * fails * fails));
+        }
+      }, 60);
     });
   }
 })();

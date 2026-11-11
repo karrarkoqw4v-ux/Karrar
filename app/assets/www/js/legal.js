@@ -5,6 +5,7 @@ const P={"tiktok": "M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4
 const T=(a,e)=>K.lang()==='ar'?a:e;
 const EM=c=>'<img class="lgl-em" src="emoji/'+c+'.svg" alt="">';
 const DEV={name:'كروري',nameEn:'Karrouri',mail:'karrarkooqwtoi@gmail.com'};
+const WEB='http://bawsala.unaux.com/';
 const SOC=[
  {id:'tiktok',n:'TikTok',h:'vwv2e',u:'https://www.tiktok.com/@vwv2e'},
  {id:'instagram',n:'Instagram',h:'10s.i2',u:'https://www.instagram.com/10s.i2'},
@@ -57,6 +58,7 @@ K.legal={
   h+='<div class="lgl-sec" id="lglContact"><div class="lgl-h">'+EM('1f4e7')+'<span>'+T('اتصل بنا','Contact us')+'</span></div><div class="lgl-card">'
    +'<div class="lgl-row"><span class="lgl-ico dev">'+EM('1f464')+'</span><div class="lgl-tx"><small>'+T('المطوّر','Developer')+'</small><b>'+T(DEV.name,DEV.nameEn+' ('+DEV.name+')')+'</b></div></div>'
    +'<button class="lgl-row" id="lglMail"><span class="lgl-ico mail">'+EM('1f4e7')+'</span><div class="lgl-tx"><small>'+T('البريد الإلكتروني','Email')+'</small><b dir="ltr">'+DEV.mail+'</b></div></button>'
+   +'<button class="lgl-row" data-u="'+WEB+'"><span class="lgl-ico">'+EM('1f310')+'</span><div class="lgl-tx"><small>'+T('الموقع الرسمي','Official website')+'</small><b dir="ltr">bawsala.unaux.com</b></div></button>'
    +'</div><div class="lgl-sub">'+T('حسابات المطوّر','Developer accounts')+'</div><div class="lgl-card">'
    +SOC.map(s=>'<button class="lgl-row" data-u="'+s.u+'">'+ico(s.id)+'<div class="lgl-tx"><small>'+s.n+'</small><b dir="ltr">@'+s.h+'</b></div></button>').join('')+'</div></div>';
   h+='<div class="lgl-sec" id="lglTerms"><div class="lgl-h">'+EM('1f4dc')+'<span>'+T('شروط وأحكام الاستخدام','Terms of use')+'</span></div>'

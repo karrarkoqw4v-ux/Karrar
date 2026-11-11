@@ -111,6 +111,7 @@ function sp_about(b){
  c=sec(b,K.t('s_about'));
  row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
  row(c,{icon:'info',title:K.t('t_licenses'),sub:K.t('t_licenses_s'),onclick:()=>S.open('licenses')});
+ row(c,{icon:'globe',title:(K.lang()==='ar'?'الموقع الرسمي':'Official website'),value:'bawsala.unaux.com',onclick:()=>K.native.open('http://bawsala.unaux.com/')});
  row(c,{icon:'share',title:K.t('t_share'),onclick:()=>K.native.share(K.t('t_share_t'))});
  c=sec(b,'');c.style.marginTop='22px';
  row(c,{icon:'circle-help',title:K.t('s_help'),onclick:()=>K.legal.open('contact')});

@@ -82,7 +82,7 @@ t_stats:["الإحصائيات","Statistics"],t_stats_s:["نشاطك في الت
 t_backup:["نسخة احتياطية","Backup"],t_export:["تصدير نسخة احتياطية","Export a backup"],t_import:["استيراد نسخة احتياطية","Import a backup"],t_import_h:["الصق نص النسخة الاحتياطية هنا","Paste the backup text here"],t_import_ok:["تم الاستيراد","Imported"],t_import_bad:["النص غير صالح","Invalid backup text"],
 t_incog:["محادثة مؤقتة","Temporary chat"],t_incog_s:["لا تُحفظ المحادثات الجديدة في السجل","New chats are not saved to history"],
 t_enter:["الإرسال بزر Enter","Send with Enter"],t_enter_s:["للوحات المفاتيح الخارجية (Shift+Enter سطر جديد)","For hardware keyboards (Shift+Enter = new line)"],
-t_maxtok:["أقصى طول للرد","Max reply length"],t_auto:["تلقائي","Auto"],t_share:["مشاركة التطبيق","Share the app"],t_share_t:["جرّب تطبيق بوصلة للدردشة بالذكاء الاصطناعي","Try Bawsala, a chat app powered by AI"],
+t_maxtok:["أقصى طول للرد","Max reply length"],t_auto:["تلقائي","Auto"],t_share:["مشاركة التطبيق","Share the app"],t_share_t:["جرّب تطبيق بوصلة للدردشة بالذكاء الاصطناعي: http://bawsala.unaux.com/","Try Bawsala, a chat app powered by AI: http://bawsala.unaux.com/"],
 t_licenses:["التراخيص وحقوق المصادر","Licences & credits"],t_licenses_s:["الخطوط والأيقونات والإيموجي المستخدمة","Fonts, icons and emoji used"],
 t_add:["إضافة","Add"],t_new_prompt:["قالب جديد","New template"],t_prompt_title:["اسم القالب","Template name"],t_prompt_text:["نص الأمر","Prompt text"],t_use:["استخدام","Use"],t_edit:["تعديل","Edit"],t_empty:["لا يوجد شيء بعد","Nothing here yet"],
 t_new_mem:["معلومة جديدة","New fact"],t_mem_h:["مثال: أدرس في كلية الطب","Example: I study medicine"],
