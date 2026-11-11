@@ -95,3 +95,5 @@ html[data-theme=dark] .page[data-p=main] .card.hub{background:#2f2f2f}
 @keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .pbody.loading>*{display:none!important}
 .pbody.loading::before{content:"";display:block;height:150px;margin-top:12px;border-radius:26px;background:linear-gradient(90deg,#2a2a2a 25%,#383838 50%,#2a2a2a 75%);background-size:200% 100%;animation:skel 1s linear infinite}
+.page[data-p=main] .card.hub .row,.page[data-p=main] .card.hub .row .rt{font-weight:600}
+.page[data-p=main] .aname,.page[data-p=main] .sec-t{font-weight:700}

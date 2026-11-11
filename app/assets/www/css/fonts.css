@@ -1,6 +1,6 @@
 /* Device system Arabic font only (plain sans, no decorative/bundled fonts): local() asks the phone for its own Arabic UI font */
 @font-face{font-family:"SysAr";font-weight:100 500;src:local("Noto Sans Arabic UI"),local("NotoSansArabicUI-Regular"),local("Noto Sans Arabic"),local("NotoSansArabic-Regular"),local("Roboto");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
 @font-face{font-family:"SysAr";font-weight:600 900;src:local("Noto Sans Arabic UI Bold"),local("NotoSansArabicUI-Bold"),local("Noto Sans Arabic Bold"),local("NotoSansArabic-Bold"),local("Roboto Bold");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
-:root{--font:"SysAr",system-ui,-apple-system,Roboto,sans-serif;--font-ar:var(--font);--font-en:var(--font);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+:root{--font:system-ui,-apple-system,Roboto,sans-serif;--font-ar:var(--font);--font-en:var(--font);--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
 html,body,button,input,textarea,select{font-family:var(--font)}
 .grad-text,.shimmer{-webkit-text-stroke:0}
