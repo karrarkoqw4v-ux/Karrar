@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>بوصلة Studio — تعليم وتدريب النموذج</title>
+<style>
+:root{--bg:#0f0f10;--card:#2a2a2d;--card2:#1c1c1e;--text:#f3f3f5;--text2:#9a9aa3;--accent:#4d6bfe;--accent2:#a855f7;--green:#34c759;--warn:#ff9f0a;--line:rgba(255,255,255,.07);--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Roboto,"Noto Sans Arabic",sans-serif;font-size:16px;line-height:1.6}
+body{overflow:hidden}
+.glow{position:fixed;left:0;right:0;top:0;height:46vh;pointer-events:none;opacity:.55;background:radial-gradient(60% 55% at 15% 0%,rgba(245,158,11,.55),transparent 70%),radial-gradient(60% 55% at 90% 0%,rgba(224,84,60,.5),transparent 70%),radial-gradient(80% 60% at 50% -10%,rgba(77,107,254,.7),transparent 75%);-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
+.app{position:relative;max-width:560px;margin:auto;height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:12px;padding:calc(var(--sat) + 14px) 16px 8px}
+header img{width:44px;height:44px}
+header h1{font-size:1.15rem;font-weight:800}header small{display:block;color:var(--text2);font-size:.82rem;font-weight:500}
+.badge{margin-inline-start:auto;font-size:.78rem;font-weight:700;padding:5px 12px;border-radius:20px;background:rgba(255,159,10,.15);color:var(--warn)}
+main{flex:1;overflow-y:auto;padding:8px 16px calc(var(--sab) + 110px);scrollbar-width:none;-webkit-mask-image:linear-gradient(transparent 0,#000 18px,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(transparent 0,#000 18px,#000 calc(100% - 20px),transparent)}
+main::-webkit-scrollbar{display:none}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--card);border-radius:24px;padding:18px;margin:12px 0}
+.card h2{font-size:1.05rem;font-weight:800;margin-bottom:6px}.card p,.card li{color:var(--text2);font-size:.95rem}
+.sec{color:var(--text2);font-weight:700;font-size:.9rem;margin:20px 6px 4px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.row b{flex:1;font-weight:700}.row span{color:var(--text2);font-size:.92rem}
+.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat div{background:var(--card2);border-radius:18px;padding:14px}.stat b{display:block;font-size:1.35rem;font-weight:800}.stat small{color:var(--text2)}
+.bar{height:12px;border-radius:8px;background:var(--card2);overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s}
+.pill{display:inline-block;padding:4px 12px;border-radius:16px;background:rgba(77,107,254,.18);color:#8fa4ff;font-size:.82rem;font-weight:700}
+details{border-radius:20px;background:var(--card);margin:10px 0;overflow:hidden}
+summary{list-style:none;padding:16px 18px;font-weight:800;display:flex;align-items:center;gap:12px;cursor:pointer}summary::-webkit-details-marker{display:none}
+summary i{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-style:normal;background:rgba(77,107,254,.18);flex:none}
+summary::after{content:"⌄";margin-inline-start:auto;color:var(--text2);transition:transform .2s}details[open] summary::after{transform:rotate(180deg)}
+details .body{padding:0 18px 18px;color:#cfd0d8;font-size:.96rem}details .body p{margin:8px 0}
+code{direction:ltr;unicode-bidi:embed;background:var(--card2);padding:2px 8px;border-radius:8px;font-size:.88em}
+pre{direction:ltr;text-align:left;background:var(--card2);border-radius:16px;padding:14px;overflow:auto;font-size:.82rem;color:#cfd0d8}
+canvas{width:100%;height:220px;display:block;background:var(--card2);border-radius:18px}
+.sample{background:var(--card2);border-radius:16px;padding:14px;margin:8px 0;color:#d6d7de;font-size:.95rem;white-space:pre-wrap}
+.sample small{display:block;color:var(--text2);margin-bottom:6px}
+.note{background:rgba(255,159,10,.1);border:1px solid rgba(255,159,10,.3);color:#ffcf85;border-radius:18px;padding:12px 16px;margin:12px 0;font-size:.9rem}
+nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);width:min(520px,calc(100% - 24px));display:flex;gap:4px;padding:8px;border-radius:30px;background:rgba(32,32,36,.82);backdrop-filter:blur(18px);box-shadow:0 14px 40px #000a}
+nav button{flex:1;border:0;background:none;color:var(--text2);padding:10px 4px;border-radius:22px;font:inherit;font-size:.82rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .ic{font-size:1.15rem}
+nav button.on{background:rgba(77,107,254,.2);color:#9db0ff}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="app">
+<header><img src="logo.png" alt=""><div><h1>بوصلة Studio</h1><small>تعليم وتدريب نموذج من الصفر</small></div><span class="badge" id="mode">عيّنة اختبار</span></header>
+<main>
+<!-- التعليم -->
+<section class="tab on" id="t-learn">
+<div class="sec">رحلة بناء النموذج</div>
+<details open><summary><i>1</i>ما هو التوكن؟</summary><div class="body"><p>النموذج لا يقرأ الحروف بل «قطعاً» تسمى <b>توكنات</b>. كلمة مثل «بوصلة» قد تُقسَّم إلى توكن أو اثنين. هدفنا: تدريب النموذج على التنبؤ بالتوكن التالي، مرة بعد مرة على مليارات المرات.</p><p>2 مليار توكن ≈ مليار ونصف كلمة عربية تقريباً.</p></div></details>
+<details><summary><i>2</i>المُرمِّز (Tokenizer)</summary><div class="body"><p>نتدرّب أولاً على نصوصنا لبناء قاموس من 32 ألف قطعة (BPE على مستوى البايت). المُرمِّز الجيد للعربية يقلل عدد التوكنات فيوفّر وقت التدريب.</p><p><code>python tokenizer_train.py --input data/raw</code></p></div></details>
+<details><summary><i>3</i>بنية Transformer</summary><div class="body"><p>كل طبقة تحتوي على: <b>انتباه ذاتي</b> (كل كلمة تنظر لما قبلها)، ثم <b>شبكة MLP</b>. نكدّس 12 طبقة في النموذج الصغير (110 مليون معامل). استخدمنا RMSNorm وترميز المواقع الدوّار (RoPE) وتفعيل SwiGLU، وهي بنية النماذج الحديثة.</p></div></details>
+<details><summary><i>4</i>الخسارة (Loss) والحيرة</summary><div class="body"><p><b>الخسارة</b> تقيس خطأ التنبؤ، وكلما نزلت تحسّن النموذج. <b>الحيرة (Perplexity)</b> = e^الخسارة، وتعني «كم خياراً متساوياً يحتار بينها». نبدأ بخسارة عالية (≈ ln 32000 ≈ 10.4) وننزل.</p></div></details>
+<details><summary><i>5</i>التدريب</summary><div class="body"><p>نعطيه دفعة نصوص، يتنبأ، نحسب الخطأ، ثم نعدّل الأوزان بخوارزمية AdamW بمعدّل تعلّم يبدأ صغيراً ثم يرتفع ثم ينخفض (cosine). نقطع التدرجات لمنع الانفجار.</p></div></details>
+<details><summary><i>6</i>الضبط الدقيق للمحادثة</summary><div class="body"><p>النموذج بعد التدريب الأولي «يكمل نصاً» ولا يجيب. بعدها ندرّبه على حوارات <code>&lt;|user|&gt;</code> و<code>&lt;|assistant|&gt;</code> ليصير مساعداً، وهنا تدخل حواراتك العراقية.</p></div></details>
+<details><summary><i>7</i>التقييم بصدق</summary><div class="body"><p>نقارن الخسارة على بيانات لم يرها النموذج (val). إن نزلت الخسارة على التدريب وارتفعت على val فهو يحفظ ولا يتعلم (Overfitting).</p></div></details>
+<div class="note">نموذج 110M مدرَّب على 2 مليار توكن يكتب عربياً مقبولاً لكنه لا يضاهي ChatGPT ولا يبرمج جيداً. هذه رحلة تعلّم حقيقية وملكية للنموذج.</div>
+</section>
+
+<!-- البيانات -->
+<section class="tab" id="t-data">
+<div class="card"><h2>الهدف: 2 مليار توكن</h2><p id="dTxt">لم تبدأ تجهيز البيانات بعد.</p><div class="bar"><i id="dBar" style="width:0%"></i></div><small id="dPct" style="color:var(--text2)">0%</small></div>
+<div class="sec">مراحل التجهيز</div>
+<div class="card"><div class="row"><b>1. جمع نصوص مسموحة</b><span class="pill">يدوي</span></div><div class="row"><b>2. تنظيف وحذف المكرر</b><span>prep_data.py</span></div><div class="row"><b>3. تدريب المُرمِّز</b><span>tokenizer_train.py</span></div><div class="row"><b>4. ترميز وتقسيم train / val</b><span>prep_data.py</span></div></div>
+<div class="note">لا أستطيع جمع 2 مليار توكن من هنا. المصادر المقترحة وتراخيصها في <code>data/sources.md</code>. لا تستخدم نصوصاً لا تملك حق استخدامها.</div>
+</section>
+
+<!-- التدريب -->
+<section class="tab" id="t-train">
+<div class="card"><h2>حالة التدريب</h2><div class="stat"><div><b id="sP">—</b><small>معاملات (مليون)</small></div><div><b id="sS">—</b><small>خطوة</small></div><div><b id="sL">—</b><small>خسارة التدريب</small></div><div><b id="sV">—</b><small>خسارة val</small></div><div><b id="sPpl">—</b><small>الحيرة</small></div><div><b id="sT">—</b><small>توكن (مشاهَد)</small></div></div></div>
+<div class="card"><h2>منحنى الخسارة</h2><canvas id="cv" width="640" height="440"></canvas><p style="margin-top:8px"><span style="color:#8fa4ff">●</span> تدريب &nbsp; <span style="color:#34c759">●</span> تحقّق (val)</p></div>
+<div class="card"><h2>الإعدادات</h2><div class="row"><b>الإعداد</b><span id="cfgPreset">—</span></div><div class="row"><b>الجهاز</b><span id="cfgDev">—</span></div><div class="row"><b>سرعة (توكن/ث)</b><span id="cfgSpeed">—</span></div></div>
+<div class="note" id="smokeNote">هذه نتائج <b>اختبار الكود</b> على نموذج صغير جداً وعيّنة نصية صغيرة على CPU، وليست تدريباً حقيقياً.</div>
+</section>
+
+<!-- التجربة -->
+<section class="tab" id="t-try">
+<div class="card"><h2>عيّنات من النموذج</h2><p>يكتب <code>train.py</code> عيّنة توليد كل عدة خطوات. تتحسن ببطء مع التدريب.</p></div>
+<div id="samples"></div>
+<div class="card"><h2>تجربة بنفسك</h2><pre>python generate.py --prompt "بوصلة"</pre></div>
+</section>
+</main>
+<nav>
+<button class="on" data-t="learn"><span class="ic">🎓</span>التعليم</button>
+<button data-t="data"><span class="ic">🗂</span>البيانات</button>
+<button data-t="train"><span class="ic">📈</span>التدريب</button>
+<button data-t="try"><span class="ic">✨</span>التجربة</button>
+</nav>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='t-'+b.dataset.t));document.querySelector('main').scrollTop=0});
+const fmt=n=>n>=1e9?(n/1e9).toFixed(2)+' مليار':n>=1e6?(n/1e6).toFixed(1)+' مليون':n>=1e3?(n/1e3).toFixed(1)+' ألف':String(n);
+function draw(h){const c=$('cv'),x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+ const tr=h.filter(e=>e.train_loss!=null),va=h.filter(e=>e.val_loss!=null);if(!tr.length)return;
+ const all=tr.concat(va),maxS=Math.max(...all.map(e=>e.step)),maxL=Math.max(...all.map(e=>e.train_loss||e.val_loss))*1.05,minL=Math.min(...all.map(e=>e.train_loss||e.val_loss))*0.95;
+ const P=36,W=c.width-P*1.5,H=c.height-P*1.5,px=s=>P+(s/maxS)*W,py=l=>c.height-P-((l-minL)/(maxL-minL||1))*H;
+ x.strokeStyle='rgba(255,255,255,.08)';x.fillStyle='#9a9aa3';x.font='18px system-ui';
+ for(let i=0;i<=4;i++){const l=minL+(maxL-minL)*i/4,y=py(l);x.beginPath();x.moveTo(P,y);x.lineTo(c.width-8,y);x.stroke();x.fillText(l.toFixed(2),2,y-4)}
+ const line=(arr,k,col)=>{x.strokeStyle=col;x.lineWidth=3;x.beginPath();arr.forEach((e,i)=>{const X=px(e.step),Y=py(e[k]);i?x.lineTo(X,Y):x.moveTo(X,Y)});x.stroke()};
+ line(tr,'train_loss','#8fa4ff');line(va,'val_loss','#34c759')}
+function render(m){
+ const h=m.history||[],tr=h.filter(e=>e.train_loss!=null),va=h.filter(e=>e.val_loss!=null);
+ $('sP').textContent=m.params_m??'—';$('sS').textContent=tr.length?tr[tr.length-1].step:'—';$('sL').textContent=tr.length?tr[tr.length-1].train_loss:'—';
+ $('sV').textContent=va.length?va[va.length-1].val_loss:'—';$('sPpl').textContent=va.length?va[va.length-1].ppl:'—';$('sT').textContent=fmt(m.tokens_seen||0);
+ $('cfgPreset').textContent=m.preset||'—';$('cfgDev').textContent=m.device||'—';const sp=tr.filter(e=>e.tok_per_s).slice(-1)[0];$('cfgSpeed').textContent=sp?sp.tok_per_s.toLocaleString('en'):'—';
+ draw(h);
+ $('samples').innerHTML=(m.samples||[]).slice(-4).reverse().map(s=>'<div class="sample"><small>الخطوة '+s.step+'</small>'+(s.text||'(فارغ)').replace(/</g,'&lt;')+'</div>').join('')||'<div class="card"><p>لا عيّنات بعد.</p></div>';
+ const real=(m.preset&&m.preset!=='tiny');$('mode').textContent=real?'تدريب حقيقي':'عيّنة اختبار';$('smokeNote').style.display=real?'none':'block'}
+function data(c){const t=2e9,n=(c&&c.train_tokens||0)+(c&&c.val_tokens||0),p=Math.min(100,n/t*100);$('dBar').style.width=p+'%';$('dPct').textContent=p.toFixed(2)+'% من 2 مليار';
+ $('dTxt').textContent=c?('تم تجهيز '+fmt(n)+' توكن في '+(c.documents||0).toLocaleString('en')+' مستنداً.'):'لم تبدأ تجهيز البيانات بعد.'}
+async function load(){try{const r=await fetch('metrics.json?'+Date.now());render(await r.json())}catch(e){render({history:[],samples:[]})}
+ try{const r=await fetch('data_card.json?'+Date.now());data(await r.json())}catch(e){data(null)}}
+load();setInterval(load,15000);
+</script>
+</body>
+</html>
