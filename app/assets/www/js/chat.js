@@ -134,7 +134,10 @@ C.send=async function(){
  const conv=S.cur;conv.msgs.push(m);
  if(!conv.title){conv.title=(text||'🖼').replace(/\s+/g,' ').slice(0,40);K.fx.type($('title'),conv.title,34)}
  conv.ts=Date.now();if(K.db.convs.indexOf(conv)<0)K.db.convs.unshift(conv);
- K.pref.set('cur',conv.id);const ud=C.addUser(m);C.topScroll(ud);if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
+ K.pref.set('cur',conv.id);const ud=C.addUser(m);C.topScroll(ud);
+ if(K.guard.test(text+' '+(m.ft||'')))C.localReply(conv,K.guard.hit());
+ else if(K.devmode&&!atts.length&&await (async()=>{const r=await K.devmode.localAnswer(text);if(r)C.localReply(conv,r);return !!r})())return;
+ else if(S.imgMode)K.imggen.start(conv,m);else if(C.isDevQ(text)&&!atts.length)C.devReply(conv);else C.start();
 };
 C.isDevQ=function(t){t=(t||'').trim();if(!t||t.length>140)return false;
  const who=/(مطور|المطور|مبرمج|صاحب|مالك|مسؤول|المسؤول|من\s+(صنع|سوى|برمج|طور|عمل|انشأ|أنشأ)|مين\s+(صنع|سوى|برمج|طور|عمل)|تواصل|حسابات|developer|owner|admin|who\s+(made|built|created|developed|owns|runs)|contact)/i;

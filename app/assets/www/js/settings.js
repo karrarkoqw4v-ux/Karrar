@@ -113,6 +113,21 @@ let c=sec(b,'');
    if(un){K.toast(ar?'مفعّل مسبقاً':'Already enabled');return}
    A.batteryRequestUnrestricted()
   }});
+ c=sec(b,ar?'مشرف الجهاز':'Device admin');
+ const paintAdmin=async()=>{
+  const active=window.Android?await window.Android.deviceAdminActive():false;
+  c.innerHTML='';
+  row(c,{icon:'shield-check',title:ar?'مشرف الجهاز':'Device admin',value:active?(ar?'مفعّل':'Active'):(ar?'غير مفعّل':'Not active'),
+   onclick:async()=>{
+    if(!window.Android){K.toast(ar?'متاح داخل التطبيق فقط':'Available in the app only');return}
+    if(active){window.Android.deviceAdminRevoke();return}
+    window.Android.deviceAdminRequestActivation();
+   }});
+  if(active)row(c,{icon:'lock',title:ar?'قفل الشاشة الآن (تجربة حقيقية)':'Lock screen now (real test)',onclick:()=>{
+    window.Android.deviceAdminLockNow();K.toast(ar?'تم القفل فعلياً':'Locked for real')}});
+ };
+ paintAdmin();
+ note(b,ar?'صلاحيات حقيقية فقط: قفل الشاشة فوراً، وفرض سياسة كلمة سر، وتعطيل الكاميرا عند الحاجة. لا يعطي هذا دخولاً لأي تطبيق آخر ولا كتابة فيه؛ أندرويد نفسه يعرض شاشة الموافقة ويمكنك رفضها.':'Real capabilities only: lock the screen instantly, enforce a password policy, disable the camera when needed. This never allows entering or typing into another app; Android shows its own consent screen and you can decline it.');
 }
 function sp_security(b){
  let c;
@@ -133,12 +148,29 @@ function sp_storage(b){
  row(c,{icon:'database',title:K.t('t_import'),onclick:async()=>{const v=await K.ui.prompt({title:K.t('t_import'),hint:K.t('t_import_h'),multi:true});if(!v)return;try{const o=JSON.parse(v);if(o.app!=='karrar')throw 0;(o.convs||[]).forEach(c=>{if(!K.db.find(c.id))K.db.convs.push(c)});if(o.prompts&&o.prompts.length)K.pref.set('prompts',JSON.stringify(o.prompts));if(o.memories&&o.memories.length)K.pref.set('memories',JSON.stringify(o.memories));K.db.save();K.toast(K.t('t_import_ok'))}catch(e){K.toast(K.t('t_import_bad'))}}});
 }
 function sp_about(b){
- let c;
+ let c;const ar=K.lang()==='ar';
  c=sec(b,K.t('s_about'));
- row(c,{icon:'info',title:K.t('s_update'),value:'1.0(1)',onclick:()=>K.toast(K.t('s_uptodate'))});
+ row(c,{icon:'info',title:K.t('s_update'),id:'verRow',value:'…',onclick:async(btn)=>{
+  let v={name:'?',code:0};try{v=JSON.parse(await window.Android.appVersion())}catch(e){}
+  const rv=btn.querySelector('.rv');if(rv)rv.textContent=v.name+' ('+v.code+')';else{const s2=document.createElement('span');s2.className='rv';s2.textContent=v.name+' ('+v.code+')';btn.appendChild(s2)}
+  try{
+   const m=await (await fetch('https://raw.githubusercontent.com/karrarkoqw4v-ux/Karrar/main/app/update.json',{cache:'no-store'})).json();
+   if(m.code>v.code){
+    const go=await K.ui.confirm((ar?'يتوفر تحديث: الإصدار ':'Update available: v')+m.name+'\n'+(ar?m.notes_ar:m.notes_en)+'\n\n'+(ar?'فتح رابط التحميل؟':'Open the download link?'));
+    if(go)K.native.open(m.apk);
+   } else K.toast(ar?'أنت على آخر إصدار':'You are up to date');
+  }catch(e){K.toast(ar?'تعذّر التحقق من التحديثات (تحقق من الإنترنت)':'Could not check for updates (check your internet)')}
+ }});
  row(c,{icon:'info',title:K.t('t_licenses'),sub:K.t('t_licenses_s'),onclick:()=>S.open('licenses')});
- row(c,{icon:'globe',title:(K.lang()==='ar'?'الموقع الرسمي':'Official website'),value:'bawsala.unaux.com',onclick:()=>K.native.open('http://bawsala.unaux.com/')});
+ row(c,{icon:'globe',title:(ar?'الموقع الرسمي':'Official website'),value:'bawsala.unaux.com',onclick:()=>K.native.open('http://bawsala.unaux.com/')});
  row(c,{icon:'share',title:K.t('t_share'),onclick:()=>K.native.share(K.t('t_share_t'))});
+ c=sec(b,ar?'وضع المطوّر':'Developer mode');
+ const devOn=K.devmode.isOn();
+ row(c,{icon:'user',title:ar?'وضع المطوّر':'Developer mode',value:devOn?(ar?'مفعّل':'On'):(ar?'متوقّف':'Off'),onclick:async()=>{
+  if(devOn){K.devmode.turnOff();S.rerender();return}
+  if(await K.devmode.verify())S.rerender()
+ }});
+ note(b,ar?'كلمة السر محلية على جهازك فقط ولا تُرسَل لأحد، ولا لي، ولا للذكاء الاصطناعي. وضع المطوّر لا يمنح أي صلاحية تعديل أو نشر تحديث من داخل الجهاز.':'The password stays on this device only; it is never sent anywhere, not to me, not to the AI. Developer mode grants no ability to edit code or push an update from inside the device.');
  c=sec(b,'');c.style.marginTop='22px';
  row(c,{icon:'circle-help',title:K.t('s_help'),onclick:()=>K.legal.open('contact')});
 }

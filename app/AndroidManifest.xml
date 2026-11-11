@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bawsala.app"
-    android:versionCode="2"
-    android:versionName="2.0">
+    android:versionCode="3"
+    android:versionName="3.0">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -47,5 +47,12 @@
         </activity>
         <service android:name="com.karrar.ai.AgentService" android:exported="false" android:foregroundServiceType="dataSync" />
         <service android:name="com.karrar.ai.OverlayService" android:exported="false" />
+        <receiver android:name="com.karrar.ai.BawsalaDeviceAdminReceiver" android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

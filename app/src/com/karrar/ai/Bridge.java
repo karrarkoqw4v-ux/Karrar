@@ -10,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,6 +27,8 @@ import android.speech.tts.TextToSpeech;
 import android.util.Base64;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
 import android.net.Uri;
 import android.os.PowerManager;
 import android.provider.Settings;
@@ -1040,7 +1044,55 @@ public class Bridge {
         });
     }
 
-    /** --- Floating bubble + edge-glow overlay: draws over other apps only to show a small shortcut button
+    /** Real installed version, read from the APK itself (not hardcoded), for the in-app update checker. */
+    @JavascriptInterface
+    public String appVersion() {
+        try {
+            android.content.pm.PackageInfo pi = act.getPackageManager().getPackageInfo(act.getPackageName(), 0);
+            int code = Build.VERSION.SDK_INT >= 28 ? (int) pi.getLongVersionCode() : pi.versionCode;
+            return "{\"name\":\"" + pi.versionName + "\",\"code\":" + code + "}";
+        } catch (Exception e) {
+            return "{\"name\":\"?\",\"code\":0}";
+        }
+    }
+
+    /** --- Device Admin    /** --- Device Admin (real, limited): force-lock, limit-password, disable-camera. Android's own
+     *  system screen shows exactly these policies and the user taps "Activate" or "Cancel" there — nothing
+     *  here can self-grant it. There is no path from this API to reading or typing into other apps. */
+    private DevicePolicyManager dpm() { return (DevicePolicyManager) act.getSystemService(Context.DEVICE_POLICY_SERVICE); }
+    private ComponentName adminComponent() { return new ComponentName(act, BawsalaDeviceAdminReceiver.class); }
+
+    @JavascriptInterface
+    public boolean deviceAdminActive() {
+        try { return dpm().isAdminActive(adminComponent()); } catch (Exception e) { return false; }
+    }
+
+    @JavascriptInterface
+    public void deviceAdminRequestActivation() {
+        Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+        i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent());
+        i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                "بوصلة تطلب قفل الشاشة فوراً عند الأمر، وفرض سياسة كلمة سر، وتعطيل الكاميرا عند الحاجة. لا يعطي هذا دخولاً لأي تطبيق آخر.");
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        act.startActivity(i);
+    }
+
+    @JavascriptInterface
+    public String deviceAdminLockNow() {
+        if (!deviceAdminActive()) return "err:not-active";
+        try { dpm().lockNow(); return "ok"; } catch (Exception e) { return "err:" + e.getMessage(); }
+    }
+
+    @JavascriptInterface
+    public void deviceAdminRevoke() {
+        try {
+            Intent i = new Intent(Settings.ACTION_SECURITY_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+        } catch (Exception ignored) { }
+    }
+
+    /** --- Floating bubble + edge-glow overlay    /** --- Floating bubble + edge-glow overlay: draws over other apps only to show a small shortcut button
      *  and a colored border while Bawsala itself is listening/acting. No accessibility service, no reading or
      *  injecting input into other apps. Requires the normal "Display over other apps" permission (a visible
      *  system settings screen the user grants or denies themselves, like any app with a chat-head bubble). */
