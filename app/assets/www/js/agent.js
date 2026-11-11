@@ -70,13 +70,18 @@ K.agent={
     else if(st==='done')body='<div class="at-res">'+K.md(t.result||'')+'</div>'+((t.sources||[]).length?'<div class="at-src">'+T('المصادر','Sources')+': '+(t.sources||[]).map((s,i)=>'<a href="'+esc(s.url)+'" data-url="'+esc(s.url)+'">['+(i+1)+'] '+esc(s.title).slice(0,40)+'</a>').join(' · ')+'</div>':'')+(t.summarised===false?'<div class="at-warn">'+T('حُفظت المصادر دون تلخيص (لا يوجد نموذج متاح)','Sources saved without a summary (no model available)')+'</div>':'');
     else if(st==='failed')body='<div class="at-warn">'+esc(t.error||'')+'</div>';
     return '<div class="at-u"><span>'+esc(t.text)+'</span><small>'+fmt(t.created)+'</small></div><div class="at-a"><div class="at-l"><b>'+lab+'</b>'+(t.done?'<small>'+fmt(t.done)+'</small>':'')+'</div>'+body+'</div>'}).join('');
+   {const pend=ts.some(t=>t.status==='pending'||t.status==='running');let run=true;try{run=!A.agentRunning||A.agentRunning()}catch(e){}
+    if(pend&&!run){el.insertAdjacentHTML('beforeend','<div class="at-warn" style="text-align:center;margin:16px 0">'+T('الخدمة متوقفة وفيها مهام منتظرة','The service is stopped but tasks are waiting')+'<br><button class="at-run" id="atRun">'+T('تشغيل الوكيل الآن','Run agent now')+'</button></div>');const rb=$('atRun');if(rb)rb.onclick=()=>{let m='ok';try{m=A.agentRun()}catch(e){m=String(e)}if(m!=='ok')K.ui.info(T('تعذّر التشغيل','Could not start'),String(m));else K.toast(T('بدأ الوكيل','Agent started'))}}}
    if(near)el.scrollTop=el.scrollHeight};
   window.__agent=function(){paintT()};
   K.agent._t=setInterval(paintT,2500);paintT();
   const ta=$('atIn');ta.oninput=()=>{ta.style.height='auto';ta.style.height=Math.min(140,ta.scrollHeight)+'px'};
   const send=()=>{const v=ta.value.trim();if(!v)return;
    if(!(A&&A.agentAddTask)){K.toast(T('يعمل داخل التطبيق فقط (ليس في المعاينة)','Works inside the app only (not in preview)'));return}
-   const id=A.agentAddTask(v);if(!id){K.toast(T('تعذّر إضافة المهمة','Could not add the task'));return}ta.value='';ta.style.height='auto';paintT();K.native.haptic()};
+   let r={};try{r=JSON.parse(A.agentAddTask(v)||'{}')}catch(e){r={err:String(e)}}
+   if(r.err){K.ui.info(T('تعذّر إضافة المهمة','Could not add the task'),String(r.err));return}
+   ta.value='';ta.style.height='auto';paintT();K.native.haptic();
+   if(r.service&&r.service!=='ok')K.ui.info(T('حُفظت المهمة لكن تعذّر تشغيل الخدمة','Task saved but the service could not start'),String(r.service)+'\n\n'+T('اضغط «تشغيل الوكيل الآن» أو استثنِ التطبيق من تحسين البطارية وأذن له بالعمل في الخلفية.','Tap "Run agent now", or exempt the app from battery optimisation and allow background activity.'))};
   $('atSend').onclick=send}
 };
 })();

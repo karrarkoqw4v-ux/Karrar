@@ -76,19 +76,35 @@ public class Bridge {
     @JavascriptInterface
     public void agentStop() { act.startService(new Intent(act, AgentService.class).setAction("stop")); }
 
+    /** returns {"id":"..","service":"ok|ERR: .."} or {"err":".."}; the task is always saved first so it can be started again manually */
     @JavascriptInterface
     public String agentAddTask(String text) {
-        String id = TaskAgent.addTask(act, text == null ? "" : text.trim());
-        if (id.isEmpty()) return "";
-        if (Build.VERSION.SDK_INT >= 33 && !askedNotif && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-            askedNotif = true; act.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIF);
+        try {
+            String id = TaskAgent.addTask(act, text == null ? "" : text.trim());
+            if (id.isEmpty()) return new JSONObject().put("err", "could not save the task").toString();
+            return new JSONObject().put("id", id).put("service", startTasksService()).toString();
+        } catch (Throwable e) {
+            try { return new JSONObject().put("err", String.valueOf(e)).toString(); } catch (Exception x) { return "{}"; }
         }
-        if (!AgentService.running) {
+    }
+
+    private String startTasksService() {
+        try {
+            if (Build.VERSION.SDK_INT >= 33 && !askedNotif && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                askedNotif = true; act.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIF);
+            }
+            if (AgentService.running) return "ok";
             Intent it = new Intent(act, AgentService.class).setAction("tasks");
             if (Build.VERSION.SDK_INT >= 26) act.startForegroundService(it); else act.startService(it);
-        }
-        return id;
+            return "ok";
+        } catch (Throwable e) { return "ERR: " + e; }
     }
+
+    @JavascriptInterface
+    public String agentRun() { return startTasksService(); }
+
+    @JavascriptInterface
+    public boolean agentRunning() { return AgentService.running; }
 
     @JavascriptInterface
     public String agentTasks() { return TaskAgent.load(act, "tasks.json").toString(); }

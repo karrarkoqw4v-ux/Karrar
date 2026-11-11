@@ -35,7 +35,12 @@ final class TaskAgent {
         try {
             File f = new File(dir(c), name);
             if (!f.exists()) return new JSONArray();
-            return new JSONArray(new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8"));
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] b = new byte[4096]; int n;
+            while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+            in.close();
+            return new JSONArray(bo.toString("UTF-8"));
         } catch (Throwable e) { return new JSONArray(); }
     }
 

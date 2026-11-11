@@ -82,7 +82,13 @@ public class AgentService extends Service {
         if (it != null && "stop".equals(it.getAction())) { stop = true; return START_NOT_STICKY; }
         if (running) return START_NOT_STICKY;
         if (it != null && "tasks".equals(it.getAction())) {
-            startForeground(2001, buildNotif("وكيل المهام يعمل", "ينفّذ مهامك في الخلفية", true));
+            try {
+                startForeground(2001, buildNotif("وكيل المهام يعمل", "ينفّذ مهامك في الخلفية", true));
+            } catch (Throwable e) {
+                Store.put("agent_error", String.valueOf(e));
+                stopSelf();
+                return START_NOT_STICKY;
+            }
             running = true; stop = false;
             PowerManager pm0 = (PowerManager) getSystemService(Context.POWER_SERVICE);
             wl = pm0.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bawsala:tasks");
