@@ -147,3 +147,6 @@ html[dir=rtl] .md-box{inset-inline-start:auto;left:50%;right:auto}
 .ag-n{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ag-n div{background:var(--card2,#1c1c1e);border-radius:16px;padding:12px}.ag-n b{display:block;font-size:1.25em}.ag-n small{color:var(--text2)}
 .ag-note{color:var(--text2);font-size:.85em;line-height:1.7;margin:12px 6px}
 #agent .pbtn,#agent .pcan{width:100%;display:block}#agent .pcan{margin-top:8px;color:#ff6b6b}
+.ag-warn{color:#ff8a8a;font-size:.86em;line-height:1.7;margin-top:8px;word-break:break-all}
+.ag-rules{padding-inline-start:20px;color:var(--text2);font-size:.9em;line-height:1.8;margin-top:8px}.ag-rules li{margin:4px 0}
+details.ag-card summary{cursor:pointer;list-style:none}details.ag-card summary::-webkit-details-marker{display:none}

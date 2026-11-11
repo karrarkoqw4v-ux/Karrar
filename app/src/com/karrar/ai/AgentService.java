@@ -34,6 +34,47 @@ public class AgentService extends Service {
     private Thread worker;
     private PowerManager.WakeLock wl;
 
+
+    // ---------------------------------------------------------------- policy (enforced in code, not by prompting)
+    static final String[] BLOCKED_HOSTS = {"youtube.com", "youtu.be", "tiktok.com", "instagram.com", "facebook.com", "fb.com", "x.com", "twitter.com",
+            "snapchat.com", "threads.net", "t.me", "telegram.org", "whatsapp.com", "linkedin.com", "reddit.com", "pinterest.com", "discord.com",
+            "twitch.tv", "netflix.com", "spotify.com", "play.google.com", "apps.apple.com", "apkpure.com", "uptodown.com"};
+    static final String[] BLOCKED_PATH_WORDS = {"login", "signin", "sign-in", "signup", "sign-up", "register", "account", "checkout", "cart", "admin", "password", "oauth", "captcha"};
+    static final String[] BLOCKED_EXT = {".apk", ".aab", ".exe", ".msi", ".dmg", ".zip", ".rar", ".7z", ".torrent", ".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".pdf"};
+    static final String[] ALLOWED_HOSTS = {"wikipedia.org", "developer.mozilla.org", "developer.android.com", "kotlinlang.org", "dart.dev", "flutter.dev", "swift.org",
+            "react.dev", "nodejs.org", "go.dev", "doc.rust-lang.org", "docs.python.org", "docs.oracle.com", "learn.microsoft.com", "web.dev"};
+    static final int MAX_PAGES = 100;
+
+    private static boolean hostMatches(String host, String dom) { return host.equals(dom) || host.endsWith("." + dom); }
+
+    /** returns null when the URL is allowed, otherwise the Arabic reason it was refused. */
+    static String check(String url, List<String> ownHosts) {
+        try {
+            URL u = new URL(url);
+            if (!"https".equals(u.getProtocol())) return "غير آمن (ليس https)";
+            String h = u.getHost().toLowerCase();
+            for (String b : BLOCKED_HOSTS) if (hostMatches(h, b)) return "منصة تمنع الجمع الآلي (" + b + ")";
+            String path = (u.getPath() + "?" + (u.getQuery() == null ? "" : u.getQuery())).toLowerCase();
+            for (String w : BLOCKED_PATH_WORDS) if (path.contains(w)) return "صفحة حساب أو دخول أو دفع";
+            for (String e : BLOCKED_EXT) if (u.getPath().toLowerCase().endsWith(e)) return "ملف تنزيل أو وسائط (" + e + ")";
+            for (String a : ALLOWED_HOSTS) if (hostMatches(h, a)) return null;
+            if (ownHosts != null) for (String o : ownHosts) if (!o.isEmpty() && hostMatches(h, o)) return null;
+            return "غير مدرج في المصادر المسموحة (أضفه في «مواقع أملكها» إن كان لك)";
+        } catch (Exception e) { return "رابط غير صالح"; }
+    }
+
+    static String policyJson() {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("blocked", new JSONArray(java.util.Arrays.asList(BLOCKED_HOSTS)));
+            o.put("allowed", new JSONArray(java.util.Arrays.asList(ALLOWED_HOSTS)));
+            o.put("ext", new JSONArray(java.util.Arrays.asList(BLOCKED_EXT)));
+            o.put("words", new JSONArray(java.util.Arrays.asList(BLOCKED_PATH_WORDS)));
+            o.put("maxPages", MAX_PAGES);
+            return o.toString();
+        } catch (Exception e) { return "{}"; }
+    }
+
     @Override public IBinder onBind(Intent i) { return null; }
 
     @Override
@@ -112,9 +153,19 @@ public class AgentService extends Service {
             File dir = new File(getExternalFilesDir(null), "learning");
             dir.mkdirs();
             String ua = "BawsalaLearningBot/1.0 (respects robots.txt)";
-            int total = urls == null ? 0 : urls.length();
+            List<String> own = new ArrayList<String>();
+            JSONArray oh = c.optJSONArray("own");
+            if (oh != null) for (int i = 0; i < oh.length(); i++) own.add(oh.getString(i).trim().toLowerCase());
             List<String> list = new ArrayList<String>();
-            for (int i = 0; i < total; i++) list.add(urls.getString(i).trim());
+            int blocked = 0;
+            StringBuilder why = new StringBuilder();
+            for (int i = 0; urls != null && i < urls.length() && list.size() < MAX_PAGES; i++) {
+                String uu = urls.getString(i).trim();
+                String r = check(uu, own);
+                if (r == null) list.add(uu); else { blocked++; if (why.length() < 1500) why.append(uu).append(" ← ").append(r).append("\n"); }
+            }
+            Store.put("agent_blocked", why.toString());
+            int total = list.size();
             progress(0, total, 0, 0, "running");
             for (String url : list) {
                 if (stop || tokens >= target) break;
@@ -123,7 +174,9 @@ public class AgentService extends Service {
                     if (allowedByRobots(url, ua)) {
                         HttpURLConnection h = (HttpURLConnection) new URL(url).openConnection();
                         h.setRequestProperty("User-Agent", ua); h.setConnectTimeout(12000); h.setReadTimeout(20000);
-                        if (h.getResponseCode() == 200) {
+                        h.setInstanceFollowRedirects(false);   // never follow a redirect to another site
+                        String ct = h.getContentType();
+                        if (h.getResponseCode() == 200 && (ct == null || ct.toLowerCase().contains("text/html") || ct.toLowerCase().contains("text/plain"))) {
                             InputStream in = h.getInputStream();
                             java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
                             byte[] b = new byte[8192]; int n; while ((n = in.read(b)) > 0 && bo.size() < 3000000) bo.write(b, 0, n);

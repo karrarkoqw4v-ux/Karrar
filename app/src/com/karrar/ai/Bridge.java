@@ -77,6 +77,12 @@ public class Bridge {
     public void agentStop() { act.startService(new Intent(act, AgentService.class).setAction("stop")); }
 
     @JavascriptInterface
+    public String agentPolicy() { return AgentService.policyJson(); }
+
+    @JavascriptInterface
+    public String agentBlocked() { return Store.get("agent_blocked", ""); }
+
+    @JavascriptInterface
     public String agentStatus() { return Store.get("agent_status", "{}"); }
 
     private void js(final String script) {
