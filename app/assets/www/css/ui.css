@@ -162,3 +162,5 @@ details.ag-card summary{cursor:pointer;list-style:none}details.ag-card summary::
 .at-bar button{width:48px;height:48px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;flex:none}
 .at-bar textarea{min-height:48px;line-height:1.4}
 .at-run{margin-top:10px;background:#fff;color:#111;border-radius:22px;padding:10px 22px;font-weight:700}
+.at-a{min-width:0;overflow:hidden}.at-res.md{overflow-x:auto}.at-res.md table{display:block;max-width:100%;overflow-x:auto;font-size:.85em}.at-res.md th,.at-res.md td{min-width:90px;vertical-align:top}.at-res.md pre{max-width:100%;overflow-x:auto}
+.at-ok{margin-top:8px;color:#34c759;font-size:.85em}

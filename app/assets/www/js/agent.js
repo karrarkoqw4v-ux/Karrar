@@ -67,7 +67,7 @@ K.agent={
    if(!ts.length){el.innerHTML='<div class="at-empty"><b>'+T('اكتب مهمتك وأنا أنفّذها','Write a task and I will run it')+'</b><p>'+T('يعمل الوكيل في الخلفية على جوالك، ويبحث في مصادر رسمية، ويلخّص بالنموذج، ويحفظ ما تعلّمه، ثم يرسل لك إشعاراً عند كل مهمة. يمكنك إرسال عدة مهام وتُنفَّذ بالتتابع.','The agent works in the background on your phone, searches official sources, summarises with the model, saves what it learned and notifies you for each task. Send several tasks; they run in order.')+'</p></div>';return}
    el.innerHTML=ts.map(t=>{const st=t.status;const lab={pending:T('في الانتظار','Queued'),running:T('قيد التنفيذ','Running'),done:T('اكتملت ✅','Done ✅'),failed:T('تعذّرت ⚠️','Failed ⚠️')}[st]||st;
     let body='';if(st==='running')body='<div class="at-step"><i class="td"></i>'+esc(t.step||'')+'</div>';
-    else if(st==='done')body='<div class="at-res">'+K.md(t.result||'')+'</div>'+((t.sources||[]).length?'<div class="at-src">'+T('المصادر','Sources')+': '+(t.sources||[]).map((s,i)=>'<a href="'+esc(s.url)+'" data-url="'+esc(s.url)+'">['+(i+1)+'] '+esc(s.title).slice(0,40)+'</a>').join(' · ')+'</div>':'')+(t.summarised===false?'<div class="at-warn">'+T('حُفظت المصادر دون تلخيص (لا يوجد نموذج متاح)','Sources saved without a summary (no model available)')+'</div>':'');
+    else if(st==='done')body='<div class="at-res md">'+K.md(t.result||'')+'</div>'+(t.verified?'<div class="at-ok">'+T('✔ دُقّقت المسودة مقابل المصادر','✔ Draft checked against the sources')+'</div>':'')+((t.sources||[]).length?'<div class="at-src">'+T('المصادر','Sources')+': '+(t.sources||[]).map((s,i)=>'<a href="'+esc(s.url)+'" data-url="'+esc(s.url)+'">['+(i+1)+'] '+esc(s.title).slice(0,40)+'</a>').join(' · ')+'</div>':'')+(t.summarised===false?'<div class="at-warn">'+T('حُفظت المصادر دون تلخيص (لا يوجد نموذج متاح)','Sources saved without a summary (no model available)')+'</div>':'');
     else if(st==='failed')body='<div class="at-warn">'+esc(t.error||'')+'</div>';
     return '<div class="at-u"><span>'+esc(t.text)+'</span><small>'+fmt(t.created)+'</small></div><div class="at-a"><div class="at-l"><b>'+lab+'</b>'+(t.done?'<small>'+fmt(t.done)+'</small>':'')+'</div>'+body+'</div>'}).join('');
    {const pend=ts.some(t=>t.status==='pending'||t.status==='running');let run=true;try{run=!A.agentRunning||A.agentRunning()}catch(e){}
@@ -87,7 +87,7 @@ K.agent={
 /* ---------------- private test chat inside the task agent: slash commands that exercise every real capability ---------------- */
 const fmtB=n=>n>1048576?(n/1048576).toFixed(1)+' MB':n>1024?(n/1024).toFixed(1)+' KB':n+' B';
 const when=t=>t?new Date(t).toLocaleString(K.lang()==='ar'?'ar':'en',{dateStyle:'short',timeStyle:'short'}):'—';
-const HELP=T('## 🧪 محادثة اختبار الوكيل\nاكتب أوامر تبدأ بـ `/` لتجرّب كل شيء فعلياً:\n\n- `/اختبار` فحص حقيقي: الشبكة، النموذج، التخزين، الإشعارات، الخدمة\n- `/حالة` حالة الوكيل والمهام والمخزن\n- `/مهام` قائمة مهامك\n- `/مهمة نص المهمة` يضيف مهمة وينفّذها في الخلفية\n- `/المعرفة` ما تعلّمه الوكيل وحفظه\n- `/ملفات` الملفات المحفوظة على جوالك وأحجامها\n- `/حفظ نص` يحفظ ملاحظة في معرفة الوكيل\n- `/تصدير` يحفظ كل المهام والمعرفة في ملف (تنزيلات بوصلة)\n\nأي كلام عادي تكتبه هنا يجيب عنه النموذج مستخدماً معرفة الوكيل ويذكر ذلك.','## 🧪 Agent test chat\nType `/` commands to test everything for real:\n\n- `/test` real checks: network, model, storage, notifications, service\n- `/status`, `/tasks`, `/task <text>`, `/knowledge`, `/files`, `/save <text>`, `/export`\n\nAny normal message is answered by the model using the agent\'s knowledge.');
+const HELP=T('## 🧪 محادثة اختبار الوكيل\nاكتب أوامر تبدأ بـ `/` لتجرّب كل شيء فعلياً:\n\n- `/اختبار` فحص حقيقي: الشبكة، النموذج، التخزين، الإشعارات، الخدمة\n- `/حالة` حالة الوكيل والمهام والمخزن\n- `/مهام` قائمة مهامك\n- `/مهمة نص المهمة` يضيف مهمة وينفّذها في الخلفية\n- `/المعرفة` ما تعلّمه الوكيل وحفظه\n- `/ملفات` الملفات المحفوظة على جوالك وأحجامها\n- `/حفظ نص` يحفظ ملاحظة في معرفة الوكيل\n- `/تصدير` يحفظ كل المهام والمعرفة في ملف (تنزيلات بوصلة)\n- `/ابنِ وصف الصفحة` يبني صفحة ويب، **ثم يشغّلها ويختبرها بنفسه** ويصلح أخطاءها (حتى 3 مرات) قبل أن يسلّمها لك\n\nأي كلام عادي تكتبه هنا يجيب عنه النموذج مستخدماً معرفة الوكيل ويذكر ذلك.','## 🧪 Agent test chat\nType `/` commands to test everything for real:\n\n- `/test` real checks: network, model, storage, notifications, service\n- `/status`, `/tasks`, `/task <text>`, `/knowledge`, `/files`, `/save <text>`, `/export`\n\nAny normal message is answered by the model using the agent\'s knowledge.');
 async function selfTest(){
  const rows=[],ok=(n,v,d)=>rows.push((v?'✅ ':'❌ ')+n+(d?' — '+d:''));
  const A_=window.Android;ok(T('الاتصال بالتطبيق الأصلي','Native bridge'),!!(A_&&A_.agentDiag));
@@ -99,6 +99,28 @@ async function selfTest(){
  ok(T('الخدمة الخلفية','Background service'),!!A.agentRunning,A.agentRunning&&A.agentRunning()?T('تعمل الآن','running now'):T('جاهزة (غير شغّالة الآن)','ready (idle)'));
  if(dg.last_error)rows.push('⚠️ '+T('آخر خطأ في الخدمة','Last service error')+': `'+dg.last_error+'`');
  return '## '+T('نتيجة الفحص الحقيقي','Real self-test result')+'\n\n'+rows.join('\n\n')}
+
+/* build -> run in a hidden sandboxed page -> read real errors -> fix -> repeat (max 3) -> only then deliver */
+function testHtml(code){return new Promise(res=>{const errs=[];const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.style.cssText='position:fixed;left:-9999px;top:0;width:390px;height:700px;border:0';
+ const hook='<script>window.addEventListener("error",function(e){parent.postMessage({t:"err",m:String(e.message||e.error)},"*")});window.addEventListener("unhandledrejection",function(e){parent.postMessage({t:"err",m:"promise: "+String(e.reason)},"*")});var __ce=console.error;console.error=function(){parent.postMessage({t:"err",m:"console.error: "+[].slice.call(arguments).join(" ")},"*");__ce.apply(console,arguments)};window.addEventListener("load",function(){setTimeout(function(){parent.postMessage({t:"done",len:((document.body&&document.body.innerText)||"").trim().length,ext:document.querySelectorAll("img[src^=http],script[src^=http],link[href^=http]").length},"*")},900)})<\/script>';
+ let done=false;const finish=()=>{if(done)return;done=true;window.removeEventListener('message',on);clearTimeout(tm);f.remove();res(errs)};
+ const on=e=>{if(e.source!==f.contentWindow)return;const d=e.data||{};if(d.t==='err')errs.push(d.m);if(d.t==='done'){if(d.len<20)errs.push('the page is empty or has almost no visible text');if(d.ext)errs.push('it uses '+d.ext+' external resource(s) that will not load offline');finish()}};
+ const tm=setTimeout(()=>{errs.push('the page did not finish loading within 7 seconds');finish()},7000);
+ window.addEventListener('message',on);
+ f.srcdoc=/<head[^>]*>/i.test(code)?code.replace(/<head[^>]*>/i,m=>m+hook):hook+code;document.body.appendChild(f)})}
+async function buildAndTest(desc,say){
+ const SYS='You are a senior front-end engineer. Output ONLY ONE complete self-contained HTML document (inline CSS and JS, no external URLs, no placeholder images: use inline SVG or CSS art). Use Arabic RTL when the request is Arabic. Mobile-first, one screen at a time with a bottom tab bar when there are several screens, real working logic with sample data, loading/empty/error states, accessible contrast. Wrap localStorage in try/catch. No alert/confirm.';
+ let code='',errs=[];const log=[];
+ for(let round=1;round<=3;round++){
+  say(T('⏳ المحاولة '+round+' من 3: '+(round===1?'أكتب الصفحة…':'أصلح الأخطاء التي اكتشفها الاختبار…'),'⏳ Attempt '+round+' of 3: '+(round===1?'writing the page…':'fixing what the test found…')));
+  const prompt=round===1?desc:'Original request:\n'+desc+'\n\nYour previous HTML:\n'+code+'\n\nProblems found by an automated run of the page:\n- '+errs.join('\n- ')+'\n\nReturn the complete corrected HTML only.';
+  const out=await K.llm(SYS,prompt,150000);
+  const m=out.match(/<!doctype[\s\S]*<\/html>/i)||out.match(/<html[\s\S]*<\/html>/i);
+  if(!m){errs=['the reply did not contain a complete HTML document'];log.push('❌ '+T('المحاولة '+round+': لم يُنتج النموذج صفحة كاملة','Attempt '+round+': no complete page'));continue}
+  code=m[0];errs=await testHtml(code);
+  log.push((errs.length?'❌ ':'✅ ')+T('المحاولة '+round+': ','Attempt '+round+': ')+(errs.length?errs.slice(0,3).join(' | '):T('اجتازت الاختبار (لا أخطاء، والصفحة تعرض محتوى)','passed (no errors, the page renders content)')));
+  if(!errs.length)break}
+ return {code,errs,log}}
 K.agentTest={
  conv(){return K.db.convs.find(c=>c.agentTest)},
  open(){let c=K.agentTest.conv();
@@ -119,6 +141,12 @@ K.agentTest={
    if(cmd==='ملفات'||cmd==='files'){const fs=JSON.parse(A.agentFiles()||'[]');say(fs.length?'## '+T('الملفات المحفوظة','Saved files')+' ('+fs.length+')\n\n'+fs.map(f=>'- `'+f.name+'` — '+fmtB(f.bytes)).join('\n')+'\n\n'+T('المكان: مجلد التطبيق الخاص (لا يصل إليه غيره).','Location: the app\'s private folder.'):T('لا توجد ملفات بعد.','No files yet.'));return}
    if(cmd==='حفظ'||cmd==='save'){if(!arg){say(T('اكتب: `/حفظ النص الذي تريد حفظه`','Write: `/save text`'));return}say(A.agentSaveNote(arg)?'✅ '+T('حُفظت في معرفة الوكيل، وسيستخدمها في الإجابة عن أسئلة مشابهة.','Saved to the agent\'s knowledge; it will use it for similar questions.'):'⚠️ '+T('تعذّر الحفظ','Could not save'));return}
    if(cmd==='تصدير'||cmd==='export'){const md=A.agentExport();const r=await K.files.saveNamed('bawsala-agent-export.md',md);say('✅ '+T('صُدّرت كل المهام والمعرفة إلى ملف `bawsala-agent-export.md` ('+fmtB(md.length)+'). ابحث عنه في مجلد تنزيلات بوصلة.','Exported all tasks and knowledge to `bawsala-agent-export.md` ('+fmtB(md.length)+') in Bawsala downloads.')+(r&&String(r).indexOf('err')===0?'\n\n⚠️ '+r:''));return}
+   if(cmd.replace(/[\u064B-\u0652]/g,'')==='ابن'||cmd==='build'){if(!arg){say(T('اكتب: `/ابنِ وصف ما تريد بناءه`','Write: `/build what you want`'));return}
+    const r=await buildAndTest(arg,say);
+    if(!r.code){say('## '+T('تعذّر البناء','Build failed')+'\n\n'+r.log.join('\n\n')+'\n\n'+T('لم ينتج النموذج صفحة صالحة (تحقق من مفتاح النموذج والاتصال).','The model did not produce a valid page (check the model key and connection).'));return}
+    const nm=(arg.replace(/[^\p{L}\p{N} ]/gu,'').trim().split(/\s+/).slice(0,3).join(' ')||'App');
+    let saved='';try{const sv=await K.files.saveNamed(nm.replace(/\s+/g,'-')+'.html',r.code);saved=sv&&String(sv).indexOf('err')===0?'\n\n⚠️ '+sv:''}catch(e){}
+    say('## '+(r.errs.length?'⚠️ '+T('بُني لكن بقيت مشاكل','Built, but problems remain'):'✅ '+T('بُني واجتاز اختباره','Built and passed its test'))+'\n\n'+r.log.join('\n\n')+(r.errs.length?'\n\n'+T('لم أصلح كل الأخطاء في 3 محاولات. جرّب وصفاً أبسط أو نموذجاً أقوى.','Not everything was fixed in 3 attempts. Try a simpler brief or a stronger model.'):'')+'\n\n```app:'+nm+'\n'+r.code+'\n```'+saved);return}
    say(T('أمر غير معروف: `/'+cmd+'`. اكتب `/مساعدة` لقائمة الأوامر.','Unknown command. Type `/help`.'))
   }catch(e){say('⚠️ '+String(e))}})();
   return true}

@@ -224,7 +224,7 @@ final class TaskAgent {
                 patch(c, id, new JSONObject().put("status", "failed").put("error", "لم أجد مصادر رسمية مناسبة للمهمة (أو لا يوجد اتصال).").put("done", System.currentTimeMillis()));
                 return;
             }
-            patch(c, id, new JSONObject().put("step", "قراءة وتلخيص " + sources.length() + " مصدراً"));
+            patch(c, id, new JSONObject().put("step", "قراءة " + sources.length() + " مصدراً وكتابة المسودة"));
             StringBuilder ctx = new StringBuilder();
             for (int i = 0; i < sources.length() && ctx.length() < 14000; i++) {
                 JSONObject s = sources.getJSONObject(i);
@@ -233,6 +233,14 @@ final class TaskAgent {
             String result = ask("You are a careful research assistant. Complete the user's task using ONLY the numbered sources provided. Cite sources like [1]. "
                     + "If the sources are insufficient say exactly what is missing; never invent facts. Reply in the same language as the task. Be precise and structured.",
                     "TASK:\n" + text + "\n\nSOURCES:\n" + ctx, 150);
+            boolean verified = false;
+            if (!result.isEmpty()) {
+                patch(c, id, new JSONObject().put("step", "التحقق من المسودة مقابل المصادر"));
+                String checked = ask("You are a strict fact-checker. You receive a DRAFT answer and the numbered SOURCES it was built from. Remove or rewrite every claim that the sources do not support, "
+                        + "keep correct citations like [1], add a final line starting with 'غير مؤكد:' (or 'Unverified:' for English tasks) listing anything uncertain or missing, and return the corrected final answer only. Same language as the draft.",
+                        "TASK:\n" + text + "\n\nDRAFT:\n" + result + "\n\nSOURCES:\n" + ctx, 150);
+                if (!checked.isEmpty()) { result = checked; verified = true; }
+            }
             boolean noModel = result.isEmpty();
             if (noModel) result = "تعذّر التلخيص لأنه لا يوجد نموذج ذكاء اصطناعي متاح الآن. حُفظت المصادر الرسمية (" + sources.length() + ") فقط ويمكنك تلخيصها لاحقاً.";
             String title = text.length() > 60 ? text.substring(0, 60) + "…" : text;
@@ -242,7 +250,7 @@ final class TaskAgent {
             JSONArray kn = load(c, "knowledge.json");
             kn.put(new JSONObject().put("id", id).put("title", title).put("task", text).put("result", result).put("sources", slim).put("text", ctx.length() > 12000 ? ctx.substring(0, 12000) : ctx.toString()).put("ts", System.currentTimeMillis()));
             save(c, "knowledge.json", kn);
-            patch(c, id, new JSONObject().put("status", "done").put("result", result).put("sources", slim).put("summarised", !noModel).put("done", System.currentTimeMillis()).put("step", ""));
+            patch(c, id, new JSONObject().put("status", "done").put("result", result).put("sources", slim).put("summarised", !noModel).put("verified", verified).put("done", System.currentTimeMillis()).put("step", ""));
         } catch (Exception e) {
             try { patch(c, id, new JSONObject().put("status", "failed").put("error", String.valueOf(e.getMessage())).put("done", System.currentTimeMillis())); } catch (Exception ignored) { }
         }
