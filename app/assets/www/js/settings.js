@@ -80,7 +80,7 @@ let c=sec(b,K.t('s_ai'));
 }
 function sp_tools(b){
 let c=sec(b,'');
- row(c,{icon:'bot',title:K.lang()==='ar'?'وكيل التعلّم (خلفية)':'Learning agent (background)',sub:K.lang()==='ar'?'يجمع صفحاتك ويرسل إشعاراً عند الانتهاء':'Collects your pages and notifies when done',onclick:()=>K.agent.open()});
+ row(c,{icon:'bot',title:K.lang()==='ar'?'وكيل المهام (خلفية)':'Task agent (background)',sub:K.lang()==='ar'?'اكتب مهمة فينفّذها ويُشعرك عند الانتهاء':'Write a task; it runs it and notifies you',onclick:()=>K.agent.open()});
  row(c,{icon:'code-xml',title:K.lang()==='ar'?'لغة بناء التطبيقات':'App build language',value:(K.STACKS.find(x=>x[0]===K.pref.get('dev_stack','flutter'))||K.STACKS[0])[1].split(' — ')[0],onclick:async()=>{const i=await K.ui.choose(K.lang()==='ar'?'لغة بناء التطبيقات':'App build language',K.STACKS.map(x=>x[1]),Math.max(0,K.STACKS.findIndex(x=>x[0]===K.pref.get('dev_stack','flutter'))));if(i!=null){K.pref.set('dev_stack',K.STACKS[i][0]);S.rerender()}}});
  row(c,{icon:'sparkles',title:K.t('t_prompts'),sub:K.t('t_prompts_s'),onclick:()=>S.open('prompts')});
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
@@ -133,7 +133,7 @@ S.avatarHTML=avatarHTML;
 function mainPage(b){
  const ar=K.lang()==='ar',nm=K.pref.get('name','')||(ar?'ضيف':'Guest'),em=K.pref.get('user_email','');
  const pc=document.createElement('button');pc.className='pcard';
- pc.innerHTML=avatarHTML(58)+'<span class="pt"><b>'+esc(nm)+'</b><small>'+esc((em||(ar?'بدون حساب':'No account'))+' · '+(ar?'الباقة المجانية':'Free plan'))+'</small></span><span class="rc">'+K.icon('chevron-left',20).replace('class="ic"','class="ic flip-ltr"')+'</span>';
+ pc.innerHTML=avatarHTML(58)+'<span class="pt"><b>'+esc(nm)+'</b><small>'+esc((em||(ar?'بدون حساب':'No account')))+'</small></span><span class="rc">'+K.icon('chevron-left',20).replace('class="ic"','class="ic flip-ltr"')+'</span>';
  pc.onclick=()=>S.open('account');b.appendChild(pc);
  const idx=[];
  (ar?['لون التمييز','المظهر','اللغة','الاستخدام والحدود','ترقية الخطة','الاشتراك','الملف الشخصي','الاسم','صورة الملف الشخصي']:['Accent color','Appearance','Language','Usage & limits','Upgrade plan','Subscription','Profile','Name','Profile picture']).forEach(t=>idx.push({t:t,p:'account',g:ar?'الحساب':'Account'}));
@@ -165,8 +165,6 @@ function accountPage(b){
  const nm=document.createElement('div');nm.className='aname';nm.textContent=K.pref.get('name','')||(ar?'ضيف':'Guest');b.appendChild(nm);
  let c=sec(b,ar?'الحساب':'Account');
  const chev=r=>r;
- row(c,{icon:'sparkles',title:ar?'ترقية الخطة':'Upgrade plan',onclick:()=>K.plans.open()}).querySelector('.rt').style.color='#7da2ff';
- chev(row(c,{icon:'crown',title:ar?'الاشتراك':'Subscription',value:'Free',onclick:()=>K.plans.open()}));
  chev(row(c,{icon:'clock',title:ar?'الاستخدام والحدود':'Usage & limits',onclick:()=>S.open('stats')}));
  row(c,{icon:'mail',title:K.t('s_email'),sub:email||K.t('guest')});
  if(K.pref.bool('user_google',false))row(c,{html:G_SVG,title:'Google',value:K.t('s_connected')});
@@ -239,12 +237,6 @@ function appsPage(b){
  let c=sec(b,K.t('apps_live'));
  row(c,{html:K.brand('github'),title:K.t('app_github'),sub:K.t('app_github_s'),value:K.gh.tok()?K.t('s_connected'):'',onclick:()=>S.open('github')});
  [['drive','googledrive','app_drive'],['gmail','gmail','app_gmail'],['cal','googlecalendar','app_cal'],['docs','googledocs','app_docs'],['sheets','googlesheets','app_sheets']].forEach(a=>row(c,{html:K.brand(a[1]),title:K.t(a[2]),sub:K.t(a[2]+'_s'),value:K.google.connected(a[0])?K.t('s_connected'):'',onclick:()=>K.google.open(a[0])}));
- c=sec(b,K.t('apps_soon'));
- const bd='<i class="badge">'+K.t('soon')+'</i>';
- [['notion','app_notion'],['gitlab','app_gitlab'],['figma','app_figma'],['dropbox','app_dropbox'],['trello','app_trello'],['discord','app_discord'],['telegram','app_telegram']].forEach(a=>{
-  row(c,{html:K.brand(a[0]),title:K.t(a[1]),sub:K.t(a[1]+'_s'),badge:bd,onclick:()=>K.toast(K.t(a[1])+' — '+K.t('soon'))});
- });
- row(c,{html:appIc('#6b5cff','plug'),title:K.t('app_api'),sub:K.t('app_api_s'),badge:bd,onclick:()=>K.toast(K.t('app_api')+' — '+K.t('soon'))});
 }
 async function githubPage(b){
  const connected=!!K.gh.tok();

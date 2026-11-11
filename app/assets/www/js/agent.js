@@ -3,7 +3,7 @@ window.K=window.K||{};
 (function(){
 const T=(a,e)=>K.lang()==='ar'?a:e;
 const $=id=>document.getElementById(id);
-const A=window.Android;
+const A=new Proxy({},{get:(_,k)=>window.Android?window.Android[k]:undefined});
 const FALLBACK={blocked:['youtube.com','youtu.be','tiktok.com','instagram.com','facebook.com','x.com','twitter.com','snapchat.com','t.me','linkedin.com','reddit.com','pinterest.com','discord.com','twitch.tv','netflix.com','spotify.com','play.google.com','apps.apple.com'],allowed:['wikipedia.org','developer.mozilla.org','developer.android.com','kotlinlang.org','dart.dev','flutter.dev','swift.org','react.dev','nodejs.org','go.dev','doc.rust-lang.org','docs.python.org','docs.oracle.com','learn.microsoft.com','web.dev'],ext:['.apk','.exe','.zip','.rar','.torrent','.mp4','.mp3','.pdf'],words:['login','signin','signup','register','account','checkout','cart','admin','password','oauth','captcha'],maxPages:100};
 function policy(){try{return A&&A.agentPolicy?JSON.parse(A.agentPolicy()):FALLBACK}catch(e){return FALLBACK}}
 const hm=(h,d)=>h===d||h.endsWith('.'+d);
@@ -23,7 +23,7 @@ function paint(st){
  const run=st.state==='running';$('agGo').classList.toggle('hidden',run);$('agStop').classList.toggle('hidden',!run)}
 window.__agent=paint;
 K.agent={
- open(){
+ openCollector(){
   const old=$('agent');if(old)old.remove();
   const d=document.createElement('div');d.id='agent';d.className='sc';d.dir=K.lang()==='ar'?'rtl':'ltr';document.body.appendChild(d);
   d.innerHTML='<div class="sc-top"><button class="sc-ib" id="agB">'+K.icon('chevron-right',24)+'</button><div class="sc-title">'+T('وكيل التعلّم','Learning agent')+'</div><span class="sc-ib ph"></span></div>'
@@ -46,5 +46,38 @@ K.agent={
    if(A&&A.agentStart){A.agentStart(JSON.stringify({urls:urls,own:own,delay:+$('agDelay').value||3}));paint({state:'running',done:0,total:urls.length,saved:0,tokens:0});K.toast(T('بدأ الوكيل في الخلفية','Agent started'))}
    else K.toast(T('متاح داخل التطبيق فقط','Available in the app only'))};
   $('agStop').onclick=()=>{A&&A.agentStop&&A.agentStop();K.toast(T('جارٍ الإيقاف…','Stopping…'))}}
+ ,
+ /* ---------------- task chat: write a task like a message, the agent runs it in the background, notifies you, and the chat can use what it learned ---------------- */
+ open(){
+  const old=$('agentT');if(old)old.remove();
+  const d=document.createElement('div');d.id='agentT';d.className='sc';d.dir=K.lang()==='ar'?'rtl':'ltr';document.body.appendChild(d);
+  d.innerHTML='<div class="sc-top"><button class="sc-ib" id="atB">'+K.icon('chevron-right',24)+'</button><div class="sc-title">'+T('وكيل المهام','Task agent')+'</div><button class="sc-ib" id="atM" title="'+T('المزيد','More')+'">'+K.icon('ellipsis',22)+'</button></div>'
+   +'<div class="sc-body at-body" id="atList"></div>'
+   +'<div class="at-bar"><textarea id="atIn" rows="1" placeholder="'+T('اكتب مهمة للوكيل…','Write a task for the agent…')+'"></textarea><button id="atSend">'+K.icon('arrow-up',20)+'</button></div>';
+  $('atB').onclick=()=>{clearInterval(K.agent._t);d.remove()};
+  $('atM').onclick=async()=>{const i=await K.ui.choose(T('وكيل المهام','Task agent'),[T('اختبر ما تعلّمه (محادثة)','Test what it learned (chat)'),T('جمع صفحات (متقدم)','Collect pages (advanced)'),T('قيود الوكيل','Agent rules'),T('مسح قائمة المهام','Clear task list')]);
+   if(i===0){d.remove();clearInterval(K.agent._t);K.home.newChat();K.toast(T('اسأل أي سؤال عن مهامك، وسيستخدم الوكيل ما حفظه ويذكر ذلك','Ask about your tasks; the answer will use what the agent saved and say so'))}
+   else if(i===1)K.agent.openCollector();
+   else if(i===2){K.ui.info(T('قيود الوكيل','Agent rules'),T('مصادر رسمية فقط (ويكيبيديا، MDN، Stack Overflow عبر واجهاتها الرسمية). لا يوتيوب ولا تيك توك ولا حسابات ولا تنزيل تطبيقات أو ملفات. لا يثبّت شيئاً ولا يلمس تطبيقاتك.','Official sources only (Wikipedia, MDN, Stack Overflow via their official APIs). No YouTube/TikTok, no accounts, no downloading apps or files. Installs nothing, touches none of your apps.'))}
+   else if(i===3){if(await K.ui.confirm(T('مسح قائمة المهام؟ (المعرفة المحفوظة تبقى)','Clear the task list? (saved knowledge stays)'),true)){A&&A.agentClearTasks&&A.agentClearTasks();paintT()}}};
+  const fmt=t=>t?new Date(t).toLocaleTimeString(K.lang()==='ar'?'ar':'en',{hour:'2-digit',minute:'2-digit'}):'';
+  const paintT=()=>{let ts=[];try{ts=JSON.parse((A&&A.agentTasks&&A.agentTasks())||'[]')}catch(e){}
+   const el=$('atList');if(!el)return;const near=el.scrollHeight-el.scrollTop-el.clientHeight<120;
+   if(!ts.length){el.innerHTML='<div class="at-empty"><b>'+T('اكتب مهمتك وأنا أنفّذها','Write a task and I will run it')+'</b><p>'+T('يعمل الوكيل في الخلفية على جوالك، ويبحث في مصادر رسمية، ويلخّص بالنموذج، ويحفظ ما تعلّمه، ثم يرسل لك إشعاراً عند كل مهمة. يمكنك إرسال عدة مهام وتُنفَّذ بالتتابع.','The agent works in the background on your phone, searches official sources, summarises with the model, saves what it learned and notifies you for each task. Send several tasks; they run in order.')+'</p></div>';return}
+   el.innerHTML=ts.map(t=>{const st=t.status;const lab={pending:T('في الانتظار','Queued'),running:T('قيد التنفيذ','Running'),done:T('اكتملت ✅','Done ✅'),failed:T('تعذّرت ⚠️','Failed ⚠️')}[st]||st;
+    let body='';if(st==='running')body='<div class="at-step"><i class="td"></i>'+esc(t.step||'')+'</div>';
+    else if(st==='done')body='<div class="at-res">'+K.md(t.result||'')+'</div>'+((t.sources||[]).length?'<div class="at-src">'+T('المصادر','Sources')+': '+(t.sources||[]).map((s,i)=>'<a href="'+esc(s.url)+'" data-url="'+esc(s.url)+'">['+(i+1)+'] '+esc(s.title).slice(0,40)+'</a>').join(' · ')+'</div>':'')+(t.summarised===false?'<div class="at-warn">'+T('حُفظت المصادر دون تلخيص (لا يوجد نموذج متاح)','Sources saved without a summary (no model available)')+'</div>':'');
+    else if(st==='failed')body='<div class="at-warn">'+esc(t.error||'')+'</div>';
+    return '<div class="at-u"><span>'+esc(t.text)+'</span><small>'+fmt(t.created)+'</small></div><div class="at-a"><div class="at-l"><b>'+lab+'</b>'+(t.done?'<small>'+fmt(t.done)+'</small>':'')+'</div>'+body+'</div>'}).join('');
+   if(near)el.scrollTop=el.scrollHeight};
+  window.__agent=function(){paintT()};
+  K.agent._t=setInterval(paintT,2500);paintT();
+  const ta=$('atIn');ta.oninput=()=>{ta.style.height='auto';ta.style.height=Math.min(140,ta.scrollHeight)+'px'};
+  const send=()=>{const v=ta.value.trim();if(!v)return;
+   if(!(A&&A.agentAddTask)){K.toast(T('يعمل داخل التطبيق فقط (ليس في المعاينة)','Works inside the app only (not in preview)'));return}
+   const id=A.agentAddTask(v);if(!id){K.toast(T('تعذّر إضافة المهمة','Could not add the task'));return}ta.value='';ta.style.height='auto';paintT();K.native.haptic()};
+  $('atSend').onclick=send}
 };
 })();
+
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-act=agent]');if(b){K.home.closeSheet();K.agent.open()}});

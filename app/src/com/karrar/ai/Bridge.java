@@ -77,6 +77,29 @@ public class Bridge {
     public void agentStop() { act.startService(new Intent(act, AgentService.class).setAction("stop")); }
 
     @JavascriptInterface
+    public String agentAddTask(String text) {
+        String id = TaskAgent.addTask(act, text == null ? "" : text.trim());
+        if (id.isEmpty()) return "";
+        if (Build.VERSION.SDK_INT >= 33 && !askedNotif && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+            askedNotif = true; act.requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, REQ_NOTIF);
+        }
+        if (!AgentService.running) {
+            Intent it = new Intent(act, AgentService.class).setAction("tasks");
+            if (Build.VERSION.SDK_INT >= 26) act.startForegroundService(it); else act.startService(it);
+        }
+        return id;
+    }
+
+    @JavascriptInterface
+    public String agentTasks() { return TaskAgent.load(act, "tasks.json").toString(); }
+
+    @JavascriptInterface
+    public String agentKnowledge(String q) { return TaskAgent.knowledge(act, q == null ? "" : q); }
+
+    @JavascriptInterface
+    public void agentClearTasks() { TaskAgent.save(act, "tasks.json", new org.json.JSONArray()); }
+
+    @JavascriptInterface
     public String agentPolicy() { return AgentService.policyJson(); }
 
     @JavascriptInterface

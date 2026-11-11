@@ -159,6 +159,7 @@ C.start=function(){
   const pr=K.persona();ctx=(pr?pr+(ctx?'\n\n':''):'')+(ctx||'');
   const sk=K.skills.context(lu0);if(sk)ctx+=(ctx?'\n\n':'')+sk;
   {const dr=K.skills.rules(lu0);if(dr)ctx+=(ctx?'\n\n':'')+dr}
+  try{const A=window.Android;if(A&&A.agentKnowledge&&K.pref.bool('agent_kn',true)){const kn=JSON.parse(A.agentKnowledge(lu0)||'[]');if(kn.length){ai.kn=kn.map(x=>x.title);ctx+=(ctx?'\n\n':'')+'KNOWLEDGE saved earlier by the user\'s task agent (official sources). Use it when relevant, and say you used it:\n'+kn.map((x,i)=>'['+(i+1)+'] '+x.title+': '+x.text).join('\n\n')}}}catch(e){}
   {const lp=K.langpack&&K.langpack.hint(lu0);if(lp)ctx+=(ctx?'\n\n':'')+lp}
   if(lastUser&&lastUser.brief)ctx+=(ctx?'\n\n':'')+lastUser.brief
   if(K.intent.write(lu0)||(S.cur&&S.cur.stu&&K.intent.write(lu0)))ctx+=(ctx?'\n\n':'')+'FORMAT: when you write a finished piece for the user (composition, essay, letter, speech, report, summary, book chapter, worked solution), put the piece itself inside a block that starts with a line :::doc and ends with a line :::, with a first line "# Title" inside. Keep any short intro or closing note outside the block. Do not use the block for casual chat or code.';
@@ -206,6 +207,7 @@ C.start=function(){
 C.finish=function(view){
  if(view.finished)return;view.finished=true;view.done=true;view.thinking=false;S.streaming=false;S.live=null;S.handle=null;
  if(!view.m.c&&view.m.t){view.m.c=view.m.t;view.m.t='';view.m.s=view.m.s||1}
+ if(view.m.kn&&view.m.kn.length&&view.m.c&&view.m.c!=='—')view.m.c+='\n\n📚 '+(K.lang()==='ar'?'من معرفة الوكيل: ':'From the agent\'s knowledge: ')+view.m.kn.join('، ');
  if(!view.m.c&&!view.m.err)view.m.c='—';
  S.think=false;S.search=false;if(K.home&&K.home.paintPills)K.home.paintPills();
  view.status='';view.render();K.db.save();K.home.refreshComposer();

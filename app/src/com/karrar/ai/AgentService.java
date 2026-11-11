@@ -41,7 +41,7 @@ public class AgentService extends Service {
             "twitch.tv", "netflix.com", "spotify.com", "play.google.com", "apps.apple.com", "apkpure.com", "uptodown.com"};
     static final String[] BLOCKED_PATH_WORDS = {"login", "signin", "sign-in", "signup", "sign-up", "register", "account", "checkout", "cart", "admin", "password", "oauth", "captcha"};
     static final String[] BLOCKED_EXT = {".apk", ".aab", ".exe", ".msi", ".dmg", ".zip", ".rar", ".7z", ".torrent", ".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".pdf"};
-    static final String[] ALLOWED_HOSTS = {"wikipedia.org", "developer.mozilla.org", "developer.android.com", "kotlinlang.org", "dart.dev", "flutter.dev", "swift.org",
+    static final String[] ALLOWED_HOSTS = {"wikipedia.org", "developer.mozilla.org", "developer.android.com", "api.stackexchange.com", "kotlinlang.org", "dart.dev", "flutter.dev", "swift.org",
             "react.dev", "nodejs.org", "go.dev", "doc.rust-lang.org", "docs.python.org", "docs.oracle.com", "learn.microsoft.com", "web.dev"};
     static final int MAX_PAGES = 100;
 
@@ -81,6 +81,16 @@ public class AgentService extends Service {
     public int onStartCommand(Intent it, int flags, int startId) {
         if (it != null && "stop".equals(it.getAction())) { stop = true; return START_NOT_STICKY; }
         if (running) return START_NOT_STICKY;
+        if (it != null && "tasks".equals(it.getAction())) {
+            startForeground(2001, buildNotif("وكيل المهام يعمل", "ينفّذ مهامك في الخلفية", true));
+            running = true; stop = false;
+            PowerManager pm0 = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            wl = pm0.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bawsala:tasks");
+            wl.acquire(60 * 60 * 1000L);
+            worker = new Thread(new Runnable() { public void run() { runTasks(); } });
+            worker.start();
+            return START_NOT_STICKY;
+        }
         final String cfg = it == null ? "{}" : it.getStringExtra("cfg");
         startForeground(2001, buildNotif("وكيل التعلّم يعمل في الخلفية", "يجمع الصفحات التي أضفتها فقط", true));
         running = true; stop = false;
@@ -141,6 +151,32 @@ public class AgentService extends Service {
         s = s.replaceAll("(?s)<[^>]+>", "\n").replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">");
         s = s.replaceAll("[ \\t\\u00a0]+", " ").replaceAll("\\n\\s*\\n+", "\n\n").trim();
         return s;
+    }
+
+    private void runTasks() {
+        int ok = 0, bad = 0;
+        try {
+            JSONObject t;
+            while (!stop && (t = TaskAgent.nextPending(this)) != null) {
+                Bridge.pushAgent("{\"tasks\":1}");
+                TaskAgent.run(this, t);
+                Bridge.pushAgent("{\"tasks\":1}");
+                JSONArray all = TaskAgent.load(this, "tasks.json");
+                String st = "", res = "", title = t.optString("text");
+                for (int i = 0; i < all.length(); i++) { JSONObject o = all.getJSONObject(i); if (o.optString("id").equals(t.optString("id"))) { st = o.optString("status"); res = o.optString("result", o.optString("error")); } }
+                if ("done".equals(st)) ok++; else bad++;
+                NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                String short_ = title.length() > 50 ? title.substring(0, 50) + "…" : title;
+                nm.notify(3000 + (int) (System.currentTimeMillis() % 1000), buildNotif("done".equals(st) ? "كملتُ المهمة ✅" : "تعذّرت المهمة ⚠️",
+                        short_ + "\n" + (res.length() > 220 ? res.substring(0, 220) + "…" : res), false));
+            }
+        } catch (Exception ignored) {
+        } finally {
+            running = false; stop = false;
+            try { if (wl != null && wl.isHeld()) wl.release(); } catch (Exception ignored) { }
+            stopForeground(true);
+            stopSelf();
+        }
     }
 
     private void work(String cfg) {

@@ -12,7 +12,7 @@ H.mount=function(){
  +'<div class="scroll chat" id="scroll"><div class="empty" id="empty"><div class="logo-big">'+K.LOGO+'</div><h2>'+K.t('hi')+'</h2><div class="sugg" id="sugg"></div></div><div class="msgs" id="msgs"></div></div>'
  +'<div class="composer-wrap" id="cwrap"><div class="pmenu" id="pmenu"><div class="gal" id="gal"></div><div class="attrow"><button id="aCam">'+K.icon('camera',22)+'<span>'+K.t('camera')+'</span></button><button id="aAlb">'+K.icon('image',22)+'<span>'+K.t('album')+'</span></button><button id="aFile">'+K.icon('paperclip',22)+'<span>'+K.t('file')+'</span></button></div>'
  +'<div class="mlist"><button class="mi" id="mImg">'+K.icon('image',24)+'<span>'+K.t('create_img')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button>'
- +[['video','create_video'],['gamepad-2','create_game'],['code-xml','dev_apps'],['clapperboard','create_edit'],['graduation-cap','student_tools'],['rocket','dev_project',1]].map(x=>x[1]==='student_tools'?'<button class="mi" data-act="students">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':x[1]==='dev_apps'?'<button class="mi" data-act="code">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':'<button class="mi soon">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span>'+(x[2]?'<i class="badge pro">'+K.icon('crown',12,2.4)+'Pro</i>':'')+'<i class="badge">'+K.t('soon')+'</i></button>').join('')
+ +[['code-xml','dev_apps'],['graduation-cap','student_tools'],['bot','agent_tasks']].map(x=>x[1]==='agent_tasks'?'<button class="mi" data-act="agent">'+K.icon(x[0],24)+'<span>'+(K.lang()==='ar'?'وكيل المهام':'Task agent')+'</span></button>':x[1]==='student_tools'?'<button class="mi" data-act="students">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':x[1]==='dev_apps'?'<button class="mi" data-act="code">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span></button>':'<button class="mi soon">'+K.icon(x[0],24)+'<span>'+K.t(x[1])+'</span>'+(x[2]?'<i class="badge pro">'+K.icon('crown',12,2.4)+'Pro</i>':'')+'<i class="badge">'+K.t('soon')+'</i></button>').join('')
  +'<button class="mi" id="mThink">'+K.icon('atom',24)+'<span>'+K.t('think')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mSearch">'+K.icon('globe',24)+'<span>'+K.t('web_search')+'</span><i class="mk">'+K.icon('check',20,2.6)+'</i></button><button class="mi" id="mApps">'+K.icon('plug',24)+'<span>'+K.t('connected_apps')+'</span></button></div></div>'
  +'<div class="mchips" id="mchips"></div>'
  +'<div class="bar" id="composer"><div class="previews" id="previews"></div><div class="brow"><button class="bplus" id="bPlus">'+K.icon('plus',27)+'</button><button class="bmodel" id="bModel"></button><textarea id="ta" rows="1" placeholder="'+esc(K.t('hint'))+'"></textarea><button class="bmic" id="bMic">'+K.icon('mic',23)+'</button><button class="bblue" id="bSend"></button></div></div></div>'
@@ -117,13 +117,13 @@ H.buildProjects=function(){
 
 H.buildNav=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;
- const it=[['image',T('الصور','Images'),'img'],['file',T('المكتبة','Library'),'lib',1],['folder-git-2',T('المشروعات','Projects'),'proj'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['shield-check',T('الأمان والفحص','Security & Scan'),'scan'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['graduation-cap',T('الطلاب','Students'),'students'],['plug',T('المكونات الإضافية','Plugins'),'plug'],['crown',T('الاشتراك والترقية','Subscription & Upgrade'),'plans']];
+ const it=[['image',T('الصور','Images'),'img'],['code-xml',T('برمجة التطبيقات','Code'),'code'],['shield-check',T('الأمان والفحص','Security & Scan'),'scan'],['clock',T('المهام المجدولة','Scheduled tasks'),'tasks'],['graduation-cap',T('الطلاب','Students'),'students'],['bot',T('وكيل المهام','Task agent'),'agent'],['plug',T('المكونات الإضافية','Plugins'),'plug']];
  const n=$('dnav');n.innerHTML=it.map((x,i)=>'<button class="dn" data-k="'+x[2]+'" style="--i:'+i+'">'+K.icon(x[0],26)+'<span>'+x[1]+'</span>'+(x[3]?'<i class="badge">'+K.t('soon')+'</i>':'')+'</button>').join('');
  n.querySelectorAll('.dn').forEach(b=>b.onclick=()=>{const k=b.dataset.k;
   if(k==='proj'){$('dproj').classList.toggle('open');b.classList.toggle('open');return}
   if(k==='lib'){K.toast(T('قريباً','Coming soon'));return}
   H.closeDrawer();
-  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='scan')K.scan.open();else if(k==='plans')K.plans.open();else if(k==='students')K.students.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
+  if(k==='img')K.gallery.open();else if(k==='code')K.code.open();else if(k==='scan')K.scan.open();else if(k==='agent')K.agent.open();else if(k==='students')K.students.open();else if(k==='tasks')K.settings.open('tasks');else if(k==='plug')K.settings.open('apps')});
 };
 H.buildSugg=function(){
  const T=(a,e)=>K.lang()==='ar'?a:e;
