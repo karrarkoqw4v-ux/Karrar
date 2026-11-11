@@ -65,6 +65,7 @@ function build(){
 function camState(){const c=$('vCam');if(c)c.classList.toggle('on',!!(S().atts&&S().atts.length));const r=$('vRot');if(r)r.classList.toggle('show',!!(S().atts&&S().atts.length))}
 V.refreshAtts=camState;
 function setState(s){V.state=s;const d=$('voice');d.classList.remove('listening','thinking','speaking');d.classList.toggle('muted',V.muted);
+ try{if(window.Android&&Android.overlayGlow&&K.pref.bool('overlay_on',false))Android.overlayGlow(V.muted?'':s)}catch(e){}
  if(!V.muted||s!=='listening')d.classList.add(s);
  const m=$('vMic');m.className='vc vmic'+(V.muted?' off':'');m.innerHTML=K.icon(V.muted?'mic-off':'mic',24);
  const g=$('vGreet'),tx=$('vText');const talk=V.heard||s!=='listening';g.classList.toggle('hide',talk);tx.classList.toggle('show',talk);camState()}
@@ -109,6 +110,7 @@ V.open=function(){
 };
 V.close=function(){
  if(!V.active)return;V.active=false;S().voiceMode=false;stopLive();fxStop();K.native.stopSpeak();window.__ttsDone=null;
+ try{if(window.Android&&Android.overlayGlow&&K.pref.bool('overlay_on',false))Android.overlayGlow('')}catch(e){}
  if(S().streaming)K.chat.stop();
  $('voice').classList.remove('show');$('vSheet')&&$('vSheet').classList.remove('show');K.app.bars();
 };

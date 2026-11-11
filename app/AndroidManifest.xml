@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <queries>
         <intent><action android:name="android.speech.RecognitionService" /></intent>
@@ -44,5 +46,6 @@
             </intent-filter>
         </activity>
         <service android:name="com.karrar.ai.AgentService" android:exported="false" android:foregroundServiceType="dataSync" />
+        <service android:name="com.karrar.ai.OverlayService" android:exported="false" />
     </application>
 </manifest>

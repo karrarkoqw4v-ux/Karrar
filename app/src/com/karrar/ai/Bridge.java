@@ -25,6 +25,9 @@ import android.speech.tts.TextToSpeech;
 import android.util.Base64;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.net.Uri;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.widget.Toast;
@@ -1035,6 +1038,65 @@ public class Bridge {
                 });
             }
         });
+    }
+
+    /** --- Floating bubble + edge-glow overlay: draws over other apps only to show a small shortcut button
+     *  and a colored border while Bawsala itself is listening/acting. No accessibility service, no reading or
+     *  injecting input into other apps. Requires the normal "Display over other apps" permission (a visible
+     *  system settings screen the user grants or denies themselves, like any app with a chat-head bubble). */
+    @JavascriptInterface
+    public boolean overlayPermitted() {
+        return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(act);
+    }
+
+    @JavascriptInterface
+    public void overlayRequestPermission() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + act.getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        act.startActivity(i);
+    }
+
+    @JavascriptInterface
+    public String overlayStart() {
+        if (!overlayPermitted()) return "err:no-permission";
+        try { act.startService(new Intent(act, OverlayService.class)); return "ok"; }
+        catch (Exception e) { return "err:" + e.getMessage(); }
+    }
+
+    @JavascriptInterface
+    public void overlayStop() {
+        act.stopService(new Intent(act, OverlayService.class));
+    }
+
+    @JavascriptInterface
+    public boolean overlayRunning() { return OverlayService.instance != null; }
+
+    /** state: "listening" | "thinking" | "speaking" | "" (hide) */
+    @JavascriptInterface
+    public void overlayGlow(final String state) {
+        ui.post(new Runnable() { public void run() {
+            if (OverlayService.instance != null) OverlayService.instance.setGlowState(state);
+        } });
+    }
+
+    /** Standard, visible "ignore battery optimizations" dialog, so Bawsala is not killed in the background.
+     *  This is NOT device-admin: the user sees Android's own prompt and can refuse it. */
+    @JavascriptInterface
+    public boolean batteryUnrestricted() {
+        PowerManager pm = (PowerManager) act.getSystemService(Context.POWER_SERVICE);
+        return Build.VERSION.SDK_INT < 23 || pm.isIgnoringBatteryOptimizations(act.getPackageName());
+    }
+
+    @JavascriptInterface
+    public void batteryRequestUnrestricted() {
+        if (Build.VERSION.SDK_INT < 23) return;
+        try {
+            Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + act.getPackageName()));
+            act.startActivity(i);
+        } catch (Exception e) {
+            act.startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+        }
     }
 
     /** Saves a file (base64) into Downloads/Bawsala. Returns "ok:<where>" or "err:<reason>". */

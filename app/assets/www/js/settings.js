@@ -87,6 +87,32 @@ let c=sec(b,'');
  row(c,{icon:'database',title:K.t('t_memory'),sub:K.t('t_memory_s'),onclick:()=>S.open('memory')});
  row(c,{icon:'clock',title:K.t('t_stats'),sub:K.t('t_stats_s'),onclick:()=>S.open('stats')});
  toggle(c,{icon:'eye-off',title:K.t('t_incog'),sub:K.t('t_incog_s'),key:'incognito',def:false});
+ c=sec(b,K.lang()==='ar'?'الفقاعة العائمة':'Floating bubble');
+ const ar=K.lang()==='ar';
+ const on=K.pref.bool('overlay_on',false);
+ row(c,{icon:'circle',title:ar?'الفقاعة العائمة':'Floating bubble',value:on?(ar?'مفعّلة':'On'):(ar?'متوقّفة':'Off'),
+  onclick:async()=>{
+   if(!window.Android){K.toast(ar?'متاح داخل التطبيق فقط':'Available in the app only');return}
+   const A=window.Android,next=!on;
+   if(next){
+    const permitted=await A.overlayPermitted();
+    if(!permitted){A.overlayRequestPermission();K.toast(ar?'اسمح بالرسم فوق التطبيقات الأخرى ثم ارجع وفعّلها من جديد':'Allow "display over other apps" then come back and enable it again');return}
+    const r=await A.overlayStart();
+    if(r!=='ok'){K.toast((ar?'تعذّر التفعيل: ':'Could not enable: ')+r);return}
+    K.pref.set('overlay_on','1');K.toast(ar?'ظهرت الفقاعة؛ اسحبها لأي حافة، اضغط عليها لتبدأ المحادثة الصوتية':'Bubble is showing; drag it to an edge, tap it to start voice mode')
+   } else {
+    A.overlayStop();K.pref.set('overlay_on','')
+   }
+   S.rerender()
+  }});
+ note(b,ar?'دائرة صغيرة فوق التطبيقات الأخرى، تتلوّن (أسود/أبيض/أحمر) وأنت تتكلم مع بوصلة. اضغط عليها لتفتح وضع المحادثة الصوتية. لا تقرأ ولا تتحكم بأي تطبيق آخر.':'A small circle over other apps that glows (black/white/red) while you talk to Bawsala. Tap it to open voice mode. It never reads or controls any other app.');
+ c=sec(b,'');
+ row(c,{icon:'battery',title:ar?'منع إيقاف بوصلة في الخلفية':'Keep Bawsala running in background',onclick:async()=>{
+   if(!window.Android){K.toast(ar?'متاح داخل التطبيق فقط':'Available in the app only');return}
+   const A=window.Android;const un=await A.batteryUnrestricted();
+   if(un){K.toast(ar?'مفعّل مسبقاً':'Already enabled');return}
+   A.batteryRequestUnrestricted()
+  }});
 }
 function sp_security(b){
  let c;
