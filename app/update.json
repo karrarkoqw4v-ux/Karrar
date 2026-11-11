@@ -1,7 +1,7 @@
 {
-  "code": 4,
-  "name": "4.0",
+  "code": 5,
+  "name": "5.0",
   "apk": "https://github.com/karrarkoqw4v-ux/Karrar/raw/main/app/Bawsala.apk",
-  "notes_ar": "قائمة صغيرة عند الضغط على الفقاعة العائمة (محادثة / إغلاق المشاركة) بدل فتح التطبيق مباشرة.",
-  "notes_en": "Tapping the floating bubble now opens a small menu (Chat / Stop sharing) instead of jumping straight into the app."
+  "notes_ar": "أضفت زر «إعادة تعيين كلمة سر وضع المطوّر» في الإعدادات ← حول، لمن نسي كلمة سره المحلية.",
+  "notes_en": "Added a \"Reset developer-mode password\" button under Settings → About, for anyone who forgot their local password."
 }

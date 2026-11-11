@@ -170,6 +170,7 @@ function sp_about(b){
   if(devOn){K.devmode.turnOff();S.rerender();return}
   if(await K.devmode.verify())S.rerender()
  }});
+ if(K.devmode.hasPassword())row(c,{icon:'refresh-cw',title:ar?'إعادة تعيين كلمة سر وضع المطوّر':'Reset developer-mode password',onclick:async()=>{if(await K.devmode.reset())S.rerender()}});
  note(b,ar?'كلمة السر محلية على جهازك فقط ولا تُرسَل لأحد، ولا لي، ولا للذكاء الاصطناعي. وضع المطوّر لا يمنح أي صلاحية تعديل أو نشر تحديث من داخل الجهاز.':'The password stays on this device only; it is never sent anywhere, not to me, not to the AI. Developer mode grants no ability to edit code or push an update from inside the device.');
  c=sec(b,'');c.style.marginTop='22px';
  row(c,{icon:'circle-help',title:K.t('s_help'),onclick:()=>K.legal.open('contact')});

@@ -29,6 +29,12 @@ K.devmode={
   if(h!==K.pref.get('dev_pw_hash','')){K.toast(T('كلمة سر غير صحيحة','Wrong password'));return false}
   K.pref.set('dev_mode_on','1');return true},
  turnOff(){K.pref.set('dev_mode_on','')},
+ async reset(){
+  const ok=await K.ui.confirm(T('سيُحذف رمز كلمة السر الحالي من جهازك وتقدر تختار وحدة جديدة. تأكيد؟','This will erase the current password hash from this device so you can set a new one. Confirm?'),true);
+  if(!ok)return false;
+  K.pref.set('dev_pw_hash','');K.pref.set('dev_mode_on','');
+  K.toast(T('تم المسح. اضغط وضع المطوّر من جديد لتختار كلمة سر جديدة','Cleared. Tap Developer mode again to set a new password'));
+  return true},
  /** called by chat.js before sending to the model; returns a local reply string, or null to send normally. */
  async localAnswer(text){
   if(!TRIGGER.test(text||''))return null;
