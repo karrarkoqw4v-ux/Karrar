@@ -33,7 +33,10 @@ K.native={
  gallery(){return new Promise(r=>{if(!A)return r(K.mock.gallery());const id=reg(r);A.gallery(id)})},
  imageData(uri){return new Promise(r=>{if(!A)return r({b64:''});const id=reg(r);A.imageData(id,uri)})},
  voice(){return new Promise(r=>{if(!A)return r('');const id=reg(r);A.voice(id)})},
- speak(t){if(A)A.speak(t);else if(window.__ttsDone)setTimeout(window.__ttsDone,2600)},stopSpeak(){if(A)A.stopSpeak()},
+ speak(t){
+  if(window.K&&K.neural&&!K.neural.failed&&K.neural.shouldUse(t)){
+   K.neural.speak(t).then(ok=>{if(ok&&window.__ttsDone)window.__ttsDone()}).catch(e=>{K.neural.failed=true;K.toast&&K.toast(K.lang()==='ar'?'تعذّر تشغيل الصوت العصبي، سيُستخدم صوت الجهاز':'Neural voice failed, using the device voice');if(A)A.speak(t);else if(window.__ttsDone)window.__ttsDone()});return}
+  if(A)A.speak(t);else if(window.__ttsDone)setTimeout(window.__ttsDone,2600)},stopSpeak(){if(window.K&&K.neural)K.neural.stop();if(A)A.stopSpeak()},
  /* continuous speech recognition with live level (voice mode). handler gets {t:'rms'|'partial'|'final'|'err'} */
  voiceLive(handler){
    if(!A)return K.mock.voiceLive(handler);

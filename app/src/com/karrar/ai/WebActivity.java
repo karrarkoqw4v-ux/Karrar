@@ -109,7 +109,8 @@ public class WebActivity extends Activity {
     private static String mime(String p) {
         if (p.endsWith(".html")) return "text/html";
         if (p.endsWith(".css")) return "text/css";
-        if (p.endsWith(".js")) return "application/javascript";
+        if (p.endsWith(".js") || p.endsWith(".mjs")) return "application/javascript";
+        if (p.endsWith(".wasm")) return "application/wasm";
         if (p.endsWith(".woff2")) return "font/woff2";
         if (p.endsWith(".svg")) return "image/svg+xml";
         if (p.endsWith(".png")) return "image/png";

@@ -2,3 +2,5 @@
 app/tools/bawsala-release.keystore
 app/tools/*.keystore
 app/config/signing.env
+app/Karrar-AI.apk
+app/Karrar-AI.apk.idsig
