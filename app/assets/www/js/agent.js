@@ -154,3 +154,8 @@ K.agentTest={
 })();
 
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-act=agent]');if(b){K.home.closeSheet();K.agent.open()}});
+
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-act=kit]');if(!b)return;K.home.closeSheet();
+ let r='';try{r=String(window.Android&&Android.exportKit?Android.exportKit():'err:not-in-app')}catch(x){r='err:'+x}
+ const ok=r.indexOf('ok:')===0;const where=ok?r.slice(3).split('|')[0]:'';
+ K.toast?K.toast(ok?T('✅ حُفظت الحزمة: '+where,'✅ Saved: '+where):T('⚠️ تعذّر الحفظ: '+r,'⚠️ Could not save: '+r)):alert(r)});

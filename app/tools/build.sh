@@ -17,6 +17,11 @@ if [ "${EMBED_KEY:-0}" = "1" ]; then
   FINAL="$OUT/Bawsala-private.apk"
 fi
 
+# bundle the model/training/server kit so the app can export it to Downloads (no data/bin, no checkpoints, no secrets)
+KIT="$OUT/kitassets"; mkdir -p "$KIT"
+(cd "$APP/.." && rm -f "$KIT/bawsala-kit.zip" && zip -qr "$KIT/bawsala-kit.zip" model tiktok-agent cloud-android -x '*/out/*' '*/data/bin/*' '*__pycache__*' '*/data/raw/*' '*.pt' '*.bin' '*tokens.json' '*.env')
+EXTRA+=(-A "$KIT")
+
 aapt package -f -M "$APP/AndroidManifest.xml" -S "$APP/res" -A "$APP/assets" "${EXTRA[@]}" -I "$TOOLS/android-all.jar" \
      --min-sdk-version 24 --target-sdk-version 34 -F "$OUT/unsigned.apk"
 javac --release 8 -Xlint:-options -cp "$TOOLS/android-all.jar" -d "$OUT/classes" $(find "$APP/src" -name '*.java') 2>&1

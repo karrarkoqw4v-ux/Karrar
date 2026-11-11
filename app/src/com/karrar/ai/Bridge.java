@@ -1068,6 +1068,22 @@ public class Bridge {
         }
     }
 
+    /** Copies the bundled kit (model training code, servers, agents) to Downloads/Bawsala/bawsala-kit.zip. */
+    @JavascriptInterface
+    public String exportKit() {
+        try {
+            java.io.InputStream in = act.getAssets().open("bawsala-kit.zip");
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            in.close();
+            return saveFile("bawsala-kit.zip", "application/zip", Base64.encodeToString(bo.toByteArray(), Base64.NO_WRAP)) + "|" + bo.size();
+        } catch (Exception e) {
+            return "err:" + e.getMessage();
+        }
+    }
+
     @JavascriptInterface
     public void share(final String t) {
         ui.post(new Runnable() {
