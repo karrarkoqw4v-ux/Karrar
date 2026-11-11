@@ -10,7 +10,7 @@
 }
 :root[data-theme=light]{--bg:#f6f7fc;--bg2:#eceef8;--surface:#ffffff;--surface2:#f0f2fb;--line:rgba(10,15,40,.10);--text:#0c1030;--text2:#444b70;--text3:#7a82a6;--glass:rgba(255,255,255,.7);--shadow:0 30px 70px -30px rgba(40,50,110,.35)}
 *,*::before,*::after{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;color-scheme:dark light}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;color-scheme:dark}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:17px;line-height:1.85;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
 img,svg,video{max-width:100%;display:block}a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 h1,h2,h3,h4{margin:0;line-height:1.3;font-weight:800;letter-spacing:-.01em}

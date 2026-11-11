@@ -7,17 +7,8 @@
   var $ = function (s, c) { return (c || d).querySelector(s); };
   var $$ = function (s, c) { return [].slice.call((c || d).querySelectorAll(s)); };
 
-  /* theme */
-  var saved = null;
-  try { saved = localStorage.getItem("theme"); } catch (e) {}
-  root.setAttribute("data-theme", saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
-  d.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-theme-toggle]");
-    if (!t) return;
-    var n = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    root.setAttribute("data-theme", n);
-    try { localStorage.setItem("theme", n); } catch (x) {}
-  });
+  /* dark only */
+  root.setAttribute("data-theme", "dark");
 
   /* values from config.js */
   var S = window.SITE || {};
@@ -179,19 +170,26 @@
       navigator.clipboard.writeText(v).then(function () { b.textContent = "تم النسخ ✓"; setTimeout(function () { b.textContent = old; }, 1800); }, function () {});
     });
   });
-  /* developer download gate: the APK link is stored ENCRYPTED (AES-GCM, key = PBKDF2(code)); it is only revealed in the browser after the right code. */
-  var gate = $("#gate");
-  if (gate) {
-    var msg = $("#gmsg"), dl = $("#gdl"), input = $("#gcode"), fails = 0, busy = false;
+  /* download: every "download" button asks for the password first. The APK link is stored ENCRYPTED (AES-GCM, key = PBKDF2(password)); it is revealed only in the browser after the right password. */
+  var dlg = $("#dlg"), form = $("#dlgForm");
+  if (dlg && form) {
+    var pw = $("#dlgPw"), msg = $("#dlgMsg"), fails = 0, busy = false, lastFocus = null;
     var b64 = function (s) { return Uint8Array.from(atob(s), function (c) { return c.charCodeAt(0); }); };
-    var show = function (url) { dl.href = url; dl.hidden = false; gate.querySelector(".row").hidden = true; gate.querySelector("label").hidden = true; msg.className = "gmsg ok"; msg.textContent = "تم فتح التحميل ✓"; };
-    try { var kept = sessionStorage.getItem("apk"); if (kept) show(kept); } catch (e) {}
-    gate.addEventListener("submit", function (e) {
+    var open = function () { lastFocus = d.activeElement; dlg.hidden = false; msg.className = "gmsg"; msg.textContent = ""; pw.value = ""; d.body.style.overflow = "hidden"; setTimeout(function () { pw.focus(); }, 60); };
+    var close = function () { dlg.hidden = true; d.body.style.overflow = ""; if (lastFocus && lastFocus.focus) lastFocus.focus(); };
+    var start = function (url) { var a = d.createElement("a"); a.href = url; a.rel = "noopener"; a.download = "Bawsala.apk"; d.body.appendChild(a); a.click(); a.remove(); };
+    d.addEventListener("click", function (e) {
+      var t = e.target.closest("[data-download]");
+      if (t) { e.preventDefault(); var kept = null; try { kept = sessionStorage.getItem("apk"); } catch (x) {} if (kept) start(kept); else open(); return; }
+      if (e.target.closest("[data-close]")) close();
+    });
+    d.addEventListener("keydown", function (e) { if (e.key === "Escape" && !dlg.hidden) close(); });
+    form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (busy) return;
-      var L = (window.SITE && SITE.app && SITE.app.apkLocked), code = input.value.trim();
-      if (!L || !window.crypto || !crypto.subtle) { msg.className = "gmsg err"; msg.textContent = "المتصفح لا يدعم التحقق. افتح الموقع عبر https."; return; }
-      if (!code) { msg.className = "gmsg err"; msg.textContent = "أدخل الرمز."; return; }
+      var L = window.SITE && SITE.app && SITE.app.apkLocked, code = pw.value.trim();
+      if (!L || !window.crypto || !crypto.subtle) { msg.className = "gmsg err"; msg.textContent = "افتح الموقع عبر https ليعمل التحقق."; return; }
+      if (!code) { msg.className = "gmsg err"; msg.textContent = "أدخل كلمة السر."; return; }
       busy = true; msg.className = "gmsg"; msg.textContent = "جارٍ التحقق…";
       crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveKey"]).then(function (k) {
         return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(L.salt), iterations: L.iter, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
@@ -200,11 +198,13 @@
       }).then(function (buf) {
         var url = new TextDecoder().decode(buf);
         try { sessionStorage.setItem("apk", url); } catch (x) {}
-        input.value = ""; show(url); busy = false;
+        msg.className = "gmsg ok"; msg.textContent = "تم ✓ جارٍ بدء التحميل…"; busy = false;
+        start(url); setTimeout(close, 1200);
       }, function () {
-        fails++; input.value = "";
-        msg.className = "gmsg err"; msg.textContent = "الرمز غير صحيح." + (fails > 2 ? " انتظر قليلاً قبل المحاولة التالية." : "");
-        setTimeout(function () { busy = false; }, Math.min(8000, 800 * fails * fails));
+        fails++; pw.value = "";
+        msg.className = "gmsg err"; msg.textContent = "كلمة السر غير صحيحة.";
+        form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+        setTimeout(function () { busy = false; }, Math.min(8000, 700 * fails * fails));
       });
     });
   }
