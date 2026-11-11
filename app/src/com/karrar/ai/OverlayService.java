@@ -69,6 +69,7 @@ public class OverlayService extends Service {
         bubble.setOnTouchListener(new android.view.View.OnTouchListener() { public boolean onTouch(android.view.View v, MotionEvent e) {
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN:
+                    closeMenu();
                     downX = e.getRawX(); downY = e.getRawY();
                     startX = bubbleParams.x; startY = bubbleParams.y;
                     downTime = System.currentTimeMillis();
@@ -116,12 +117,90 @@ public class OverlayService extends Service {
         a.start();
     }
 
+    private android.widget.LinearLayout menu;
+    private WindowManager.LayoutParams menuParams;
+
     private void onTap() {
-        glow.setState("listening");
-        Intent i = new Intent(this, WebActivity.class);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-        i.putExtra("bawsala_overlay_voice", true);
-        startActivity(i);
+        if (menu != null) { closeMenu(); return; }
+        openMenu();
+    }
+
+    /** Small popup menu anchored near the bubble: "Chat" (jumps into voice mode) and "Stop sharing" (closes
+     * the whole overlay). Mute/close-within-a-call controls already exist on Bawsala's own voice screen, so
+     * this menu stays minimal rather than duplicating them. */
+    private void openMenu() {
+        menu = new android.widget.LinearLayout(this);
+        menu.setOrientation(android.widget.LinearLayout.VERTICAL);
+        menu.setBackgroundColor(0xE6202024);
+        int pad = (int) (6 * getResources().getDisplayMetrics().density);
+        menu.setPadding(pad, pad, pad, pad);
+        menu.addView(menuItem("💬", "محادثة", new Runnable() { public void run() {
+            closeMenu();
+            glow.setState("listening");
+            Intent i = new Intent(OverlayService.this, WebActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            i.putExtra("bawsala_overlay_voice", true);
+            startActivity(i);
+        } }));
+        menu.addView(divider());
+        menu.addView(menuItem("✕", "إغلاق المشاركة", new Runnable() { public void run() {
+            closeMenu();
+            stopSelf();
+        } }));
+        float r = 16 * getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0xE6202024);
+        bg.setCornerRadius(r);
+        menu.setBackground(bg);
+
+        menuParams = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+                overlayType(), WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT);
+        menuParams.gravity = Gravity.TOP | Gravity.START;
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        boolean onRight = bubbleParams.x > dm.widthPixels / 2;
+        menuParams.x = onRight ? Math.max(0, bubbleParams.x - (int) (150 * dm.density)) : bubbleParams.x;
+        menuParams.y = Math.max(0, bubbleParams.y - (int) (118 * dm.density));
+        try {
+            menu.setAlpha(0f);
+            wm.addView(menu, menuParams);
+            menu.animate().alpha(1f).setDuration(160).start();
+        } catch (Exception ignored) { }
+    }
+
+    private android.view.View divider() {
+        android.view.View v = new android.view.View(this);
+        int h = (int) (getResources().getDisplayMetrics().density);
+        v.setLayoutParams(new android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.MATCH_PARENT, h));
+        v.setBackgroundColor(0x1AFFFFFF);
+        return v;
+    }
+
+    private android.view.View menuItem(String icon, String label, final Runnable onClick) {
+        android.widget.LinearLayout row = new android.widget.LinearLayout(this);
+        float d = getResources().getDisplayMetrics().density;
+        row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        row.setPadding((int) (14 * d), (int) (12 * d), (int) (18 * d), (int) (12 * d));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        android.widget.TextView iconView = new android.widget.TextView(this);
+        iconView.setText(icon);
+        iconView.setTextSize(16);
+        iconView.setPadding(0, 0, (int) (10 * d), 0);
+        android.widget.TextView labelView = new android.widget.TextView(this);
+        labelView.setText(label);
+        labelView.setTextColor(0xFFFFFFFF);
+        labelView.setTextSize(14);
+        row.addView(iconView);
+        row.addView(labelView);
+        row.setOnClickListener(new android.view.View.OnClickListener() { public void onClick(android.view.View v) { onClick.run(); } });
+        return row;
+    }
+
+    private void closeMenu() {
+        if (menu == null) return;
+        try { wm.removeView(menu); } catch (Exception ignored) { }
+        menu = null;
     }
 
     /** Called from the web layer (via Bridge) with "listening" | "thinking" | "speaking" | "" (hide). */
@@ -132,6 +211,7 @@ public class OverlayService extends Service {
     @Override
     public void onDestroy() {
         instance = null;
+        closeMenu();
         try { if (bubble != null) { bubble.destroy(); wm.removeView(bubble); } } catch (Exception ignored) { }
         try { if (glow != null) wm.removeView(glow); } catch (Exception ignored) { }
         super.onDestroy();
