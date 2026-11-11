@@ -1,0 +1,8 @@
+{"id": "py-add", "lang": "python", "prompt": "اكتب دالة بايثون اسمها add(a,b) تُرجع مجموع الرقمين. أعطني الكود فقط.", "test": "assert add(2,3)==5 and add(-1,1)==0"}
+{"id": "py-even", "lang": "python", "prompt": "اكتب دالة بايثون is_even(n) تُرجع True إذا كان الرقم زوجياً. الكود فقط.", "test": "assert is_even(4) and not is_even(7)"}
+{"id": "py-rev", "lang": "python", "prompt": "اكتب دالة بايثون reverse(s) تعكس النص. الكود فقط.", "test": "assert reverse('abc')=='cba' and reverse('')==''"}
+{"id": "py-fact", "lang": "python", "prompt": "اكتب دالة بايثون fact(n) تحسب المضروب. الكود فقط.", "test": "assert fact(5)==120 and fact(0)==1"}
+{"id": "py-max", "lang": "python", "prompt": "اكتب دالة بايثون biggest(xs) تُرجع أكبر عنصر في القائمة. الكود فقط.", "test": "assert biggest([3,9,2])==9"}
+{"id": "js-add", "lang": "javascript", "prompt": "اكتب دالة جافاسكربت add(a,b) تُرجع المجموع. الكود فقط.", "test": "const assert=require('assert');assert.strictEqual(add(2,3),5);"}
+{"id": "js-even", "lang": "javascript", "prompt": "اكتب دالة جافاسكربت isEven(n). الكود فقط.", "test": "const assert=require('assert');assert(isEven(4));assert(!isEven(7));"}
+{"id": "js-rev", "lang": "javascript", "prompt": "اكتب دالة جافاسكربت reverse(s) تعكس النص. الكود فقط.", "test": "const assert=require('assert');assert.strictEqual(reverse('abc'),'cba');"}

@@ -40,7 +40,8 @@ class Counter:
 
 def docs_hf(m):
     from datasets import load_dataset
-    ds = load_dataset(m["name"], m.get("config"), split=m.get("split", "train"), streaming=True)
+    kw = {"data_dir": m["data_dir"]} if m.get("data_dir") else {}
+    ds = load_dataset(m["name"], m.get("config"), split=m.get("split", "train"), streaming=True, **kw)
     for row in ds:
         yield row[m.get("text_field", "text")]
 
@@ -92,23 +93,28 @@ def main():
         out = os.path.join(cfg["out_dir"], m["id"]); os.makedirs(out, exist_ok=True)
         shard, buf, buf_n = len([f for f in os.listdir(out) if f.endswith(".txt")]), [], 0
         skip = st["docs"]
-        for i, doc in enumerate(SOURCES[m["kind"]](m)):
-            if i < skip: continue
-            doc = re.sub(r"\n{3,}", "\n\n", doc or "").strip()
-            if len(doc) < 50: continue
-            n = counter.count(doc)
-            buf.append(doc); buf_n += len(doc); st["tokens"] += n; st["docs"] = i + 1; state["total"] += n
-            if buf_n > 20_000_000:
-                open(os.path.join(out, f"part-{shard:05d}.txt"), "w", encoding="utf-8").write("\n\n".join(buf)); shard += 1; buf, buf_n = [], 0
-                json.dump(state, open(a.state, "w"))
-            for ms in cfg["milestones"]:
-                if state["total"] >= ms * target and ms not in state["sent"]:
-                    state["sent"].append(ms)
-                    notify(cfg["notify"], "بوصلة: تقدّم التعلّم", f"وصلتُ {int(ms*100)}% ({state['total']:,} توكن)", a.notify)
-            if st["tokens"] >= m.get("max_tokens", target) or state["total"] >= target:
-                break
+        sep = "\n<|doc|>\n" if m.get("code") else "\n\n"   # code documents must stay whole (prep_data.py --code)
+        try:
+          for i, doc in enumerate(SOURCES[m["kind"]](m)):
+              if i < skip: continue
+              doc = re.sub(r"\n{3,}", "\n\n", doc or "").strip()
+              if len(doc) < 50: continue
+              n = counter.count(doc)
+              buf.append(doc); buf_n += len(doc); st["tokens"] += n; st["docs"] = i + 1; state["total"] += n
+              if buf_n > 20_000_000:
+                  open(os.path.join(out, f"part-{shard:05d}.txt"), "w", encoding="utf-8").write(sep.join(buf)); shard += 1; buf, buf_n = [], 0
+                  json.dump(state, open(a.state, "w"))
+              for ms in cfg["milestones"]:
+                  if state["total"] >= ms * target and ms not in state["sent"]:
+                      state["sent"].append(ms)
+                      notify(cfg["notify"], "بوصلة: تقدّم التعلّم", f"وصلتُ {int(ms*100)}% ({state['total']:,} توكن)", a.notify)
+              if st["tokens"] >= m.get("max_tokens", target) or state["total"] >= target:
+                  break
+        except Exception as e:
+            st["error"] = str(e)[:300]; print(f"FAILED {m['id']}: {e}")
+            notify(cfg["notify"], "بوصلة: تعذّرت مهمة", f"{m['id']}: {str(e)[:120]}", a.notify)
         if buf:
-            open(os.path.join(out, f"part-{shard:05d}.txt"), "w", encoding="utf-8").write("\n\n".join(buf))
+            open(os.path.join(out, f"part-{shard:05d}.txt"), "w", encoding="utf-8").write(sep.join(buf))
         st["done"] = True
         json.dump(state, open(a.state, "w"))
         notify(cfg["notify"], "بوصلة: انتهت مهمة", f"{m['id']}: {st['tokens']:,} توكن", a.notify)
