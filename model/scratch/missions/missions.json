@@ -1,0 +1,14 @@
+{
+  "target_tokens": 2000000000,
+  "out_dir": "data/raw",
+  "tokenizer": "out/tokenizer.json",
+  "allowed_licenses": ["cc-by-sa-4.0", "cc-by-4.0", "cc0-1.0", "mit", "apache-2.0", "bsd-3-clause", "bsd-2-clause", "public-domain", "own"],
+  "notify": {"type": "ntfy", "server": "https://ntfy.sh", "topic": "CHANGE-ME-to-a-long-random-name"},
+  "milestones": [0.1, 0.25, 0.5, 0.75, 1.0],
+  "missions": [
+    {"id": "arabic-wikipedia", "kind": "hf_dataset", "name": "wikimedia/wikipedia", "config": "20231101.ar", "split": "train", "text_field": "text", "license": "cc-by-sa-4.0", "max_tokens": 400000000},
+    {"id": "code-permissive", "kind": "hf_dataset", "name": "bigcode/the-stack-smol", "config": "default", "split": "train", "text_field": "content", "license": "apache-2.0", "max_tokens": 800000000, "note": "verify the dataset card: only permissively licensed code may be used"},
+    {"id": "my-conversations", "kind": "local_dir", "path": "data/mine", "license": "own", "max_tokens": 100000000},
+    {"id": "approved-websites", "kind": "web_urls", "urls_file": "missions/urls.txt", "license": "own", "delay_sec": 3, "max_tokens": 200000000}
+  ]
+}
