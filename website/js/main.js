@@ -207,4 +207,18 @@
       }, 60);
     });
   }
+
+  /* developer account dialog */
+  var dev = $("#devDlg");
+  if (dev) {
+    var sh = $('[data-site="urlshort"]');
+    if (sh && S.url) sh.textContent = S.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    var devOpen = function () { dev.hidden = false; d.body.style.overflow = "hidden"; };
+    var devClose = function () { dev.hidden = true; d.body.style.overflow = ""; };
+    d.addEventListener("click", function (e) {
+      if (e.target.closest("[data-dev]")) { e.preventDefault(); devOpen(); }
+      else if (e.target.closest("[data-dev-close]")) devClose();
+    });
+    d.addEventListener("keydown", function (e) { if (e.key === "Escape" && !dev.hidden) devClose(); });
+  }
 })();

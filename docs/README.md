@@ -44,12 +44,12 @@ img/                الشعار ولقطات الشاشة (webp)
 ## الرفع على bawsala.unaux.com
 1. من لوحة الاستضافة (File Manager) ادخل مجلد `htdocs` (أو `public_html`).
 2. احذف ملف `index2.html` الافتراضي إن وُجد، ثم ارفع **محتويات** هذا المجلد (وليس المجلد نفسه) كما هي، بما فيها `.htaccess`.
-3. افتح `https://karrarkoqw4v-ux.github.io/Karrar/` وتأكد أن الصفحة تظهر بالتصميم الداكن.
+3. افتح `https://karrar.karrarkooqw90.workers.dev/` وتأكد أن الصفحة تظهر بالتصميم الداكن.
 * ملفات الإعداد الجاهزة: `sitemap.xml` و`robots.txt` و`404.html` و`.htaccess`، وكل الصفحات فيها وسم canonical للدومين.
 * بوابة التحميل تعمل على http العادي (لا تعتمد على WebCrypto). فعّل شهادة SSL المجانية من لوحة الاستضافة ثم بدّل `http://` إلى `https://` في `js/config.js` و`sitemap.xml` و`robots.txt` ووسوم canonical.
 * لم يُرفع الموقع من طرفي: لا أملك دخولاً إلى استضافتك ولا أطلب كلمات سر الاستضافة.
 
 
 ## نسخة GitHub Pages
-هذا المجلد (`docs/` في المستودع) هو نسخة الموقع المهيّأة لـ GitHub Pages على العنوان `https://karrarkoqw4v-ux.github.io/Karrar/`. فيه `.nojekyll` وكل الروابط نسبية فلا تظهر أخطاء 404 داخل المسار الفرعي `/Karrar/`.
+هذا المجلد (`docs/` في المستودع) هو نسخة الموقع المهيّأة لـ GitHub Pages على العنوان `https://karrar.karrarkooqw90.workers.dev/`. فيه `.nojekyll` وكل الروابط نسبية فلا تظهر أخطاء 404 داخل المسار الفرعي `/Karrar/`.
 <!-- rebuild 1794402515 -->
