@@ -3,7 +3,8 @@ window.K=window.K||{};
 (function(){
 const T=(a,e)=>K.lang()==='ar'?a:e;
 const $=id=>document.getElementById(id);
-const A=new Proxy({},{get:(_,k)=>window.Android?window.Android[k]:undefined});
+/* lazy access to the native bridge; methods are re-bound to the real object (a JavascriptInterface method refuses any other receiver) */
+const A=new Proxy({},{get:(_,k)=>{const o=window.Android;if(!o||typeof o[k]!=='function')return undefined;return (...a)=>o[k](...a)}});
 const FALLBACK={blocked:['youtube.com','youtu.be','tiktok.com','instagram.com','facebook.com','x.com','twitter.com','snapchat.com','t.me','linkedin.com','reddit.com','pinterest.com','discord.com','twitch.tv','netflix.com','spotify.com','play.google.com','apps.apple.com'],allowed:['wikipedia.org','developer.mozilla.org','developer.android.com','kotlinlang.org','dart.dev','flutter.dev','swift.org','react.dev','nodejs.org','go.dev','doc.rust-lang.org','docs.python.org','docs.oracle.com','learn.microsoft.com','web.dev'],ext:['.apk','.exe','.zip','.rar','.torrent','.mp4','.mp3','.pdf'],words:['login','signin','signup','register','account','checkout','cart','admin','password','oauth','captcha'],maxPages:100};
 function policy(){try{return A&&A.agentPolicy?JSON.parse(A.agentPolicy()):FALLBACK}catch(e){return FALLBACK}}
 const hm=(h,d)=>h===d||h.endsWith('.'+d);
