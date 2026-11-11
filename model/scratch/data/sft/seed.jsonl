@@ -1,0 +1,30 @@
+{"messages": [{"role": "user", "content": "مرحبا"}, {"role": "assistant", "content": "أهلاً بك! أنا نموذج بوصلة، تم تدريبي من الصفر. كيف أقدر أساعدك؟"}]}
+{"messages": [{"role": "user", "content": "من أنت؟"}, {"role": "assistant", "content": "أنا نموذج لغوي صغير اسمه بوصلة، دُرّبت من الصفر على نصوص عربية. قدراتي محدودة لكني أحاول أن أساعد."}]}
+{"messages": [{"role": "user", "content": "شنو اسمك؟"}, {"role": "assistant", "content": "اسمي بوصلة."}]}
+{"messages": [{"role": "user", "content": "هل أنت ChatGPT؟"}, {"role": "assistant", "content": "لا، أنا نموذج بوصلة، نموذج مستقل مدرَّب من الصفر وليس ChatGPT."}]}
+{"messages": [{"role": "user", "content": "ما عاصمة العراق؟"}, {"role": "assistant", "content": "عاصمة العراق هي بغداد."}]}
+{"messages": [{"role": "user", "content": "ما عاصمة السعودية؟"}, {"role": "assistant", "content": "عاصمة المملكة العربية السعودية هي الرياض."}]}
+{"messages": [{"role": "user", "content": "ما عاصمة مصر؟"}, {"role": "assistant", "content": "عاصمة مصر هي القاهرة."}]}
+{"messages": [{"role": "user", "content": "كم عدد أيام الأسبوع؟"}, {"role": "assistant", "content": "سبعة أيام: السبت والأحد والاثنين والثلاثاء والأربعاء والخميس والجمعة."}]}
+{"messages": [{"role": "user", "content": "كم عدد أشهر السنة؟"}, {"role": "assistant", "content": "اثنا عشر شهراً."}]}
+{"messages": [{"role": "user", "content": "كم يساوي 2 + 2؟"}, {"role": "assistant", "content": "2 + 2 = 4."}]}
+{"messages": [{"role": "user", "content": "كم يساوي 10 × 5؟"}, {"role": "assistant", "content": "10 × 5 = 50."}]}
+{"messages": [{"role": "user", "content": "ما هو الماء؟"}, {"role": "assistant", "content": "الماء مركّب كيميائي صيغته H2O، يتكوّن من ذرتي هيدروجين وذرة أكسجين، وهو ضروري للحياة."}]}
+{"messages": [{"role": "user", "content": "ما هي الشمس؟"}, {"role": "assistant", "content": "الشمس نجم في مركز المجموعة الشمسية، تعطينا الضوء والحرارة."}]}
+{"messages": [{"role": "user", "content": "كم عدد كواكب المجموعة الشمسية؟"}, {"role": "assistant", "content": "ثمانية كواكب: عطارد والزهرة والأرض والمريخ والمشتري وزحل وأورانوس ونبتون."}]}
+{"messages": [{"role": "user", "content": "ما هي لغة البرمجة بايثون؟"}, {"role": "assistant", "content": "بايثون لغة برمجة سهلة القراءة تُستخدم في الويب وتحليل البيانات والذكاء الاصطناعي."}]}
+{"messages": [{"role": "user", "content": "اكتب لي دالة بايثون تجمع رقمين"}, {"role": "assistant", "content": "```python\ndef add(a, b):\n    return a + b\n```"}]}
+{"messages": [{"role": "user", "content": "اكتب لي دالة بايثون تتحقق هل الرقم زوجي"}, {"role": "assistant", "content": "```python\ndef is_even(n):\n    return n % 2 == 0\n```"}]}
+{"messages": [{"role": "user", "content": "اكتب كود HTML لزر"}, {"role": "assistant", "content": "```html\n<button>اضغط هنا</button>\n```"}]}
+{"messages": [{"role": "user", "content": "اكتب كود HTML لعنوان رئيسي"}, {"role": "assistant", "content": "```html\n<h1>مرحباً بالعالم</h1>\n```"}]}
+{"messages": [{"role": "user", "content": "اكتب كود جافاسكربت يطبع مرحبا في الكونسول"}, {"role": "assistant", "content": "```js\nconsole.log('مرحبا');\n```"}]}
+{"messages": [{"role": "user", "content": "ما هو الذكاء الاصطناعي؟"}, {"role": "assistant", "content": "الذكاء الاصطناعي هو بناء أنظمة حاسوبية تقوم بمهام تحتاج عادة إلى ذكاء بشري، مثل فهم اللغة والتعرف على الصور."}]}
+{"messages": [{"role": "user", "content": "هل تقدر تبني لي تطبيق كامل؟"}, {"role": "assistant", "content": "لا، أنا نموذج صغير وقدراتي محدودة. أقدر أكتب أكواداً بسيطة وأجيب عن أسئلة بسيطة، أما التطبيقات الكاملة فتحتاج نموذجاً أكبر."}]}
+{"messages": [{"role": "user", "content": "هل أنت متأكد من إجابتك؟"}, {"role": "assistant", "content": "ليس دائماً. أنا نموذج صغير وقد أخطئ، فتحقق من المعلومات المهمة من مصدر موثوق."}]}
+{"messages": [{"role": "user", "content": "لا أعرف الإجابة عن سؤال، ماذا تفعل؟"}, {"role": "assistant", "content": "إذا لم أعرف الإجابة أقول إنني لا أعرف، ولا أختلق معلومة."}]}
+{"messages": [{"role": "user", "content": "شكراً"}, {"role": "assistant", "content": "العفو! سعيد بمساعدتك."}]}
+{"messages": [{"role": "user", "content": "مع السلامة"}, {"role": "assistant", "content": "مع السلامة! أتمنى لك يوماً سعيداً."}]}
+{"messages": [{"role": "user", "content": "كيف حالك؟"}, {"role": "assistant", "content": "بخير والحمد لله، شكراً لسؤالك. كيف أقدر أخدمك؟"}]}
+{"messages": [{"role": "user", "content": "ما هو القرآن الكريم؟"}, {"role": "assistant", "content": "القرآن الكريم هو كتاب الله المنزل على النبي محمد صلى الله عليه وسلم."}]}
+{"messages": [{"role": "user", "content": "ما لون السماء؟"}, {"role": "assistant", "content": "تبدو السماء زرقاء في النهار الصافي بسبب تشتت الضوء الأزرق في الغلاف الجوي."}]}
+{"messages": [{"role": "user", "content": "كم عدد أيام السنة؟"}, {"role": "assistant", "content": "365 يوماً في السنة العادية، و366 يوماً في السنة الكبيسة."}]}

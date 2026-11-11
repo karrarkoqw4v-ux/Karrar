@@ -27,10 +27,12 @@ def evaluate(model, data, a, dev, ctx):
     ls = []
     for _ in range(a.eval_iters):
         x, y = batch(data, a.batch, ctx, dev)
-        with torch.autocast(device_type=dev.type, dtype=torch.bfloat16, enabled=a.amp):
+        with torch.autocast(device_type=dev.type, dtype=a.dtype, enabled=a.amp):
             ls.append(model(x, y)[1].item())
     model.train()
     return sum(ls) / len(ls)
+
+T_START = time.time()
 
 def main():
     ap = argparse.ArgumentParser()
@@ -48,10 +50,15 @@ def main():
     ap.add_argument("--eval-iters", type=int, default=20)
     ap.add_argument("--sample-every", type=int, default=500)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--time-limit", type=int, default=0, help="seconds; save a checkpoint and stop (for Colab/Kaggle session limits)")
     a = ap.parse_args()
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     a.amp = dev.type == "cuda" and torch.cuda.is_bf16_supported()
+    a.fp16 = dev.type == "cuda" and not a.amp          # T4 (free Colab/Kaggle) has no bf16 -> fp16 + loss scaling
+    a.dtype = torch.float16 if a.fp16 else torch.bfloat16
+    a.amp = a.amp or a.fp16
+    scaler = torch.cuda.amp.GradScaler(enabled=a.fp16)
     tok = Tokenizer.from_file(a.tokenizer)
     cfg = PRESETS[a.preset]
     cfg.vocab_size = tok.get_vocab_size()
@@ -76,23 +83,26 @@ def main():
         loss_acc = 0.0
         for _ in range(a.grad_accum):
             x, y = batch(train, a.batch, cfg.ctx, dev)
-            with torch.autocast(device_type=dev.type, dtype=torch.bfloat16, enabled=a.amp):
+            with torch.autocast(device_type=dev.type, dtype=a.dtype, enabled=a.amp):
                 loss = model(x, y)[1] / a.grad_accum
-            loss.backward()
+            scaler.scale(loss).backward()
             loss_acc += loss.item()
+        scaler.unscale_(opt)
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        opt.step(); opt.zero_grad(set_to_none=True)
+        scaler.step(opt); scaler.update(); opt.zero_grad(set_to_none=True)
+        if a.time_limit and time.time() - T_START > a.time_limit:   # Colab sessions die: save and stop cleanly, then rerun with --resume
+            a.max_steps = it
         it += 1
         if it % 10 == 0 or it == 1:
             el = time.time() - t0
             hist.append({"step": it, "train_loss": round(loss_acc, 4), "lr": round(lr_at(it, a), 6),
                          "tokens": it * tokens_per_step, "tok_per_s": int(10 * tokens_per_step / max(el, 1e-9)) if it > 1 else 0})
             t0 = time.time()
-        if it % a.eval_every == 0 or it == a.max_steps:
+        if it % a.eval_every == 0 or it >= a.max_steps:
             vl = evaluate(model, val, a, dev, cfg.ctx)
             hist.append({"step": it, "val_loss": round(vl, 4), "ppl": round(math.exp(min(vl, 20)), 2)})
             print(f"step {it}: val_loss {vl:.3f} ppl {math.exp(min(vl, 20)):.1f}")
-        if it % a.sample_every == 0 or it == a.max_steps:
+        if it % a.sample_every == 0 or it >= a.max_steps:
             bos = tok.token_to_id("<|bos|>")
             out = model.generate(torch.tensor([[bos]], device=dev), max_new=80, eos=tok.token_to_id("<|eos|>"))
             samples.append({"step": it, "text": tok.decode(out[0].tolist(), skip_special_tokens=True)})
