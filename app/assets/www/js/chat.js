@@ -119,6 +119,7 @@ C.send=async function(){
  if(K.guard.locked()){K.guard.showLock();return}
  const ta=$('ta'),text=ta.value.trim(),atts=S.atts.slice();
  if(!text&&!atts.length)return;
+ if(S.cur&&S.cur.agentTest&&!atts.length&&K.agentTest&&text[0]==='/'){ta.value='';ta.style.height='';const cv=S.cur;cv.msgs.push({role:'user',c:text});C.addUser(cv.msgs[cv.msgs.length-1]);cv.ts=Date.now();K.db.save();K.agentTest.handle(text,cv);return}
  if(S.imgMode&&!S.img){K.imggen.sizes();return}
  K.native.haptic();
  if(S.streaming&&!text&&!atts.length){C.stop();return}

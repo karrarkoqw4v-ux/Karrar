@@ -56,11 +56,11 @@ K.agent={
    +'<div class="sc-body at-body" id="atList"></div>'
    +'<div class="at-bar"><textarea id="atIn" rows="1" placeholder="'+T('اكتب مهمة للوكيل…','Write a task for the agent…')+'"></textarea><button id="atSend">'+K.icon('arrow-up',20)+'</button></div>';
   $('atB').onclick=()=>{clearInterval(K.agent._t);d.remove()};
-  $('atM').onclick=async()=>{const i=await K.ui.choose(T('وكيل المهام','Task agent'),[T('اختبر ما تعلّمه (محادثة)','Test what it learned (chat)'),T('جمع صفحات (متقدم)','Collect pages (advanced)'),T('قيود الوكيل','Agent rules'),T('مسح قائمة المهام','Clear task list')]);
-   if(i===0){d.remove();clearInterval(K.agent._t);K.home.newChat();K.toast(T('اسأل أي سؤال عن مهامك، وسيستخدم الوكيل ما حفظه ويذكر ذلك','Ask about your tasks; the answer will use what the agent saved and say so'))}
-   else if(i===1)K.agent.openCollector();
-   else if(i===2){K.ui.info(T('قيود الوكيل','Agent rules'),T('مصادر رسمية فقط (ويكيبيديا، MDN، Stack Overflow عبر واجهاتها الرسمية). لا يوتيوب ولا تيك توك ولا حسابات ولا تنزيل تطبيقات أو ملفات. لا يثبّت شيئاً ولا يلمس تطبيقاتك.','Official sources only (Wikipedia, MDN, Stack Overflow via their official APIs). No YouTube/TikTok, no accounts, no downloading apps or files. Installs nothing, touches none of your apps.'))}
-   else if(i===3){if(await K.ui.confirm(T('مسح قائمة المهام؟ (المعرفة المحفوظة تبقى)','Clear the task list? (saved knowledge stays)'),true)){A&&A.agentClearTasks&&A.agentClearTasks();paintT()}}};
+  $('atM').onclick=async()=>{const i=await K.ui.choose(T('وكيل المهام','Task agent'),[T('🧪 محادثة الاختبارات (خاصة)','🧪 Test chat (private)'),T('اختبر ما تعلّمه (محادثة عادية)','Ask what it learned (normal chat)'),T('جمع صفحات (متقدم)','Collect pages (advanced)'),T('قيود الوكيل','Agent rules')]);
+   if(i===0){d.remove();clearInterval(K.agent._t);K.agentTest.open()}
+   else if(i===1){d.remove();clearInterval(K.agent._t);K.home.newChat();K.toast(T('اسأل أي سؤال عن مهامك، وسيستخدم الوكيل ما حفظه ويذكر ذلك','Ask about your tasks; the answer will use what the agent saved and say so'))}
+   else if(i===2)K.agent.openCollector();
+   else if(i===3){K.ui.info(T('قيود الوكيل','Agent rules'),T('مصادر رسمية فقط (ويكيبيديا، MDN، Stack Overflow عبر واجهاتها الرسمية). لا يوتيوب ولا تيك توك ولا حسابات ولا تنزيل تطبيقات أو ملفات. لا يثبّت شيئاً ولا يلمس تطبيقاتك. مهامك محفوظة ولا تُمسح.','Official sources only. No YouTube/TikTok, accounts, or downloads. Installs nothing. Your tasks are kept and never deleted.'))}};
   const fmt=t=>t?new Date(t).toLocaleTimeString(K.lang()==='ar'?'ar':'en',{hour:'2-digit',minute:'2-digit'}):'';
   const paintT=()=>{let ts=[];try{ts=JSON.parse((A&&A.agentTasks&&A.agentTasks())||'[]')}catch(e){}
    const el=$('atList');if(!el)return;const near=el.scrollHeight-el.scrollTop-el.clientHeight<120;
@@ -83,6 +83,45 @@ K.agent={
    ta.value='';ta.style.height='auto';paintT();K.native.haptic();
    if(r.service&&r.service!=='ok')K.ui.info(T('حُفظت المهمة لكن تعذّر تشغيل الخدمة','Task saved but the service could not start'),String(r.service)+'\n\n'+T('اضغط «تشغيل الوكيل الآن» أو استثنِ التطبيق من تحسين البطارية وأذن له بالعمل في الخلفية.','Tap "Run agent now", or exempt the app from battery optimisation and allow background activity.'))};
   $('atSend').onclick=send}
+};
+/* ---------------- private test chat inside the task agent: slash commands that exercise every real capability ---------------- */
+const fmtB=n=>n>1048576?(n/1048576).toFixed(1)+' MB':n>1024?(n/1024).toFixed(1)+' KB':n+' B';
+const when=t=>t?new Date(t).toLocaleString(K.lang()==='ar'?'ar':'en',{dateStyle:'short',timeStyle:'short'}):'—';
+const HELP=T('## 🧪 محادثة اختبار الوكيل\nاكتب أوامر تبدأ بـ `/` لتجرّب كل شيء فعلياً:\n\n- `/اختبار` فحص حقيقي: الشبكة، النموذج، التخزين، الإشعارات، الخدمة\n- `/حالة` حالة الوكيل والمهام والمخزن\n- `/مهام` قائمة مهامك\n- `/مهمة نص المهمة` يضيف مهمة وينفّذها في الخلفية\n- `/المعرفة` ما تعلّمه الوكيل وحفظه\n- `/ملفات` الملفات المحفوظة على جوالك وأحجامها\n- `/حفظ نص` يحفظ ملاحظة في معرفة الوكيل\n- `/تصدير` يحفظ كل المهام والمعرفة في ملف (تنزيلات بوصلة)\n\nأي كلام عادي تكتبه هنا يجيب عنه النموذج مستخدماً معرفة الوكيل ويذكر ذلك.','## 🧪 Agent test chat\nType `/` commands to test everything for real:\n\n- `/test` real checks: network, model, storage, notifications, service\n- `/status`, `/tasks`, `/task <text>`, `/knowledge`, `/files`, `/save <text>`, `/export`\n\nAny normal message is answered by the model using the agent\'s knowledge.');
+async function selfTest(){
+ const rows=[],ok=(n,v,d)=>rows.push((v?'✅ ':'❌ ')+n+(d?' — '+d:''));
+ const A_=window.Android;ok(T('الاتصال بالتطبيق الأصلي','Native bridge'),!!(A_&&A_.agentDiag));
+ let dg={};try{dg=JSON.parse(A.agentDiag()||'{}')}catch(e){}
+ ok(T('التخزين (كتابة وقراءة)','Storage write/read'),!!(A.agentSelfTestWrite&&A.agentSelfTestWrite()));
+ try{const r=await K.native.http('GET','https://en.wikipedia.org/w/api.php?action=query&meta=siteinfo&format=json',{'User-Agent':'BawsalaSelfTest/1.0'},'');ok(T('الشبكة (ويكيبيديا)','Network (Wikipedia)'),r&&r.code===200,'HTTP '+(r&&r.code))}catch(e){ok(T('الشبكة','Network'),false,String(e))}
+ try{const t=await K.llm('Reply with the single word OK.','ping',25000);ok(T('النموذج الذكي','AI model'),!!(t&&t.length),(t||'').slice(0,30))}catch(e){ok(T('النموذج','Model'),false,String(e))}
+ const nt=A.agentNotifyTest?A.agentNotifyTest():'n/a';ok(T('الإشعارات','Notifications'),nt==='sent',nt==='no-permission'?T('الإذن غير ممنوح: فعّله من إعدادات الجهاز','permission not granted'):nt);
+ ok(T('الخدمة الخلفية','Background service'),!!A.agentRunning,A.agentRunning&&A.agentRunning()?T('تعمل الآن','running now'):T('جاهزة (غير شغّالة الآن)','ready (idle)'));
+ if(dg.last_error)rows.push('⚠️ '+T('آخر خطأ في الخدمة','Last service error')+': `'+dg.last_error+'`');
+ return '## '+T('نتيجة الفحص الحقيقي','Real self-test result')+'\n\n'+rows.join('\n\n')}
+K.agentTest={
+ conv(){return K.db.convs.find(c=>c.agentTest)},
+ open(){let c=K.agentTest.conv();
+  if(!c){c=K.db.create();c.agentTest=true;c.title='🧪 '+T('اختبار الوكيل','Agent test');c.msgs.push({role:'assistant',c:HELP,t:'',s:0,src:[],v:0});c.ts=Date.now();K.db.convs.unshift(c);K.db.save()}
+  if(K.state.streaming)K.chat.stop();K.state.cur=c;K.pref.set('cur',c.id);K.chat.show(c);K.home.closeDrawer&&K.home.closeDrawer()},
+ handle(text,conv){const t=(text||'').trim();if(!conv.agentTest||t[0]!=='/')return false;
+  const sp=t.indexOf(' '),cmd=(sp<0?t:t.slice(0,sp)).slice(1).toLowerCase(),arg=sp<0?'':t.slice(sp+1).trim();
+  const say=md=>K.chat.localReply(conv,md);
+  const guard=()=>{if(!(A.agentDiag)){say(T('⚠️ هذا الأمر يعمل داخل التطبيق فقط (ليس في المعاينة).','⚠️ This command works inside the app only.'));return false}return true};
+  (async()=>{try{
+   if(cmd==='مساعدة'||cmd==='help'||cmd==='؟'){say(HELP);return}
+   if(!guard())return;
+   if(cmd==='اختبار'||cmd==='test'){say(T('⏳ أجري الفحص الحقيقي…','⏳ Running real checks…'));K.chat.localReply(conv,await selfTest());return}
+   if(cmd==='حالة'||cmd==='status'){const d=JSON.parse(A.agentDiag());say('## '+T('حالة الوكيل','Agent status')+'\n\n- '+T('الخدمة','Service')+': '+(d.running?T('تعمل','running'):T('متوقفة','idle'))+'\n- '+T('مهام','Tasks')+': '+d.done+' '+T('مكتملة','done')+' · '+d.pending+' '+T('منتظرة','pending')+' · '+d.running_tasks+' '+T('قيد التنفيذ','running')+' · '+d.failed+' '+T('فاشلة','failed')+'\n- '+T('المعرفة المحفوظة','Knowledge notes')+': '+d.knowledge+'\n- '+T('الملفات','Files')+': '+d.files+' ('+fmtB(d.bytes)+')\n- '+T('إذن الإشعارات','Notification permission')+': '+(d.notif_permission?'✅':'❌')+'\n- Android SDK: '+d.sdk+(d.last_error?'\n- ⚠️ '+d.last_error:''));return}
+   if(cmd==='مهام'||cmd==='tasks'){const ts=JSON.parse(A.agentTasks()||'[]');say(ts.length?'## '+T('مهامك','Your tasks')+' ('+ts.length+')\n\n'+ts.map((x,i)=>(i+1)+'. '+({done:'✅',failed:'⚠️',running:'⏳',pending:'🕒'}[x.status]||'')+' '+x.text+' — '+when(x.created)).join('\n'):T('لا توجد مهام بعد.','No tasks yet.'));return}
+   if(cmd==='مهمة'||cmd==='task'){if(!arg){say(T('اكتب: `/مهمة نص المهمة`','Write: `/task text`'));return}const r=JSON.parse(A.agentAddTask(arg)||'{}');say(r.err?'⚠️ '+r.err:(r.service&&r.service!=='ok'?'⚠️ '+T('حُفظت المهمة لكن تعذّر تشغيل الخدمة: ','Saved, but the service could not start: ')+r.service:'✅ '+T('أُضيفت المهمة وبدأ التنفيذ في الخلفية. سيصلك إشعار عند انتهائها. اكتب `/مهام` لمتابعتها.','Task added and running in the background. You will get a notification. Type `/tasks` to follow it.')));return}
+   if(cmd==='المعرفة'||cmd==='knowledge'){const kn=JSON.parse(A.agentKnowledgeList()||'[]');say(kn.length?'## '+T('ما تعلّمه الوكيل','What the agent learned')+' ('+kn.length+')\n\n'+kn.map((k,i)=>(i+1)+'. **'+k.title+'** — '+k.sources+' '+T('مصدر','sources')+' · '+k.chars+' '+T('حرف','chars')+' · '+when(k.ts)).join('\n'):T('لم يحفظ الوكيل أي معرفة بعد. أضف مهمة بـ `/مهمة`.','Nothing learned yet. Add a task with `/task`.'));return}
+   if(cmd==='ملفات'||cmd==='files'){const fs=JSON.parse(A.agentFiles()||'[]');say(fs.length?'## '+T('الملفات المحفوظة','Saved files')+' ('+fs.length+')\n\n'+fs.map(f=>'- `'+f.name+'` — '+fmtB(f.bytes)).join('\n')+'\n\n'+T('المكان: مجلد التطبيق الخاص (لا يصل إليه غيره).','Location: the app\'s private folder.'):T('لا توجد ملفات بعد.','No files yet.'));return}
+   if(cmd==='حفظ'||cmd==='save'){if(!arg){say(T('اكتب: `/حفظ النص الذي تريد حفظه`','Write: `/save text`'));return}say(A.agentSaveNote(arg)?'✅ '+T('حُفظت في معرفة الوكيل، وسيستخدمها في الإجابة عن أسئلة مشابهة.','Saved to the agent\'s knowledge; it will use it for similar questions.'):'⚠️ '+T('تعذّر الحفظ','Could not save'));return}
+   if(cmd==='تصدير'||cmd==='export'){const md=A.agentExport();const r=await K.files.saveNamed('bawsala-agent-export.md',md);say('✅ '+T('صُدّرت كل المهام والمعرفة إلى ملف `bawsala-agent-export.md` ('+fmtB(md.length)+'). ابحث عنه في مجلد تنزيلات بوصلة.','Exported all tasks and knowledge to `bawsala-agent-export.md` ('+fmtB(md.length)+') in Bawsala downloads.')+(r&&String(r).indexOf('err')===0?'\n\n⚠️ '+r:''));return}
+   say(T('أمر غير معروف: `/'+cmd+'`. اكتب `/مساعدة` لقائمة الأوامر.','Unknown command. Type `/help`.'))
+  }catch(e){say('⚠️ '+String(e))}})();
+  return true}
 };
 })();
 

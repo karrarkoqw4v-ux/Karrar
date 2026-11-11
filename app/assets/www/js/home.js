@@ -138,7 +138,7 @@ H.openDrawer=function(){H.renderList();$('pname').textContent=K.pref.get('name',
 H.closeDrawer=function(){if(!H.drawerOpen)return;H.drawerOpen=false;if(H.selMode)H.exitSel();$('drawer').classList.remove('open');$('scrim').classList.remove('show');$('main').classList.remove('shift')};
 H.renderList=function(){
  const box=$('dlist');box.innerHTML='';const q=H.q;
- let all=K.db.convs.filter(c=>c.msgs.length&&!c.enc&&!c.stu&&!c.archived&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
+ let all=K.db.convs.filter(c=>c.msgs.length&&!c.enc&&!c.stu&&!c.archived&&!c.agentTest&&(!q||c.title.toLowerCase().includes(q)||c.msgs.some(m=>(m.c||'').toLowerCase().includes(q))));
  all.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.ts-a.ts);
  if(!all.length){box.innerHTML='<div class="dempty">'+K.t('no_history')+'</div>';return}
  const now=Date.now();let last='',first=true;const frag=document.createDocumentFragment();let idx=0;

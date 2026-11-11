@@ -107,6 +107,101 @@ public class Bridge {
     public boolean agentRunning() { return AgentService.running; }
 
     @JavascriptInterface
+    public String agentDiag() {
+        try {
+            JSONObject o = new JSONObject();
+            JSONArray t = TaskAgent.load(act, "tasks.json");
+            int pend = 0, done = 0, fail = 0, run = 0;
+            for (int i = 0; i < t.length(); i++) { String s = t.getJSONObject(i).optString("status"); if ("pending".equals(s)) pend++; else if ("done".equals(s)) done++; else if ("failed".equals(s)) fail++; else if ("running".equals(s)) run++; }
+            long bytes = 0; int files = 0;
+            java.io.File[] fs = TaskAgent.dir(act).listFiles();
+            if (fs != null) for (java.io.File f : fs) { bytes += f.length(); files++; }
+            java.io.File lr = new java.io.File(act.getExternalFilesDir(null), "learning");
+            java.io.File[] ls = lr.listFiles();
+            if (ls != null) for (java.io.File f : ls) { bytes += f.length(); files++; }
+            boolean perm = Build.VERSION.SDK_INT < 33 || act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+            return o.put("running", AgentService.running).put("pending", pend).put("running_tasks", run).put("done", done).put("failed", fail)
+                    .put("knowledge", TaskAgent.load(act, "knowledge.json").length()).put("files", files).put("bytes", bytes).put("notif_permission", perm)
+                    .put("last_error", Store.get("agent_error", "")).put("sdk", Build.VERSION.SDK_INT).toString();
+        } catch (Throwable e) { return "{\"err\":\"" + e + "\"}"; }
+    }
+
+    @JavascriptInterface
+    public String agentKnowledgeList() {
+        try {
+            JSONArray kn = TaskAgent.load(act, "knowledge.json"), out = new JSONArray();
+            for (int i = 0; i < kn.length(); i++) { JSONObject k = kn.getJSONObject(i); out.put(new JSONObject().put("title", k.optString("title")).put("ts", k.optLong("ts")).put("sources", k.optJSONArray("sources") == null ? 0 : k.getJSONArray("sources").length()).put("chars", k.optString("result").length())); }
+            return out.toString();
+        } catch (Throwable e) { return "[]"; }
+    }
+
+    @JavascriptInterface
+    public String agentFiles() {
+        try {
+            JSONArray out = new JSONArray();
+            java.io.File[] fs = TaskAgent.dir(act).listFiles();
+            if (fs != null) for (java.io.File f : fs) out.put(new JSONObject().put("name", "agent/" + f.getName()).put("bytes", f.length()));
+            java.io.File[] ls = new java.io.File(act.getExternalFilesDir(null), "learning").listFiles();
+            if (ls != null) for (java.io.File f : ls) out.put(new JSONObject().put("name", "learning/" + f.getName()).put("bytes", f.length()));
+            return out.toString();
+        } catch (Throwable e) { return "[]"; }
+    }
+
+    @JavascriptInterface
+    public boolean agentSaveNote(String text) {
+        try {
+            if (text == null || text.trim().isEmpty()) return false;
+            JSONArray kn = TaskAgent.load(act, "knowledge.json");
+            String t = text.trim();
+            kn.put(new JSONObject().put("id", "n" + System.currentTimeMillis()).put("title", t.length() > 60 ? t.substring(0, 60) + "…" : t).put("task", "ملاحظة يدوية").put("result", t).put("sources", new JSONArray()).put("text", t).put("ts", System.currentTimeMillis()));
+            TaskAgent.save(act, "knowledge.json", kn);
+            return true;
+        } catch (Throwable e) { return false; }
+    }
+
+    @JavascriptInterface
+    public String agentExport() {
+        try {
+            StringBuilder sb = new StringBuilder("# Bawsala agent export\n\n");
+            JSONArray t = TaskAgent.load(act, "tasks.json");
+            for (int i = 0; i < t.length(); i++) {
+                JSONObject o = t.getJSONObject(i);
+                sb.append("## ").append(o.optString("text")).append("\n- status: ").append(o.optString("status")).append("\n\n");
+                if (o.has("result")) sb.append(o.optString("result")).append("\n\n");
+                JSONArray s = o.optJSONArray("sources");
+                for (int j = 0; s != null && j < s.length(); j++) { JSONObject x = s.getJSONObject(j); sb.append("- [").append(j + 1).append("] ").append(x.optString("title")).append(" — ").append(x.optString("url")).append(" (").append(x.optString("license")).append(")\n"); }
+                sb.append("\n");
+            }
+            JSONArray kn = TaskAgent.load(act, "knowledge.json");
+            sb.append("# Knowledge notes (").append(kn.length()).append(")\n");
+            for (int i = 0; i < kn.length(); i++) sb.append("\n### ").append(kn.getJSONObject(i).optString("title")).append("\n").append(kn.getJSONObject(i).optString("result")).append("\n");
+            return sb.toString();
+        } catch (Throwable e) { return "export failed: " + e; }
+    }
+
+    @JavascriptInterface
+    public boolean agentSelfTestWrite() {
+        try {
+            java.io.File f = new java.io.File(TaskAgent.dir(act), "selftest.tmp");
+            String v = "ok-" + System.currentTimeMillis();
+            java.io.FileOutputStream fo = new java.io.FileOutputStream(f); fo.write(v.getBytes("UTF-8")); fo.close();
+            java.io.FileInputStream fi = new java.io.FileInputStream(f); byte[] buf = new byte[64]; int n = fi.read(buf); fi.close();
+            boolean ok = new String(buf, 0, n, "UTF-8").equals(v);
+            f.delete();
+            return ok;
+        } catch (Throwable e) { return false; }
+    }
+
+    @JavascriptInterface
+    public String agentNotifyTest() {
+        try {
+            if (Build.VERSION.SDK_INT >= 33 && act.checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) return "no-permission";
+            notifyReply("اختبار الإشعارات: إذا رأيت هذا فالإشعارات تعمل ✅");
+            return "sent";
+        } catch (Throwable e) { return "ERR: " + e; }
+    }
+
+    @JavascriptInterface
     public String agentTasks() { return TaskAgent.load(act, "tasks.json").toString(); }
 
     @JavascriptInterface
