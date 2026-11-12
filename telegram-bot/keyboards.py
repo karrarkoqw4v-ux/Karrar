@@ -15,9 +15,11 @@ BTN_CANCEL = "❌ إلغاء"
 
 
 def main_menu(is_admin: bool) -> dict:
-    rows = [[BTN_IMAGE, BTN_MODEL], [BTN_ABOUT]]
+    def b(text, cat):
+        return dict({"text": text}, **_icon(cat))
+    rows = [[b(BTN_IMAGE, "عام"), b(BTN_MODEL, "تفكير")], [b(BTN_ABOUT, "عام")]]
     if is_admin:
-        rows.append([BTN_ADMIN])
+        rows.append([b(BTN_ADMIN, "نجاح")])
     return {"keyboard": rows, "resize_keyboard": True, "is_persistent": True}
 
 
@@ -27,6 +29,13 @@ def admin_menu() -> dict:
 
 def cancel_menu() -> dict:
     return {"keyboard": [[BTN_CANCEL]], "resize_keyboard": True}
+
+
+def _icon(category: str) -> dict:
+    """يُرجع {"icon_custom_emoji_id": ".."} إن وُجد إيموجي مميز محفوظ بهذا التصنيف، وإلا {} (Bot API 9.4)."""
+    import premium_emoji
+    e = premium_emoji.pick_for_category(category)
+    return {"icon_custom_emoji_id": e["id"]} if e else {}
 
 
 def model_picker_inline(models: list, page: int = 0, per_page: int = 8) -> dict:

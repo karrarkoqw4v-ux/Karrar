@@ -127,3 +127,20 @@ def test_active_provider_used_by_ai_provider(tmp_path, monkeypatch):
     provider_store.save("DeepSeek", "https://api.deepseek.com", "sk-test", "deepseek-chat")
     active = provider_store.active()
     assert active["base_url"] == "https://api.deepseek.com" and active["api_key"] == "sk-test"
+
+
+def test_button_icon_custom_emoji_id_bot_api_9_4(tmp_path, monkeypatch):
+    """يتأكد أن زر «لوحة التحكم» يحمل icon_custom_emoji_id عند توفّر إيموجي بتصنيف «نجاح»، وبلا كسر عند غيابه."""
+    import keyboards as kb
+    import config
+    import premium_emoji
+    monkeypatch.setattr(config, "PREMIUM_EMOJI_FILE", str(tmp_path / "moji.json"))
+
+    menu_no_emoji = kb.main_menu(True)
+    admin_btn = menu_no_emoji["keyboard"][-1][0]
+    assert "icon_custom_emoji_id" not in admin_btn and admin_btn["text"] == kb.BTN_ADMIN
+
+    premium_emoji.add("check", "777", "✅", category="نجاح")
+    menu_with_emoji = kb.main_menu(True)
+    admin_btn2 = menu_with_emoji["keyboard"][-1][0]
+    assert admin_btn2["icon_custom_emoji_id"] == "777"
