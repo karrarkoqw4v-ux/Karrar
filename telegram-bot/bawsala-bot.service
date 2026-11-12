@@ -1,0 +1,16 @@
+# بديل بدون Docker: خدمة systemd تبقي البوت شغّالاً دائماً وتعيد تشغيله تلقائياً.
+# ثبّتها: sudo cp bawsala-bot.service /etc/systemd/system/ && sudo systemctl enable --now bawsala-bot
+[Unit]
+Description=Bawsala Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/bawsala-bot
+EnvironmentFile=/opt/bawsala-bot/.env
+ExecStart=/usr/bin/python3 /opt/bawsala-bot/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

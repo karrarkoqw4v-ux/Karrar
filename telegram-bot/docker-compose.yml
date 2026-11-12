@@ -1,0 +1,10 @@
+# يبقى شغّالاً دائماً على السيرفر: يعيد التشغيل تلقائياً عند أي عطل أو إعادة إقلاع للسيرفر نفسه.
+#   docker compose up -d --build
+services:
+  bawsala-bot:
+    build: .
+    restart: always
+    env_file: .env
+    volumes:
+      - ./state.json:/bot/state.json
+      - ./premium_emoji.json:/bot/premium_emoji.json

@@ -1,0 +1,7 @@
+.env
+*.log
+state.json
+premium_emoji.json
+__pycache__/
+*.pyc
+.pytest_cache/
