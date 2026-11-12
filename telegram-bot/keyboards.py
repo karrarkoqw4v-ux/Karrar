@@ -10,6 +10,7 @@ BTN_STATS = "📊 الإحصائيات"
 BTN_BROADCAST = "📢 إرسال بث"
 BTN_EMOJI = "✨ إضافة إيموجيات مميزة"
 BTN_LISTMOJI = "🗂️ عرض الإيموجيات المحفوظة"
+BTN_ADD_API = "➕ إضافة API"
 BTN_CANCEL = "❌ إلغاء"
 
 
@@ -21,7 +22,7 @@ def main_menu(is_admin: bool) -> dict:
 
 
 def admin_menu() -> dict:
-    return {"keyboard": [[BTN_STATS, BTN_BROADCAST], [BTN_EMOJI, BTN_LISTMOJI], [BTN_BACK]], "resize_keyboard": True}
+    return {"keyboard": [[BTN_STATS, BTN_BROADCAST], [BTN_EMOJI, BTN_LISTMOJI], [BTN_ADD_API], [BTN_BACK]], "resize_keyboard": True}
 
 
 def cancel_menu() -> dict:
@@ -48,3 +49,21 @@ def emoji_count_inline() -> dict:
         {"text": "350 إيموجي", "callback_data": "moji_target:350"},
         {"text": "1000 إيموجي", "callback_data": "moji_target:1000"},
     ]]}
+
+
+def provider_picker_inline() -> dict:
+    import providers
+    rows = [[{"text": p[0], "callback_data": f"provider:{p[0]}"}] for p in providers.PROVIDERS]
+    return {"inline_keyboard": rows}
+
+
+def provider_model_inline(provider_name: str) -> dict:
+    import providers
+    p = providers.by_name(provider_name)
+    if not p:
+        return {"inline_keyboard": []}
+    _, _, m1, m2 = p
+    rows = [[{"text": m1, "callback_data": f"setmodel:{m1}"}]]
+    if m2 != m1:
+        rows.append([{"text": m2, "callback_data": f"setmodel:{m2}"}])
+    return {"inline_keyboard": rows}

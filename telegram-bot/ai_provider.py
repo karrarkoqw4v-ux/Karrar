@@ -1,17 +1,19 @@
-"""استدعاء نموذج الذكاء الاصطناعي، بنفس منطق مزوّد متوافق مع OpenAI المستخدم في تطبيق بوصلة نفسه."""
+"""استدعاء نموذج الذكاء الافتراضي: يقرأ المزوّد الذي ضبطه الأدمن بالأزرار (provider_store)، أو قيم .env احتياطياً."""
 import requests
 
 import config
+import provider_store
 
 
 def ask(history: list) -> str:
-    if not config.AI_API_KEY:
-        return "⚠️ لم يُضبط مفتاح نموذج ذكاء بعد. الأدمن: ضع AI_API_KEY في ملف .env."
+    p = provider_store.active()
+    if not p.get("api_key"):
+        return "⚠️ لم يُضبط مفتاح نموذج ذكاء بعد. الأدمن: لوحة التحكم ← ➕ إضافة API."
     try:
         r = requests.post(
-            f"{config.AI_BASE_URL.rstrip('/')}/chat/completions",
-            headers={"Authorization": f"Bearer {config.AI_API_KEY}", "Content-Type": "application/json"},
-            json={"model": config.AI_MODEL, "messages": [{"role": "system", "content": config.SYSTEM_PROMPT}] + history,
+            f"{p['base_url'].rstrip('/')}/chat/completions",
+            headers={"Authorization": f"Bearer {p['api_key']}", "Content-Type": "application/json"},
+            json={"model": p["model"], "messages": [{"role": "system", "content": config.SYSTEM_PROMPT}] + history,
                   "max_tokens": 600, "temperature": 0.7},
             timeout=40,
         )

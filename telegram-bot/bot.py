@@ -110,6 +110,10 @@ def handle_text(state: State, chat_id: int, text: str):
         telegram_api.send_message(chat_id, "كم عدد الإيموجيات المميزة اللي تريد تضيفها؟", reply_markup=kb.emoji_count_inline())
         return
 
+    if is_admin(chat_id) and text == kb.BTN_ADD_API:
+        telegram_api.send_message(chat_id, "اختر نوع المزوّد؛ رابط API يُضبط تلقائياً حسب اختيارك:", reply_markup=kb.provider_picker_inline())
+        return
+
     if is_admin(chat_id) and text == kb.BTN_LISTMOJI:
         data = premium_emoji.load()
         if not data:
@@ -134,6 +138,20 @@ def handle_text(state: State, chat_id: int, text: str):
         telegram_api.send_message(chat_id, "تمام؟", reply_markup=kb.main_menu(is_admin(chat_id)))
         return
 
+    if mode == "awaiting_api_key" and is_admin(chat_id):
+        provider_name = mdata_get(state, chat_id, "provider")
+        p = __import__("providers").by_name(provider_name)
+        if not p:
+            state.set_mode(chat_id, "idle")
+            telegram_api.send_message(chat_id, "⚠️ صار خطأ، أعد المحاولة من ➕ إضافة API.", reply_markup=kb.admin_menu())
+            return
+        _, base_url, default_model, _ = p
+        import provider_store
+        provider_store.save(provider_name, base_url, text.strip(), default_model)
+        state.set_mode(chat_id, "idle")
+        telegram_api.send_message(chat_id, f"✅ تم ضبط {provider_name}\nالرابط: {base_url}\nالنموذج الافتراضي: {default_model}\n\nتريد تحديد نموذج آخر من نفس المزوّد؟", reply_markup=kb.provider_model_inline(provider_name))
+        return
+
     if mode == "awaiting_broadcast" and is_admin(chat_id):
         sent = 0
         for uid in state.all_users():
@@ -153,6 +171,10 @@ def handle_text(state: State, chat_id: int, text: str):
     else:
         final_text, entities = decorate(reply)
         telegram_api.send_message(chat_id, final_text, entities=entities)
+
+
+def mdata_get(state, chat_id, key):
+    return state.get_mode(chat_id).get(key)
 
 
 def handle_emoji_message(state: State, chat_id: int, msg: dict):
@@ -189,6 +211,17 @@ def handle_callback(state: State, cq: dict):
         state.set_model(chat_id, model)
         telegram_api.answer_callback(cq["id"], f"تم اختيار {model.split('/')[-1]}")
         telegram_api.send_message(chat_id, f"✅ من الآن تحادث: {model}", reply_markup=kb.main_menu(is_admin(chat_id)))
+    elif data.startswith("provider:") and is_admin(chat_id):
+        provider_name = data.split(":", 1)[1]
+        state.set_mode(chat_id, "awaiting_api_key", provider=provider_name)
+        telegram_api.answer_callback(cq["id"])
+        telegram_api.send_message(chat_id, f"أرسل الآن مفتاح API الخاص بـ {provider_name}.", reply_markup=kb.cancel_menu())
+    elif data.startswith("setmodel:") and is_admin(chat_id):
+        model = data.split(":", 1)[1]
+        import provider_store
+        provider_store.set_model(model)
+        telegram_api.answer_callback(cq["id"], "تم")
+        telegram_api.send_message(chat_id, f"✅ النموذج الفعّال الآن: {model}", reply_markup=kb.admin_menu())
     elif data.startswith("moji_target:") and is_admin(chat_id):
         target = int(data.split(":")[1])
         state.set_mode(chat_id, "collecting_emoji", target=target, got=0)

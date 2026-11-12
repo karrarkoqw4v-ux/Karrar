@@ -84,3 +84,45 @@ def test_admin_replies_have_no_premium_emoji_but_user_can(tmp_path, monkeypatch)
     bot.handle_text(st, USER, "مرحبا")
     user_text = sent[-1][1][1]
     assert "🔥" in user_text
+
+
+def test_add_api_flow_sets_provider_and_url_automatically(tmp_path, monkeypatch):
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import keyboards as kb
+    import provider_store
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider.json"))
+
+    bot.handle_text(st, ADMIN, kb.BTN_ADMIN)
+    bot.handle_text(st, ADMIN, kb.BTN_ADD_API)
+    assert sent[-1][1][1].startswith("اختر نوع المزوّد")
+
+    cq = {"id": "1", "data": "provider:Groq", "message": {"chat": {"id": ADMIN}, "message_id": 5}}
+    answers = []
+    monkeypatch.setattr(bot.telegram_api, "answer_callback", lambda *a, **k: answers.append(a))
+    bot.handle_callback(st, cq)
+    assert st.current_mode(ADMIN) == "awaiting_api_key"
+    assert st.get_mode(ADMIN)["provider"] == "Groq"
+
+    bot.handle_text(st, ADMIN, "gsk_fake_test_key_123")
+    assert st.current_mode(ADMIN) == "idle"
+    saved = provider_store.load()
+    assert saved["name"] == "Groq"
+    assert saved["base_url"] == "https://api.groq.com/openai/v1"  # تم ضبطه تلقائياً من اسم المزوّد فقط
+    assert saved["api_key"] == "gsk_fake_test_key_123"
+    assert saved["model"] == "llama-3.3-70b-versatile"
+
+    cq2 = {"id": "2", "data": "setmodel:openai/gpt-oss-20b", "message": {"chat": {"id": ADMIN}, "message_id": 6}}
+    bot.handle_callback(st, cq2)
+    assert provider_store.load()["model"] == "openai/gpt-oss-20b"
+    # الـ api_key يبقى محفوظاً بعد تغيير النموذج فقط
+    assert provider_store.load()["api_key"] == "gsk_fake_test_key_123"
+
+
+def test_active_provider_used_by_ai_provider(tmp_path, monkeypatch):
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import provider_store
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider2.json"))
+    assert provider_store.load() == {}
+    provider_store.save("DeepSeek", "https://api.deepseek.com", "sk-test", "deepseek-chat")
+    active = provider_store.active()
+    assert active["base_url"] == "https://api.deepseek.com" and active["api_key"] == "sk-test"
