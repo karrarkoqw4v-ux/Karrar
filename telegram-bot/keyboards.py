@@ -23,19 +23,19 @@ BTN_AGREE = "أوافق، تابع"
 UNDER_DEV_BUTTONS = {BTN_VIDEO, BTN_GAME, BTN_APPS, BTN_PRIVATE}
 
 
-def _icon(category: str) -> dict:
-    """يُرجع {"icon_custom_emoji_id": ".."} إن وُجد إيموجي مميز محفوظ بهذا التصنيف تحديداً، وإلا {} (بلا أي حرف بديل ظاهر بالزر)."""
+def _icon_for_button(name: str) -> dict:
+    """أيقونة ثابتة لكل زر (نفس الإيموجي دايماً لنفس الزر، مو عشوائي يتغيّر كل مرة): موضعها داخل مجموعة
+    إيموجي "أزرار" تُحسَب من اسم الزر نفسه، فتبقى واحدة طول الوقت. يُرجع {} بلا أي أيقونة لو ما فيه إيموجي محفوظ بعد."""
     import premium_emoji
-    data = premium_emoji.load()
-    pool = [v for v in data.values() if v.get("category") == category] or [v for v in data.values() if v.get("category") == "أزرار"]
+    pool = premium_emoji.all_in_category("أزرار")
     if not pool:
         return {}
-    import random
-    return {"icon_custom_emoji_id": random.choice(pool)["id"]}
+    idx = sum(ord(c) for c in name) % len(pool)
+    return {"icon_custom_emoji_id": pool[idx]["id"]}
 
 
 def _b(text: str) -> dict:
-    return dict({"text": text}, **_icon("أزرار"))
+    return dict({"text": text}, **_icon_for_button(text))
 
 
 def main_menu(is_admin: bool) -> dict:

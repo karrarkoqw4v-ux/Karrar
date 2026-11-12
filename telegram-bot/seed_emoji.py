@@ -42,10 +42,15 @@ SECTION_2_BUTTONS = [
 ]
 
 
+# القسم الأول (90) موزَّع على 5 تصنيفات حقيقية بالتساوي (18 لكل وحدة) بدل ما يكونوا كلهم "عام" — هذا يخلي
+# كل نوع رسالة (ترحيب/نجاح/تفكير/تحذير/عام) له مجموعة إيموجي مميز خاصة فيه، لا تتداخل عشوائياً مع الباقي.
+TEXT_CATEGORIES = ["ترحيب", "نجاح", "تفكير", "تحذير", "عام"]
+
+
 def import_all():
     """يُستدعى مرة عند تشغيل البوت؛ يتخطى تلقائياً أي رقم موجود مسبقاً (لا يكرّر)."""
     import premium_emoji
-    n1 = premium_emoji.bulk_import(SECTION_1_TEXT, "عام", "text")
+    n1 = premium_emoji.bulk_import_split(SECTION_1_TEXT, TEXT_CATEGORIES, "text")
     n2 = premium_emoji.bulk_import(SECTION_2_BUTTONS, "أزرار", "btn")
     return n1, n2
 

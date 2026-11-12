@@ -293,3 +293,37 @@ def test_correct_groq_key_under_groq_provider_is_accepted(tmp_path, monkeypatch)
     bot.handle_text(st, ADMIN, FAKE_GROQ_KEY)
     assert "تم ضبط Groq" in _last_text(sent)
     assert provider_store.load()["api_key"].startswith("gsk_")
+
+
+def test_seed_text_emoji_split_evenly_across_five_categories(tmp_path, monkeypatch):
+    import config
+    import premium_emoji
+    import seed_emoji
+    monkeypatch.setattr(config, "PREMIUM_EMOJI_FILE", str(tmp_path / "moji.json"))
+    seed_emoji.import_all()
+    data = premium_emoji.load()
+    counts = {}
+    for v in data.values():
+        if v["category"] != "أزرار":
+            counts[v["category"]] = counts.get(v["category"], 0) + 1
+    assert set(counts) == set(seed_emoji.TEXT_CATEGORIES)
+    assert sum(counts.values()) == 90
+    for cat in seed_emoji.TEXT_CATEGORIES:
+        assert counts[cat] == 18  # 90 على 5 تصنيفات بالتساوي
+
+
+def test_button_icon_is_stable_not_random(tmp_path, monkeypatch):
+    """نفس الزر لازم يطلع له نفس الأيقونة كل مرة (ثابتة)، مو عشوائية تتغيّر عند كل إعادة رسم للقائمة."""
+    import config
+    import premium_emoji
+    import keyboards as kb
+    monkeypatch.setattr(config, "PREMIUM_EMOJI_FILE", str(tmp_path / "moji.json"))
+    for i in range(1, 11):
+        premium_emoji.add(f"btn{i}", str(1000 + i), "😀", category="أزرار")
+    first = kb.main_menu(True)["keyboard"][0][0]["icon_custom_emoji_id"]
+    for _ in range(5):
+        again = kb.main_menu(True)["keyboard"][0][0]["icon_custom_emoji_id"]
+        assert again == first
+    # وزر مختلف، على الأغلب، يطلع له رقم مختلف (مو كلهم نفس الإيموجي بالصدفة)
+    other = kb.main_menu(True)["keyboard"][1][0]["icon_custom_emoji_id"]
+    assert other != first or len(premium_emoji.all_in_category("أزرار")) == 1

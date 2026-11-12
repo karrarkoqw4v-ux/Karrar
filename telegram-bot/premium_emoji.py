@@ -72,6 +72,32 @@ def bulk_import(ids: list, category: str, name_prefix: str) -> int:
     return added
 
 
+def bulk_import_split(ids: list, categories: list, name_prefix: str) -> int:
+    """يوزّع قائمة أرقام على عدة تصنيفات بالتساوي وبترتيب ثابت (مو عشوائي): أول دفعة متساوية للتصنيف
+    الأول، وهكذا. يُرجع عدد ما أُضيف فعلاً."""
+    data = load()
+    n = len(ids)
+    chunk = max(1, n // len(categories))
+    added = 0
+    for i, cid in enumerate(ids):
+        cid = str(cid).strip()
+        if not cid or any(v["id"] == cid for v in data.values()):
+            continue
+        cat_index = min(i // chunk, len(categories) - 1)
+        category = categories[cat_index]
+        name = f"{name_prefix}{i + 1}"
+        data[name] = {"id": cid, "char": _FALLBACKS[i % len(_FALLBACKS)], "category": category}
+        added += 1
+    save(data)
+    return added
+
+
+def all_in_category(category: str) -> list:
+    """كل الإيموجيات المحفوظة بتصنيف معيّن، بترتيب ثابت حسب الاسم (مو عشوائي) — تُستخدم لاختيار أيقونة زر ثابتة."""
+    data = load()
+    return [v for _, v in sorted(data.items()) if v.get("category") == category]
+
+
 # كلمات بسيطة بكل تصنيف؛ يُستخدم ردّ النموذج نفسه لاختيار تصنيف إيموجي مناسب بدل العشوائي الكامل.
 CATEGORY_KEYWORDS = {
     "نجاح": ["تم", "نجح", "ممتاز", "رائع", "أحسنت", "جاهز"],
