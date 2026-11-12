@@ -5,26 +5,18 @@
 <link rel="stylesheet" href="css/velox.css"><link rel="stylesheet" href="css/m.css"><link rel="stylesheet" href="css/site.css">
 </head><body data-page="admin" data-public="0">
 <div class="app">
-<div class="hd rise"><a class="back px" href="home.html" aria-label="رجوع"><i class="ic i-chev" style="transform:scaleX(-1)"></i></a><div class="ttl">لوحة التحكم <img class="em e-pulse" src="assets/emoji/e_1f6e0.webp" alt="" style="font-size:20px"><div class="sub" style="color:#7BE5A4">● متصل بقاعدة بيانات البوت</div></div></div>
+<div class="hd rise"><a class="back px" href="home.html" aria-label="رجوع"><i class="ic i-chev" style="transform:scaleX(-1)"></i></a><div class="ttl">لوحة التحكم <img class="em" src="assets/emoji/e_1f6e0.webp" data-fb alt="" style="width:24px;height:24px"><div class="sub"><span style="color:#7BE5A4">● متصل بقاعدة بيانات البوت</span></div></div><span class="pill r">أدمن</span></div>
 <div class="scr">
-<div class="col2 rise" style="--i:1"><div class="st"><span>المستخدمون</span><b>3,284</b></div><div class="st"><span>طلبات اليوم</span><b>146</b></div></div>
-<a class="tile gr w px rp rise" href="admin-games.html" style="--i:2;min-height:56px"><img class="em e-rock" src="assets/emoji/e_1f4f1.webp" alt="" style="font-size:24px">إدارة خدمات الألعاب</a>
-<a class="tile gr w px rp rise" href="admin-rashq.html" style="--i:3;min-height:56px"><img class="em e-fly" src="assets/emoji/e_1f680.webp" alt="" style="font-size:24px">إدارة خدمات الرشق</a>
-<div class="col2">
-<a class="tile gr px rp rise" style="--i:4;min-height:76px;font-size:15px"><img class="em e-wig" src="assets/emoji/e_1f381.webp" alt="" style="font-size:24px">الخدمات المجانية</a>
-<a class="tile gr px rp rise" style="--i:5;min-height:76px;font-size:15px"><img class="em e-rot" src="assets/emoji/e_1f310.webp" alt="" style="font-size:24px">ربط الموقع الرسمي</a>
-<a class="tile gr px rp rise" style="--i:6;min-height:76px;font-size:15px"><img class="em e-pulse" src="assets/emoji/e_2699.webp" alt="" style="font-size:24px">التفعيل والتعطيل</a>
-<a class="tile gr px rp rise" href="admin-settings.html" style="--i:7;min-height:76px;font-size:15px"><img class="em e-rot" src="assets/emoji/e_1f527.webp" alt="" style="font-size:24px">الإعدادات</a>
-<a class="tile gr px rp rise" style="--i:8;min-height:76px;font-size:15px"><img class="em e-bounce" src="assets/emoji/e_1f48e.webp" alt="" style="font-size:24px">النقاط والهدايا</a>
-<a class="tile gr px rp rise" href="admin-users.html" style="--i:9;min-height:76px;font-size:15px"><img class="em e-float" src="assets/emoji/e_1f465.webp" alt="" style="font-size:24px">الحسابات</a>
-<a class="tile gr px rp rise" href="admin-recharge.html" style="--i:10;min-height:76px;font-size:15px"><img class="em e-bounce" src="assets/emoji/e_1f4b3.webp" alt="" style="font-size:24px">الشحن</a>
-<a class="tile gr px rp rise" href="admin-backups.html" style="--i:11;min-height:76px;font-size:15px"><img class="em e-float" src="assets/emoji/e_1f4be.webp" alt="" style="font-size:24px">النسخ الاحتياطية</a>
-<a class="tile gr px rp rise" style="--i:12;min-height:76px;font-size:15px"><img class="em e-pulse" src="assets/emoji/e_1f4ca.webp" alt="" style="font-size:24px">الإحصائيات</a>
-<a class="tile gr px rp rise" style="--i:13;min-height:76px;font-size:15px"><img class="em e-wig" src="assets/emoji/e_1f4dd.webp" alt="" style="font-size:24px">تعديل النصوص</a></div>
-<a class="tile bl w px rp rise" href="admin-hosting.html" style="--i:14;min-height:64px;outline:2px solid rgba(147,197,253,.8);outline-offset:3px"><img class="em e-bounce" src="assets/emoji/e_1f5c2.webp" alt="" style="font-size:26px">ملفات الاستضافة<span class="pill" style="margin-inline-start:auto;background:rgba(255,255,255,.2);color:#fff">جديد</span></a>
-</div>
-<nav class="dock"><a class="on" href="admin.html"><img class="em " src="assets/emoji/e_1f6e1.webp" alt="">الإدارة</a><a href="admin-users.html"><img class="em " src="assets/emoji/e_1f465.webp" alt="">الحسابات</a><a href="admin-recharge.html"><img class="em " src="assets/emoji/e_1f4b3.webp" alt="">الشحن</a><a href="admin-hosting.html"><img class="em " src="assets/emoji/e_1f5c2.webp" alt="">الملفات</a><a href="admin-db.html"><img class="em " src="assets/emoji/e_1f517.webp" alt="">الربط</a></nav>
-</div>
+<div class="col2 rise"><div class="st"><span>المستخدمون</span><b data-bind="a_users">…</b></div><div class="st"><span>مسجّلون بالموقع</span><b data-bind="a_web_users">…</b></div><div class="st"><span>إجمالي الطلبات</span><b data-bind="a_total_orders">…</b></div><div class="st"><span>إجمالي الشحن</span><b data-bind="a_recharge_points">…</b></div></div>
+<div class="col2 rise" style="--i:2"><div class="st"><span>طلبات الرشق</span><b data-bind="a_rashq_orders">…</b></div><div class="st"><span>طلبات الألعاب</span><b data-bind="a_game_orders">…</b></div></div>
+<a class="tile gr w px rp rise" href="admin-games.html"><img class="em" src="assets/emoji/e_1f3ae.webp" data-fb alt="">خدمات الألعاب</a>
+<a class="tile gr w px rp rise" href="admin-rashq.html"><img class="em" src="assets/emoji/e_1f680.webp" data-fb alt="">خدمات الرشق</a>
+<a class="tile gr w px rp rise" href="admin-users.html"><img class="em" src="assets/emoji/e_1f465.webp" data-fb alt="">الحسابات</a>
+<a class="tile gr w px rp rise" href="admin-recharge.html"><img class="em" src="assets/emoji/e_1f4b3.webp" data-fb alt="">الشحن</a>
+<a class="tile gr w px rp rise" href="admin-backups.html"><img class="em" src="assets/emoji/e_1f5c2.webp" data-fb alt="">النسخ الاحتياطية</a>
+<a class="tile bl w px rp rise" href="admin-hosting.html"><img class="em" src="assets/emoji/e_1f5c2.webp" data-fb alt="">ملفات الاستضافة</a>
+<a class="tile gr w px rp rise" href="admin-settings.html"><img class="em" src="assets/emoji/e_2699.webp" data-fb alt="">الإعدادات</a>
+</div><nav class="dock"><a class=on href="admin.html"><img class="em" src="assets/emoji/e_1f6e1.webp" data-fb alt="">الإدارة</a><a href="admin-users.html"><img class="em" src="assets/emoji/e_1f465.webp" data-fb alt="">الحسابات</a><a href="admin-recharge.html"><img class="em" src="assets/emoji/e_1f4b3.webp" data-fb alt="">الشحن</a><a href="admin-hosting.html"><img class="em" src="assets/emoji/e_1f5c2.webp" data-fb alt="">الملفات</a><a href="admin-db.html"><img class="em" src="assets/emoji/e_1f517.webp" data-fb alt="">الربط</a></nav></div>
 <script src="js/config.js"></script>
 <script src="js/app.js" defer></script>
 </body></html>

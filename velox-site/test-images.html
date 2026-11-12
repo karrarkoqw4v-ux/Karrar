@@ -1,0 +1,10 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فحص الصور</title>
+<style>body{font-family:system-ui,sans-serif;background:#111;color:#fff;margin:0;padding:16px}div{display:flex;align-items:center;gap:14px;margin:12px 0;padding:12px;background:#222;border-radius:12px}img,video{width:64px;height:64px;background:#333}</style></head><body>
+<h2>فحص الصور</h2><p>كل سطر يجب أن تظهر فيه صورة. أخبرني أي الأسطر لم تظهر.</p>
+<div><img src="assets/emoji/e_1f680.webp" alt=""><span>1) WebP متحرك (الصيغة المستخدمة)</span></div>
+<div><img src="assets/emoji/e_1f680.png" alt=""><span>2) PNG ثابت (الاحتياطي)</span></div>
+<div><img src="assets/test-rocket.gif" alt=""><span>3) GIF متحرك</span></div>
+<div><img src="assets/brands/tiktok.svg" alt=""><span>4) SVG (أيقونات المنصات)</span></div>
+<div><img src="assets/icon.svg" alt=""><span>5) أيقونة التطبيق SVG</span></div>
+<script>document.querySelectorAll('img').forEach(function(i){i.onerror=function(){i.style.outline='3px solid red'}})</script>
+</body></html>

@@ -5,15 +5,13 @@
 <link rel="stylesheet" href="css/velox.css"><link rel="stylesheet" href="css/m.css"><link rel="stylesheet" href="css/site.css">
 </head><body data-page="order" data-public="0">
 <div class="app">
-<div class="hd rise"><a class="back px" href="rashq-services.html" aria-label="رجوع"><i class="ic i-chev" style="transform:scaleX(-1)"></i></a><span class="bb2 tk sm"><img src="assets/brands/tiktok.svg" alt=""></span><div class="ttl">تأكيد الطلب<div class="sub">متابعين تيك توك 1000</div></div><span class="pill g">متاح</span></div>
+<div class="hd rise"><a class="back px" href="rashq.html" aria-label="رجوع"><i class="ic i-chev" style="transform:scaleX(-1)"></i></a><div class="ttl">تأكيد الطلب<div class="sub"><span data-bind="svc_name">…</span></div></div><span class="pill g">متاح</span></div>
 <div class="scr">
-<div class="glass rise" style="--i:1;display:flex;flex-direction:column;gap:14px">
-<div class="fld2"><label for="u">رابط الحساب أو اليوزر</label><div class="in f"><i class="ic i-link"></i><input id="u" value="tiktok.com/@velox" aria-label="الرابط"></div></div>
-<div class="fld2"><label for="q">الكمية</label><div class="in"><i class="ic i-hash"></i><input id="q" value="1000" inputmode="numeric" aria-label="الكمية"></div><span class="xs mut">الحد الأدنى 100 · الحد الأعلى 50,000</span></div></div>
-<div class="glass rise" style="--i:2;display:flex;flex-direction:column;gap:10px"><div class="rw s"><span class="mut">السعر</span><b>5,500 <img class="em e-pulse" src="assets/emoji/e_1f48e.webp" alt="" style="font-size:15px"></b></div><div class="rw s"><span class="mut">رصيدك</span><b>234 <img class="em e-spin" src="assets/emoji/e_2b50.webp" alt="" style="font-size:15px"></b></div><div style="height:1px;background:rgba(255,255,255,.1)"></div><div class="rw s"><span class="mut">المطلوب شحنه</span><b style="color:#FFA3A3">5,266</b></div></div>
-<div class="item rise" style="--i:3"><span class="eb y"><img class="em e-ring" src="assets/emoji/e_1f514.webp" alt=""></span><span class="fl xs" style="line-height:1.5">سيصلك إشعار على البوت عند إكمال الطلب.</span></div>
-<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px" class="rise"><a class="cta g px rp" href="orders.html">تأكيد وإرسال الطلب <img class="em e-pop" src="assets/emoji/e_2705.webp" alt="" style="font-size:22px"></a><a class="cta sm px rp" href="recharge.html" style="background:rgba(255,255,255,.08);box-shadow:none"><img class="em e-bounce" src="assets/emoji/e_1f4b3.webp" alt="" style="font-size:18px">شحن الرصيد</a></div>
-</div></div>
+<div class="glass rise" id="orderBox" style="display:flex;flex-direction:column;gap:14px"></div>
+<div class="glass rise" style="display:flex;flex-direction:column;gap:10px"><div class="rw s"><span class="mut">السعر</span><b id="oPrice">…</b></div><div class="rw s"><span class="mut">رصيدك</span><b><span data-bind="points">…</span></b></div><div style="height:1px;background:rgba(255,255,255,.1)"></div><div class="rw s"><span class="mut" id="oNeedLbl">المتبقي بعد الطلب</span><b id="oNeed">…</b></div></div>
+<div class="item rise"><span class="eb y"><img class="em" src="assets/emoji/e_1f514.webp" data-fb alt=""></span><span class="fl xs" style="line-height:1.6">تنفيذ الطلبات يتم من البوت حالياً. اضغط الزر وسيفتح البوت لإكمال الطلب.</span></div>
+<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px"><a class="cta g px rp" href="https://t.me/e6nt2bot" target="_blank" rel="noopener">إكمال الطلب من البوت <img class="em" src="assets/emoji/e_2705.webp" data-fb alt="" style="width:26px;height:26px"></a><a class="cta sm px rp" href="recharge.html" style="background:rgba(255,255,255,.08);box-shadow:none"><img class="em" src="assets/emoji/e_1f4b3.webp" data-fb alt="">شحن الرصيد</a></div>
+</div><nav class="dock"><a href="home.html"><img class="em" src="assets/emoji/e_1f3e0.webp" data-fb alt="">الرئيسية</a><a class=on href="rashq.html"><img class="em" src="assets/emoji/e_1f680.webp" data-fb alt="">الرشق</a><a href="games.html"><img class="em" src="assets/emoji/e_1f3ae.webp" data-fb alt="">الألعاب</a><a href="orders.html"><img class="em" src="assets/emoji/e_1f4e6.webp" data-fb alt="">طلباتي</a><a href="account.html"><img class="em" src="assets/emoji/e_1f464.webp" data-fb alt="">حسابي</a></nav></div>
 <script src="js/config.js"></script>
 <script src="js/app.js" defer></script>
 </body></html>
