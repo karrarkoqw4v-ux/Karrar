@@ -20,8 +20,27 @@ class State:
         json.dump(self.data, open(config.STATE_FILE, "w", encoding="utf-8"), ensure_ascii=False)
 
     def touch_user(self, chat_id: int):
-        self.data["users"].setdefault(str(chat_id), {"history": []})
+        self.data["users"].setdefault(str(chat_id), {"history": [], "mode": "idle", "model": None})
         self._save()
+
+    def get_mode(self, chat_id: int) -> dict:
+        return self.data["users"].get(str(chat_id), {}).get("mode_data", {})
+
+    def set_mode(self, chat_id: int, mode: str, **extra):
+        u = self.data["users"].setdefault(str(chat_id), {"history": []})
+        u["mode"] = mode
+        u["mode_data"] = extra
+        self._save()
+
+    def current_mode(self, chat_id: int) -> str:
+        return self.data["users"].get(str(chat_id), {}).get("mode", "idle")
+
+    def set_model(self, chat_id: int, model: str):
+        self.data["users"].setdefault(str(chat_id), {"history": []})["model"] = model
+        self._save()
+
+    def get_model(self, chat_id: int):
+        return self.data["users"].get(str(chat_id), {}).get("model")
 
     def history(self, chat_id: int) -> list:
         return self.data["users"].get(str(chat_id), {}).get("history", [])

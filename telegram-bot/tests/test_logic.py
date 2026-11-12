@@ -47,11 +47,25 @@ def test_add_and_pick(tmp_path, monkeypatch):
     import config
     monkeypatch.setattr(config, "PREMIUM_EMOJI_FILE", str(tmp_path / "moji.json"))
     assert premium_emoji.load() == {}
-    premium_emoji.add("fire", "123", "🔥")
+    premium_emoji.add("fire", "123", "🔥", category="نجاح")
     data = premium_emoji.load()
-    assert data == {"fire": {"id": "123", "char": "🔥"}}
-    picked = premium_emoji.pick_for_reply()
-    assert picked == {"id": "123", "char": "🔥"}
+    assert data == {"fire": {"id": "123", "char": "🔥", "category": "نجاح"}}
+    picked = premium_emoji.pick_for_category("نجاح")
+    assert picked["id"] == "123" and picked["char"] == "🔥"
+
+
+def test_category_for_text_and_fallback():
+    assert premium_emoji.category_for_text("تم بنجاح، ممتاز") == "نجاح"
+    assert premium_emoji.category_for_text("نص عادي بلا كلمات مفتاحية") == "عام"
+
+
+def test_pick_for_category_falls_back_to_general(tmp_path, monkeypatch):
+    import config
+    monkeypatch.setattr(config, "PREMIUM_EMOJI_FILE", str(tmp_path / "moji2.json"))
+    premium_emoji.add("smile", "456", "😊", category="عام")
+    # لا يوجد إيموجي بتصنيف "ترحيب"، يجب أن يرجع من "عام" بدل None
+    picked = premium_emoji.pick_for_category("ترحيب")
+    assert picked["id"] == "456"
 
 
 def test_entity_for_matches_offset_with_preceding_emoji():

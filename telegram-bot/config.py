@@ -12,6 +12,7 @@ ADMIN_ID = int(os.environ.get("ADMIN_ID", "0") or 0)
 AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://api.groq.com/openai/v1")
 AI_API_KEY = os.environ.get("AI_API_KEY", "")
 AI_MODEL = os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 
 API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 PREMIUM_EMOJI_FILE = os.path.join(os.path.dirname(__file__), "premium_emoji.json")

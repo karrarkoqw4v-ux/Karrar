@@ -44,11 +44,40 @@ def extract_from_message(msg: dict) -> list:
     return out
 
 
-def add(name: str, custom_emoji_id: str, char: str) -> dict:
+def add(name: str, custom_emoji_id: str, char: str, category: str = "عام") -> dict:
     data = load()
-    data[name] = {"id": custom_emoji_id, "char": char}
+    data[name] = {"id": custom_emoji_id, "char": char, "category": category}
     save(data)
     return data
+
+
+# كلمات بسيطة بكل تصنيف؛ يُستخدم ردّ النموذج نفسه لاختيار تصنيف إيموجي مناسب بدل العشوائي الكامل.
+CATEGORY_KEYWORDS = {
+    "نجاح": ["تم", "نجح", "ممتاز", "رائع", "أحسنت", "جاهز"],
+    "ترحيب": ["أهلاً", "مرحبا", "هلا", "حياك"],
+    "تفكير": ["أعتقد", "ربما", "دعني أفكر", "لست متأكداً"],
+    "تحذير": ["تحذير", "خطأ", "تعذّر", "لا يمكن", "⚠️"],
+    "حب": ["أحبك", "يسعدني", "سعيد"],
+}
+
+
+def category_for_text(text: str) -> str:
+    for cat, words in CATEGORY_KEYWORDS.items():
+        if any(w in text for w in words):
+            return cat
+    return "عام"
+
+
+def pick_for_category(category: str) -> dict:
+    """يختار إيموجي من نفس التصنيف إن وُجد، وإلا من تصنيف «عام»، وإلا أي إيموجي محفوظ."""
+    data = load()
+    if not data:
+        return None
+    import random
+    same = [v for v in data.values() if v.get("category") == category]
+    general = [v for v in data.values() if v.get("category", "عام") == "عام"]
+    pool = same or general or list(data.values())
+    return random.choice(pool)
 
 
 def pick_for_reply() -> dict:
