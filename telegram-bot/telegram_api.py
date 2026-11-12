@@ -43,6 +43,17 @@ def edit_message_reply_markup(chat_id: int, message_id: int, reply_markup: dict)
     return call("editMessageReplyMarkup", chat_id=chat_id, message_id=message_id, reply_markup=reply_markup)
 
 
+def edit_message_text(chat_id: int, message_id: int, text: str, entities: list = None) -> dict:
+    payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
+    if entities:
+        payload["entities"] = entities
+    return call("editMessageText", **payload)
+
+
+def send_chat_action(chat_id: int, action: str = "typing") -> dict:
+    return call("sendChatAction", chat_id=chat_id, action=action)
+
+
 def answer_callback(callback_id: str, text: str = "") -> dict:
     return call("answerCallbackQuery", callback_query_id=callback_id, text=text)
 

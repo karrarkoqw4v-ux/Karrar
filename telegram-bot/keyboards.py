@@ -1,41 +1,66 @@
-"""لوحات أزرار بوصلة: لا أوامر مكتوبة إطلاقاً. القائمة الرئيسية لوحة أزرار ثابتة (ReplyKeyboard) تظهر
-مكان لوحة المفاتيح، والقوائم الفرعية (اختيار نموذج، تأكيد عدد الإيموجي...) أزرار داخل الرسالة (InlineKeyboard)."""
+"""لوحات أزرار بوصلة: لا أوامر مكتوبة إطلاقاً، ولا إيموجي عادي بأي نص زر — الأيقونات كلها إيموجي مميز
+حقيقي عبر icon_custom_emoji_id (Bot API 9.4)، تظهر فقط إن وُجد إيموجي محفوظ بتصنيف "أزرار"."""
 
-BTN_IMAGE = "🖼️ إنشاء صورة"
-BTN_ABOUT = "ℹ️ عن بوصلة"
-BTN_MODEL = "🧠 اختيار نموذج الذكاء"
-BTN_ADMIN = "⚙️ لوحة التحكم"
-BTN_BACK = "⬅️ رجوع"
-BTN_STATS = "📊 الإحصائيات"
-BTN_BROADCAST = "📢 إرسال بث"
-BTN_EMOJI = "✨ إضافة إيموجيات مميزة"
-BTN_LISTMOJI = "🗂️ عرض الإيموجيات المحفوظة"
-BTN_ADD_API = "➕ إضافة API"
-BTN_CANCEL = "❌ إلغاء"
+BTN_IMAGE = "إنشاء صورة"
+BTN_VIDEO = "إنشاء فيديوهات"
+BTN_GAME = "إنشاء لعبة"
+BTN_APPS = "إنشاء تطبيقات"
+BTN_PRIVATE = "محادثة خاصة"
+BTN_SETTINGS = "الإعدادات"
+BTN_ABOUT = "عن بوصلة"
+BTN_MODEL = "اختيار نموذج الذكاء"
+BTN_ADMIN = "لوحة التحكم"
+BTN_BACK = "رجوع"
+BTN_STATS = "الإحصائيات"
+BTN_BROADCAST = "إرسال بث"
+BTN_EMOJI = "إضافة إيموجيات مميزة"
+BTN_LISTMOJI = "عرض الإيموجيات المحفوظة"
+BTN_ADD_API = "إضافة API"
+BTN_CANCEL = "إلغاء"
+BTN_AGREE = "أوافق، تابع"
+
+# أزرار "قيد التطوير" فعلياً (صدق: غير مبنية بعد)
+UNDER_DEV_BUTTONS = {BTN_VIDEO, BTN_GAME, BTN_APPS, BTN_PRIVATE}
+
+
+def _icon(category: str) -> dict:
+    """يُرجع {"icon_custom_emoji_id": ".."} إن وُجد إيموجي مميز محفوظ بهذا التصنيف تحديداً، وإلا {} (بلا أي حرف بديل ظاهر بالزر)."""
+    import premium_emoji
+    data = premium_emoji.load()
+    pool = [v for v in data.values() if v.get("category") == category] or [v for v in data.values() if v.get("category") == "أزرار"]
+    if not pool:
+        return {}
+    import random
+    return {"icon_custom_emoji_id": random.choice(pool)["id"]}
+
+
+def _b(text: str) -> dict:
+    return dict({"text": text}, **_icon("أزرار"))
 
 
 def main_menu(is_admin: bool) -> dict:
-    def b(text, cat):
-        return dict({"text": text}, **_icon(cat))
-    rows = [[b(BTN_IMAGE, "عام"), b(BTN_MODEL, "تفكير")], [b(BTN_ABOUT, "عام")]]
+    rows = [
+        [_b(BTN_IMAGE), _b(BTN_VIDEO)],
+        [_b(BTN_GAME), _b(BTN_APPS)],
+        [_b(BTN_PRIVATE), _b(BTN_MODEL)],
+        [_b(BTN_SETTINGS), _b(BTN_ABOUT)],
+    ]
     if is_admin:
-        rows.append([b(BTN_ADMIN, "نجاح")])
+        rows.append([_b(BTN_ADMIN)])
     return {"keyboard": rows, "resize_keyboard": True, "is_persistent": True}
 
 
 def admin_menu() -> dict:
-    return {"keyboard": [[BTN_STATS, BTN_BROADCAST], [BTN_EMOJI, BTN_LISTMOJI], [BTN_ADD_API], [BTN_BACK]], "resize_keyboard": True}
+    return {"keyboard": [[_b(BTN_STATS), _b(BTN_BROADCAST)], [_b(BTN_EMOJI), _b(BTN_LISTMOJI)],
+                          [_b(BTN_ADD_API)], [_b(BTN_BACK)]], "resize_keyboard": True}
 
 
 def cancel_menu() -> dict:
-    return {"keyboard": [[BTN_CANCEL]], "resize_keyboard": True}
+    return {"keyboard": [[_b(BTN_CANCEL)]], "resize_keyboard": True}
 
 
-def _icon(category: str) -> dict:
-    """يُرجع {"icon_custom_emoji_id": ".."} إن وُجد إيموجي مميز محفوظ بهذا التصنيف، وإلا {} (Bot API 9.4)."""
-    import premium_emoji
-    e = premium_emoji.pick_for_category(category)
-    return {"icon_custom_emoji_id": e["id"]} if e else {}
+def agree_gate_inline() -> dict:
+    return {"inline_keyboard": [[{"text": BTN_AGREE, "callback_data": "agree_terms"}]]}
 
 
 def model_picker_inline(models: list, page: int = 0, per_page: int = 8) -> dict:
@@ -44,9 +69,9 @@ def model_picker_inline(models: list, page: int = 0, per_page: int = 8) -> dict:
     rows = [[{"text": m.split("/")[-1], "callback_data": f"model:{m}"}] for m in chunk]
     nav = []
     if page > 0:
-        nav.append({"text": "◀️ السابق", "callback_data": f"modelpage:{page - 1}"})
+        nav.append({"text": "السابق", "callback_data": f"modelpage:{page - 1}"})
     if start + per_page < len(models):
-        nav.append({"text": "التالي ▶️", "callback_data": f"modelpage:{page + 1}"})
+        nav.append({"text": "التالي", "callback_data": f"modelpage:{page + 1}"})
     if nav:
         rows.append(nav)
     return {"inline_keyboard": rows}

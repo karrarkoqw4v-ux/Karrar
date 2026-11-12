@@ -19,8 +19,31 @@ class State:
     def _save(self):
         json.dump(self.data, open(config.STATE_FILE, "w", encoding="utf-8"), ensure_ascii=False)
 
-    def touch_user(self, chat_id: int):
-        self.data["users"].setdefault(str(chat_id), {"history": [], "mode": "idle", "model": None})
+    def touch_user(self, chat_id: int, from_user: dict = None):
+        u = self.data["users"].setdefault(str(chat_id), {
+            "history": [], "mode": "idle", "model": None, "agreed": False,
+            "stats": {"images": 0, "videos": 0, "games": 0, "apps": 0}, "first_seen": time.time(),
+        })
+        if from_user:
+            u["name"] = from_user.get("first_name", "")
+            u["username"] = from_user.get("username", "")
+            u["is_premium"] = bool(from_user.get("is_premium"))
+        self._save()
+
+    def is_agreed(self, chat_id: int) -> bool:
+        return bool(self.data["users"].get(str(chat_id), {}).get("agreed"))
+
+    def set_agreed(self, chat_id: int):
+        self.data["users"].setdefault(str(chat_id), {})["agreed"] = True
+        self._save()
+
+    def profile(self, chat_id: int) -> dict:
+        return self.data["users"].get(str(chat_id), {})
+
+    def bump_stat(self, chat_id: int, key: str):
+        u = self.data["users"].setdefault(str(chat_id), {"stats": {}})
+        u.setdefault("stats", {})
+        u["stats"][key] = u["stats"].get(key, 0) + 1
         self._save()
 
     def get_mode(self, chat_id: int) -> dict:

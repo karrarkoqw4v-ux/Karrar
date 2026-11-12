@@ -51,6 +51,27 @@ def add(name: str, custom_emoji_id: str, char: str, category: str = "عام") ->
     return data
 
 
+# تيليجرام يُلزم كل custom_emoji entity أنه "يغلّف" إيموجي عادي واحد كنص بديل (fallback) — هذا شرط بروتوكول
+# تيليجرام نفسه، وليس إضافة مني. لمستخدم بريميوم (أي شخص، بما أن مالك البوت عنده بريميوم) يظهر الإيموجي
+# المميز الحقيقي دايماً، لا الحرف البديل. نُدوّر على مجموعة صغيرة من الحروف البديلة فقط لتنويع الطول/الشكل.
+_FALLBACKS = ["😀", "😊", "🙂", "👍", "🔥", "💯", "🎉", "⭐", "💫", "🌟", "✴️", "🔸"]
+
+
+def bulk_import(ids: list, category: str, name_prefix: str) -> int:
+    """يستورد قائمة أرقام custom_emoji_id دفعة واحدة بتصنيف واحد. يُرجع عدد ما أُضيف فعلاً (يتجاوز المكرر)."""
+    data = load()
+    added = 0
+    for i, cid in enumerate(ids):
+        cid = str(cid).strip()
+        if not cid or any(v["id"] == cid for v in data.values()):
+            continue
+        name = f"{name_prefix}{i + 1}"
+        data[name] = {"id": cid, "char": _FALLBACKS[i % len(_FALLBACKS)], "category": category}
+        added += 1
+    save(data)
+    return added
+
+
 # كلمات بسيطة بكل تصنيف؛ يُستخدم ردّ النموذج نفسه لاختيار تصنيف إيموجي مناسب بدل العشوائي الكامل.
 CATEGORY_KEYWORDS = {
     "نجاح": ["تم", "نجح", "ممتاز", "رائع", "أحسنت", "جاهز"],
