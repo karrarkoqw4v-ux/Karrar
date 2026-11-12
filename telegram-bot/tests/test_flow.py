@@ -73,13 +73,14 @@ def test_emoji_collect_flow(tmp_path, monkeypatch):
     assert len(premium_emoji.load()) == 3
 
 
-def test_admin_replies_have_no_premium_emoji_but_user_can(tmp_path, monkeypatch):
+def test_premium_emoji_shows_for_admin_and_user_alike(tmp_path, monkeypatch):
+    """الأدمن عنده تيليجرام بريميوم فعلاً، فيشوف الإيموجي المميز متل أي مستخدم عادي؛ لوحة التحكم (أزرار/إحصائيات) تبقى نصاً عادياً لأنها رسائل نظام وليست ردود ذكاء."""
     bot, st, sent = _fresh(tmp_path, monkeypatch)
     import premium_emoji
     premium_emoji.add("fire", "1", "🔥", category="عام")
     bot.handle_text(st, ADMIN, "مرحبا")
     admin_text = sent[-1][1][1]
-    assert "🔥" not in admin_text
+    assert "🔥" in admin_text
     sent.clear()
     bot.handle_text(st, USER, "مرحبا")
     user_text = sent[-1][1][1]

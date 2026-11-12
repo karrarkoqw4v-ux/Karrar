@@ -164,13 +164,10 @@ def handle_text(state: State, chat_id: int, text: str):
         telegram_api.send_message(chat_id, f"✅ أُرسلت لـ {sent} مستخدماً.", reply_markup=kb.admin_menu())
         return
 
-    # ---- محادثة عادية مع الذكاء الاصطناعي ----
+    # ---- محادثة عادية مع الذكاء الاصطناعي: الإيموجي المميز يظهر للجميع (بمن فيهم الأدمن) ----
     reply = answer_ai(state, chat_id, text)
-    if is_admin(chat_id):
-        telegram_api.send_message(chat_id, reply)  # بلا إيموجي مميز للوحة الأدمن
-    else:
-        final_text, entities = decorate(reply)
-        telegram_api.send_message(chat_id, final_text, entities=entities)
+    final_text, entities = decorate(reply)
+    telegram_api.send_message(chat_id, final_text, entities=entities)
 
 
 def mdata_get(state, chat_id, key):
