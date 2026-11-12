@@ -18,3 +18,22 @@ def by_name(name: str):
         if p[0] == name:
             return p
     return None
+
+
+# بادئات المفاتيح الشائعة لكل مزوّد، لتنبيه الأدمن فوراً لو لصق مفتاح مزوّد ثاني بالغلط (مثل مفتاح Groq
+# بوضع OpenRouter) بدل ما يكتشفها بعد دقايق برسالة خطأ غامضة من المزوّد نفسه.
+KEY_PREFIXES = {
+    "Groq": "gsk_",
+    "OpenRouter": "sk-or-",
+    "OpenAI": "sk-",
+    "Anthropic Claude": "sk-ant-",
+    "Mistral": "",  # لا بادئة ثابتة معروفة
+    "DeepSeek": "sk-",
+    "Google Gemini": "",
+    "GitHub Models": "github_pat_",
+}
+
+
+def key_looks_wrong(provider_name: str, key: str) -> bool:
+    prefix = KEY_PREFIXES.get(provider_name, "")
+    return bool(prefix) and not key.strip().startswith(prefix)

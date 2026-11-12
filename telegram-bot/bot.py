@@ -52,12 +52,23 @@ def send_decorated(chat_id: int, text: str, category: str = None, reply_markup: 
     telegram_api.send_message(chat_id, final_text, entities=entities, reply_markup=reply_markup)
 
 
+def openrouter_key() -> str:
+    """يبحث عن مفتاح OpenRouter الحقيقي: أولاً المزوّد الذي ضبطه الأدمن بزر «إضافة API» (لو اختار OpenRouter
+    تحديداً)، وإلا متغيّر OPENROUTER_API_KEY بملف .env. هذا الربط كان ناقصاً سابقاً وسبّب فشل زر «اختيار نموذج
+    الذكاء» بصمت (كان دايماً يقرأ .env الفاضي حتى لو ضبط الأدمن مفتاحاً بالأزرار)."""
+    import provider_store
+    p = provider_store.load()
+    if p.get("name") == "OpenRouter" and p.get("api_key"):
+        return p["api_key"]
+    return config.OPENROUTER_API_KEY
+
+
 def answer_ai(state: State, chat_id: int, text: str) -> str:
     history = state.history(chat_id)
     history.append({"role": "user", "content": text})
     model = state.get_model(chat_id)
     if model:
-        reply = ask_openrouter(config.OPENROUTER_API_KEY, model, history[-12:], config.SYSTEM_PROMPT)
+        reply = ask_openrouter(openrouter_key(), model, history[-12:], config.SYSTEM_PROMPT)
     else:
         reply = ask_default(history[-12:])
     history.append({"role": "assistant", "content": reply})
@@ -135,6 +146,9 @@ def handle_text(state: State, chat_id: int, text: str, from_user: dict = None):
         return
 
     if text == kb.BTN_MODEL:
+        if not openrouter_key():
+            send_decorated(chat_id, "هذا الزر يحتاج مفتاح OpenRouter حقيقياً أولاً (يبدأ بـ sk-or-v1-...، من openrouter.ai/keys). اطلب من الأدمن يضبطه من زر «إضافة API» ← OpenRouter.", "تحذير", reply_markup=kb.main_menu(is_admin(chat_id)))
+            return
         models = models_provider.free_models()
         if not models:
             send_decorated(chat_id, "تعذّر جلب قائمة النماذج الآن، جرّب لاحقاً.", "تحذير")
@@ -205,6 +219,10 @@ def handle_text(state: State, chat_id: int, text: str, from_user: dict = None):
             send_decorated(chat_id, "صار خطأ، أعد المحاولة من زر إضافة API.", "تحذير", reply_markup=kb.admin_menu())
             return
         _, base_url, default_model, _ = p
+        providers_mod = __import__("providers")
+        if providers_mod.key_looks_wrong(provider_name, text):
+            send_decorated(chat_id, f"هذا المفتاح شكله مو مفتاح {provider_name} (المفاتيح الصحيحة تبدأ بـ «{providers_mod.KEY_PREFIXES[provider_name]}»). تأكد إنك نسخت المفتاح الصحيح من موقع {provider_name} نفسه وأرسله من جديد، أو اضغط إلغاء.", "تحذير", reply_markup=kb.cancel_menu())
+            return
         import provider_store
         provider_store.save(provider_name, base_url, text.strip(), default_model)
         state.set_mode(chat_id, "idle")

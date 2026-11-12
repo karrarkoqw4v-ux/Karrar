@@ -235,3 +235,61 @@ def test_seed_emoji_import_is_idempotent(tmp_path, monkeypatch):
     n1b, n2b = seed_emoji.import_all()  # تشغيل ثانٍ يجب ألا يكرّر شيئاً
     assert n1b == 0 and n2b == 0
     assert len(premium_emoji.load()) == 150
+
+
+FAKE_GROQ_KEY = "gsk_FAKEKEYFORTESTSONLY0000000000000000"  # مفتاح وهمي بنفس شكل بادئة Groq، ليس مفتاحاً حقيقياً
+FAKE_OPENROUTER_KEY = "sk-or-v1-fakekeyfortestsonly000000000000"  # مفتاح وهمي بنفس شكل بادئة OpenRouter
+
+
+def test_openrouter_key_bridges_from_provider_store(tmp_path, monkeypatch):
+    """العلة الحقيقية اللي صارت للأدمن: زر «اختيار نموذج الذكاء» كان يقرأ .env الفاضي دايماً حتى لو ضبط
+    الأدمن مفتاح OpenRouter بالأزرار. يتأكد هذا الاختبار أن الربط صار صحيحاً."""
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import provider_store
+    import config
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider.json"))
+    monkeypatch.setattr(config, "OPENROUTER_API_KEY", "")  # .env فاضي، نفس حالة الأدمن فعلياً
+    assert bot.openrouter_key() == ""
+    provider_store.save("OpenRouter", "https://openrouter.ai/api/v1", FAKE_OPENROUTER_KEY, "meta-llama/llama-3.3-70b-instruct:free")
+    assert bot.openrouter_key() == FAKE_OPENROUTER_KEY
+
+
+def test_model_button_blocked_without_real_key(tmp_path, monkeypatch):
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import provider_store
+    import config
+    import keyboards as kb
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider.json"))
+    monkeypatch.setattr(config, "OPENROUTER_API_KEY", "")
+    bot.handle_text(st, USER, kb.BTN_MODEL)
+    assert "يحتاج مفتاح OpenRouter حقيقياً" in _last_text(sent)
+
+
+def test_wrong_provider_key_prefix_is_caught_before_saving(tmp_path, monkeypatch):
+    """بالضبط نفس خطأ الأدمن الحقيقي: اختار OpenRouter ولصق مفتاح شكله Groq (gsk_...) بالغلط."""
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import provider_store
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider.json"))
+
+    cq = {"id": "1", "data": "provider:OpenRouter", "message": {"chat": {"id": ADMIN}, "message_id": 1}}
+    bot.handle_callback(st, cq)
+    bot.handle_text(st, ADMIN, FAKE_GROQ_KEY)
+    assert "مو مفتاح OpenRouter" in _last_text(sent)
+    assert provider_store.load() == {}  # ما انحفظ المفتاح الخاطئ
+    assert st.current_mode(ADMIN) == "awaiting_api_key"  # يبقى بانتظار مفتاح صحيح، ما رجع idle
+
+    sent.clear()
+    bot.handle_text(st, ADMIN, FAKE_OPENROUTER_KEY)
+    assert "تم ضبط OpenRouter" in _last_text(sent)
+    assert provider_store.load()["api_key"] == FAKE_OPENROUTER_KEY
+
+
+def test_correct_groq_key_under_groq_provider_is_accepted(tmp_path, monkeypatch):
+    bot, st, sent = _fresh(tmp_path, monkeypatch)
+    import provider_store
+    monkeypatch.setattr(provider_store, "STORE_FILE", str(tmp_path / "provider.json"))
+    cq = {"id": "1", "data": "provider:Groq", "message": {"chat": {"id": ADMIN}, "message_id": 1}}
+    bot.handle_callback(st, cq)
+    bot.handle_text(st, ADMIN, FAKE_GROQ_KEY)
+    assert "تم ضبط Groq" in _last_text(sent)
+    assert provider_store.load()["api_key"].startswith("gsk_")
