@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#070B18"><title>عجلة الحظ | Velox</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="assets/icon-192.png"><link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/velox.css"><link rel="stylesheet" href="css/m.css"><link rel="stylesheet" href="css/site.css"><style>
+@keyframes wspin{0%{transform:rotate(0)}100%{transform:rotate(1440deg)}}
+.wh{width:300px;height:300px;border-radius:50%;border:8px solid rgba(255,255,255,.18);background:conic-gradient(#3B82F6 0 45deg,#22A455 45deg 90deg,#EF4444 90deg 135deg,#F59E0B 135deg 180deg,#3B82F6 180deg 225deg,#22A455 225deg 270deg,#EF4444 270deg 315deg,#8B5CF6 315deg 360deg);box-shadow:0 0 0 8px rgba(59,130,246,.15),0 20px 60px rgba(37,99,235,.5);animation:wspin 6s cubic-bezier(.2,.7,.2,1) infinite;position:relative}
+.wh b{position:absolute;font-size:17px;font-weight:800;color:#fff;top:50%;left:50%;width:0;height:0;transform:rotate(var(--r)) translateY(-112px)}
+.wh b span{position:absolute;transform:translate(-50%,-50%);display:block;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+</style>
+</head><body data-page="wheel" data-public="0">
+<div class="app">
+<div class="hd rise"><a class="back px" href="collect.html" aria-label="رجوع"><i class="ic i-chev" style="transform:scaleX(-1)"></i></a><div class="ttl">عجلة الحظ <img class="em e-rot" src="assets/emoji/e_1f3a1.webp" alt="" style="font-size:20px"><div class="sub">لفة واحدة كل يوم</div></div><a class="coin px"><img class="em e-spin" src="assets/emoji/e_2b50.webp" alt="" style="font-size:17px">234</a></div>
+<div class="scr" style="align-items:center">
+<div style="position:relative;margin-top:14px" class="rise"><div class="wh"><b style="--r:22deg"><span>10</span></b><b style="--r:67deg"><span>25</span></b><b style="--r:112deg"><span>50</span></b><b style="--r:157deg"><span>100</span></b><b style="--r:202deg"><span>10</span></b><b style="--r:247deg"><span>250</span></b><b style="--r:292deg"><span>50</span></b><b style="--r:337deg"><span>500</span></b></div>
+<div style="position:absolute;top:50%;left:50%;width:78px;height:78px;margin:-39px 0 0 -39px;border-radius:50%;background:#0B1226;border:4px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><img class="em e-pulse" src="assets/emoji/e_2b50.webp" alt="" style="font-size:34px"></div>
+<div style="position:absolute;top:-16px;left:50%;margin-left:-14px;width:0;height:0;border-inline:14px solid transparent;border-top:30px solid #FBBF24;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));animation:bounce 1s ease-in-out infinite"></div></div>
+<div class="glass rise" style="--i:2;width:100%;display:flex;flex-direction:column;gap:10px;margin-top:10px"><div class="rw s"><span class="mut">لفات اليوم</span><b>1 / 1</b></div><div class="prog"><i style="width:100%"></i></div><div class="rw" style="gap:6px;flex-wrap:wrap"><span class="pill">10</span><span class="pill g">25</span><span class="pill r">50</span><span class="pill y">100</span><span class="pill">250</span><span class="pill g">500</span></div></div>
+<a class="cta g px rp rise" style="--i:3;width:100%;margin-top:auto">لف العجلة الآن <img class="em e-rot" src="assets/emoji/e_1f3a1.webp" alt="" style="font-size:22px"></a>
+</div></div>
+<script src="js/config.js"></script>
+<script src="js/app.js" defer></script>
+</body></html>
