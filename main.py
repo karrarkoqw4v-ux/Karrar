@@ -9016,7 +9016,9 @@ def _srv_text():
         f"🗄️ <b>قاعدة البيانات:</b> <code>{os.path.abspath(DB_PATH)}</code>",
     ]
     if not running:
-        lines += ["", "⚠️ خادم التطبيق متوقف. اضغط «تشغيل خادم التطبيق» أو شغّل server.py يدوياً."]
+        lines += ["", "⚠️ خادم التطبيق متوقف. اضغط «تشغيل خادم التطبيق» (الخادم مدمج داخل البوت ولا يحتاج ملفات إضافية)."]
+        if WEB_API_STATE.get("error"):
+            lines += [f"❗ آخر خطأ: <code>{WEB_API_STATE['error']}</code>"]
     lines += ["", "ℹ️ إذا كانت استضافتك تعطيك دومين/رابطاً رسمياً فاستخدمه بدل الـ IP (ويفضّل https). يمكنك تثبيته بمتغير VELOX_PUBLIC_URL."]
     return "\n".join(lines), running
 
@@ -9045,21 +9047,405 @@ def cb_adm_server_info(call):
 @bot.callback_query_handler(func=lambda c: c.data == "adm_server_start")
 def cb_adm_server_start(call):
     if call.from_user.id != ADMIN_ID: return
-    script = _srv_script()
-    if not script:
-        return bot.answer_callback_query(call.id, "ملف server.py غير موجود بجانب main.py (مجلد velox-site/server)", show_alert=True)
-    if not _srv_running():
-        try:
-            import subprocess, sys
-            env = dict(os.environ, VELOX_DB=os.path.abspath(DB_PATH), PORT=str(SITE_SERVER_PORT))
-            log = open(os.path.join(os.path.dirname(script), "server.log"), "ab")
-            subprocess.Popen([sys.executable, script], cwd=os.path.dirname(script), env=env, stdout=log, stderr=log,
-                             start_new_session=True)
-            time.sleep(3)
-        except Exception as e:
-            return bot.answer_callback_query(call.id, f"تعذّر التشغيل: {e}"[:190], show_alert=True)
-    bot.answer_callback_query(call.id, "تم الأمر")
+    ok, msg = _web_api_start()
+    if not ok:
+        return bot.answer_callback_query(call.id, f"تعذّر التشغيل: {msg}"[:190], show_alert=True)
+    time.sleep(1)
+    bot.answer_callback_query(call.id, "تم تشغيل خادم التطبيق")
     _srv_show(call)
+
+# ─────────────────────────────────────────────────────────────
+# 🌐  خادم API للتطبيق (مدمج داخل البوت — بدون مكتبات خارجية)
+#     يقرأ ويكتب في نفس قاعدة بيانات البوت، ويعمل بخيط منفصل.
+# ─────────────────────────────────────────────────────────────
+import hmac as _hmac, hashlib as _hashlib, base64 as _b64, io as _io, zipfile as _zipfile
+from http.server import ThreadingHTTPServer as _TServer, BaseHTTPRequestHandler as _BaseHandler
+from urllib.parse import urlparse as _urlparse, parse_qs as _parse_qs
+
+WEB_API_STATE = {"server": None, "error": ""}
+_WEB_ATTEMPTS = {}
+
+def _web_secret():
+    path = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "velox_web_secret.txt")
+    try:
+        with open(path, "r") as f:
+            v = f.read().strip()
+            if len(v) >= 32:
+                return v.encode()
+    except Exception:
+        pass
+    v = os.urandom(32).hex()
+    try:
+        with open(path, "w") as f:
+            f.write(v)
+    except Exception:
+        pass
+    return v.encode()
+
+def _web_hash(pw):
+    salt = os.urandom(8).hex()
+    h = _hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 120000).hex()
+    return f"vx$120000${salt}${h}"
+
+def _web_check(pw, stored):
+    try:
+        _, it, salt, h = stored.split("$")
+        c = _hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), int(it)).hex()
+        return _hmac.compare_digest(c, h)
+    except Exception:
+        return False
+
+def _web_token(uid):
+    payload = _b64.urlsafe_b64encode(json.dumps({"u": int(uid), "e": int(time.time()) + 30 * 86400}).encode()).decode()
+    sig = _hmac.new(_web_secret(), payload.encode(), _hashlib.sha256).hexdigest()
+    return payload + "." + sig
+
+def _web_token_uid(tok):
+    try:
+        payload, sig = tok.split(".")
+        good = _hmac.new(_web_secret(), payload.encode(), _hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(sig, good):
+            return None
+        d = json.loads(_b64.urlsafe_b64decode(payload.encode()))
+        return int(d["u"]) if d["e"] > time.time() else None
+    except Exception:
+        return None
+
+def _web_rows(conn, sql, args=()):
+    cur = conn.execute(sql, args)
+    cols = [c[0] for c in cur.description]
+    return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+def _web_seed_admin():
+    conn = get_conn()
+    try:
+        _web_ensure_schema()
+        pw = os.environ.get("ADMIN_PASSWORD") or "1005"
+        row = conn.execute("SELECT web_password_hash FROM users WHERE user_id=?", (ADMIN_ID,)).fetchone()
+        if row is None:
+            conn.execute("INSERT INTO users (user_id, first_name, points, balance, orders, joined_at) VALUES (?,?,?,?,?,?)",
+                         (ADMIN_ID, "Admin", 0, 0.0, 0, datetime.now().isoformat()))
+            row = (None,)
+        if not row[0] or not str(row[0]).startswith("vx$") or os.environ.get("ADMIN_PASSWORD"):
+            conn.execute("UPDATE users SET web_password_hash=?, web_linked=1, web_name=COALESCE(web_name,'المسؤول') WHERE user_id=?",
+                         (_web_hash(pw), ADMIN_ID))
+        conn.commit()
+    finally:
+        conn.close()
+
+def _web_public_user(u, full=False):
+    uid = int(u["user_id"])
+    d = {"uid": str(uid), "name": u.get("web_name") or u.get("first_name") or u.get("username") or "مستخدم",
+         "username": ("@" + u["username"]) if u.get("username") else "", "points": int(u.get("points") or 0),
+         "balance": float(u.get("balance") or 0), "orders": int(u.get("orders") or 0), "admin": uid == int(ADMIN_ID)}
+    if full:
+        d.update(free_points=int(u.get("free_points") or 0), paid_points=int(u.get("paid_points") or 0),
+                 spent_points=int(u.get("spent_points") or 0), referrals=int(u.get("referrals") or 0),
+                 joined_at=u.get("joined_at") or "", email=u.get("web_email") or "", google=bool(u.get("web_google_id")))
+    return d
+
+def _web_user_row(conn, uid):
+    r = _web_rows(conn, "SELECT * FROM users WHERE user_id=?", (int(uid),))
+    return r[0] if r else None
+
+def _web_orders(conn, uid=None, limit=200):
+    where, args = ("WHERE user_id=?", (uid,)) if uid else ("", ())
+    q = [("خدمة", f"SELECT order_id, service AS title, price, status, created_at, quantity, link FROM orders {where}"),
+         ("ألعاب", f"SELECT order_id, (category || ' - ' || service_name) AS title, price, status, created_at, quantity, '' AS link FROM game_orders {where}"),
+         ("رشق", f"SELECT order_id, (platform || ' - ' || service_name) AS title, price, status, created_at, quantity, link FROM rashq_orders {where}"),
+         ("تمويل", f"SELECT order_id, ('تمويل قناة ' || COALESCE(channel_name,'') || ' (' || members || ' عضو)') AS title, price, status, created_at, members AS quantity, channel_link AS link FROM tamweel_orders {where}")]
+    out = []
+    for kind, sql in q:
+        try:
+            for r in _web_rows(conn, sql, args):
+                out.append({"id": r["order_id"], "kind": kind, "title": r["title"], "price": r["price"], "status": r["status"],
+                            "created_at": r["created_at"], "quantity": r["quantity"], "link": r["link"]})
+        except Exception:
+            pass
+    out.sort(key=lambda o: str(o["created_at"] or ""), reverse=True)
+    return out[:limit]
+
+def _web_new_code(conn, uid):
+    for _ in range(30):
+        code = f"VX-{random.randint(10000, 99999)}"
+        if not conn.execute("SELECT 1 FROM web_link_codes WHERE code=?", (code,)).fetchone():
+            conn.execute("INSERT INTO web_link_codes (code,user_id,created_at) VALUES (?,?,?)",
+                         (code, uid, datetime.now().isoformat(timespec="seconds")))
+            conn.commit()
+            return code
+    raise RuntimeError("code")
+
+class _WebApi(_BaseHandler):
+    server_version = "Velox"
+
+    def log_message(self, *a):
+        pass
+
+    def _cors(self):
+        origin = self.headers.get("Origin")
+        allowed = os.environ.get("ALLOWED_ORIGINS", "*")
+        if origin and (allowed == "*" or origin in [o.strip() for o in allowed.split(",")]):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
+
+    def _json(self, status, obj):
+        data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self._cors()
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _file(self, data, name, mime):
+        self.send_response(200)
+        self._cors()
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _limited(self, limit=10):
+        ip = (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[0].strip()
+        now = time.time()
+        hits = [t for t in _WEB_ATTEMPTS.get(ip, []) if now - t < 60]
+        hits.append(now)
+        _WEB_ATTEMPTS[ip] = hits
+        return len(hits) > limit
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cors()
+        self.end_headers()
+
+    def do_GET(self):
+        self._route("GET")
+
+    def do_POST(self):
+        self._route("POST")
+
+    def _route(self, method):
+        u = _urlparse(self.path)
+        path = u.path.rstrip("/")
+        q = {k: v[0] for k, v in _parse_qs(u.query).items()}
+        body = {}
+        if method == "POST":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(min(n, 65536)) or b"{}")
+            except Exception:
+                body = {}
+        try:
+            self._handle(method, path, q, body)
+        except Exception as e:
+            self._json(500, {"message": f"خطأ في الخادم: {e}"})
+
+    def _auth(self, q, admin=False):
+        h = self.headers.get("Authorization", "")
+        tok = h[7:] if h.startswith("Bearer ") else q.get("token", "")
+        uid = _web_token_uid(tok) if tok else None
+        if not uid:
+            self._json(401, {"message": "غير مسجّل"})
+            return None
+        conn = get_conn()
+        try:
+            u = _web_user_row(conn, uid)
+        finally:
+            conn.close()
+        if not u:
+            self._json(401, {"message": "غير مسجّل"})
+            return None
+        if admin and int(uid) != int(ADMIN_ID):
+            self._json(403, {"message": "صلاحية المسؤول مطلوبة"})
+            return None
+        return u
+
+    def _handle(self, m, p, q, body):
+        if not p.startswith("/api/"):
+            return self._json(200, {"velox": True, "message": "Velox API"})
+        r = p[5:]
+        conn = get_conn()
+        try:
+            # ───── عام ─────
+            if r == "stats" and m == "GET":
+                try:
+                    return self._json(200, {"total_orders": int(get_total_orders())})
+                except Exception:
+                    return self._json(200, {"total_orders": 0})
+            if r == "register" and m == "POST":
+                if self._limited(): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                name = str(body.get("name", "")).strip()[:40]; uid = str(body.get("id", "")).strip()
+                pw = str(body.get("password", "")); email = str(body.get("email", "")).strip().lower()[:120]
+                if len(name) < 2: return self._json(400, {"message": "اكتب اسمك"})
+                if not re.fullmatch(r"\d{5,15}", uid): return self._json(400, {"message": "الأيدي أرقام فقط"})
+                if len(pw) < 6: return self._json(400, {"message": "كلمة السر 6 أحرف على الأقل"})
+                if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email): return self._json(400, {"message": "البريد الإلكتروني غير صحيح"})
+                uid = int(uid)
+                row = _web_user_row(conn, uid)
+                if row and row.get("web_password_hash"): return self._json(409, {"message": "هذا الأيدي مسجّل بالفعل، سجّل الدخول"})
+                if not row:
+                    conn.execute("INSERT INTO users (user_id, first_name, points, balance, orders, joined_at) VALUES (?,?,?,?,?,?)",
+                                 (uid, name, 234, 0.0, 0, datetime.now().isoformat()))
+                conn.execute("UPDATE users SET web_password_hash=?, web_email=?, web_name=?, web_linked=0 WHERE user_id=?",
+                             (_web_hash(pw), email or None, name, uid))
+                conn.commit()
+                return self._json(200, {"ok": True, "link_code": _web_new_code(conn, uid)})
+            if r == "link/check" and m == "POST":
+                if self._limited(30): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                code = str(body.get("code", "")).strip().upper()
+                row = _web_rows(conn, "SELECT * FROM web_link_codes WHERE code=?", (code,))
+                if not row: return self._json(404, {"message": "كود غير صحيح"})
+                row = row[0]; age = datetime.now() - datetime.fromisoformat(row["created_at"])
+                if not row["confirmed"]:
+                    if age > timedelta(minutes=10): return self._json(410, {"message": "انتهت صلاحية الكود، سجّل الدخول لإنشاء كود جديد"})
+                    return self._json(200, {"linked": False})
+                if age > timedelta(minutes=20): return self._json(410, {"message": "انتهت صلاحية الكود، سجّل الدخول"})
+                u = _web_user_row(conn, row["user_id"])
+                return self._json(200, {"linked": True, "token": _web_token(u["user_id"]), "user": _web_public_user(u)})
+            if r == "login" and m == "POST":
+                if self._limited(): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                uid = str(body.get("id", "")).strip(); pw = str(body.get("password", ""))
+                u = _web_user_row(conn, int(uid)) if uid.isdigit() else None
+                if not u or not u.get("web_password_hash") or not _web_check(pw, u["web_password_hash"]):
+                    return self._json(401, {"message": "الأيدي أو كلمة السر غير صحيحة"})
+                if not u.get("web_linked"):
+                    return self._json(403, {"message": "الحساب غير مربوط بالبوت بعد", "link_code": _web_new_code(conn, int(u["user_id"]))})
+                return self._json(200, {"ok": True, "token": _web_token(u["user_id"]), "user": _web_public_user(u)})
+            if r == "google" and m == "POST":
+                return self._json(501, {"message": "الدخول بـ Google غير مفعّل على هذا الخادم"})
+
+            # ───── المستخدم ─────
+            if r == "me" and m == "GET":
+                u = self._auth(q)
+                if not u: return
+                d = _web_public_user(u, full=True)
+                try: d["total_orders"] = int(get_total_orders())
+                except Exception: d["total_orders"] = 0
+                return self._json(200, {"user": d})
+            if r == "orders" and m == "GET":
+                u = self._auth(q)
+                if not u: return
+                return self._json(200, {"orders": _web_orders(conn, int(u["user_id"]))})
+            if r == "track" and m == "GET":
+                u = self._auth(q)
+                if not u: return
+                oid = str(q.get("id", "")).strip().lstrip("#")
+                if not oid.isdigit(): return self._json(400, {"message": "اكتب رقم الطلب"})
+                rows = _web_orders(conn, None if int(u["user_id"]) == int(ADMIN_ID) else int(u["user_id"]), 100000)
+                for o in rows:
+                    if str(o["id"]) == oid: return self._json(200, {"order": o})
+                return self._json(404, {"message": "لم يتم العثور على الطلب"})
+            if r == "recharges" and m == "GET":
+                u = self._auth(q)
+                if not u: return
+                return self._json(200, {"recharges": _web_rows(conn, "SELECT points, method, note, created_at FROM recharge_log WHERE user_id=? ORDER BY id DESC LIMIT 50", (int(u["user_id"]),))})
+            if r == "tamweel" and m == "GET":
+                u = self._auth(q)
+                if not u: return
+                return self._json(200, {"items": _web_rows(conn, "SELECT order_id, members, price, channel_link, channel_name, channel_members, status, created_at FROM tamweel_orders WHERE user_id=? ORDER BY order_id DESC", (int(u["user_id"]),))})
+            if r == "services/rashq" and m == "GET":
+                if not self._auth(q): return
+                data = rashq_services_db
+                if q.get("platform"):
+                    return self._json(200, {"services": [dict(s, index=i) for i, s in enumerate(data.get(q["platform"], []))]})
+                return self._json(200, {"platforms": {k: len(v) for k, v in data.items()}})
+            if r == "services/games" and m == "GET":
+                if not self._auth(q): return
+                data = services_db
+                if q.get("category"):
+                    return self._json(200, {"services": [dict(s, index=i) for i, s in enumerate(data.get(q["category"], []))]})
+                return self._json(200, {"categories": {k: len(v) for k, v in data.items()}})
+
+            # ───── المسؤول ─────
+            if r.startswith("admin/"):
+                if not self._auth(q, admin=True): return
+                a = r[6:]
+                def c1(sql):
+                    try: return conn.execute(sql).fetchone()[0]
+                    except Exception: return 0
+                if a == "stats":
+                    try: tot = int(get_total_orders())
+                    except Exception: tot = 0
+                    return self._json(200, dict(users=c1("SELECT COUNT(*) FROM users"), web_users=c1("SELECT COUNT(*) FROM users WHERE web_password_hash IS NOT NULL"),
+                                               total_orders=tot, rashq_orders=c1("SELECT COUNT(*) FROM rashq_orders"), game_orders=c1("SELECT COUNT(*) FROM game_orders"),
+                                               tamweel_orders=c1("SELECT COUNT(*) FROM tamweel_orders"), recharges=c1("SELECT COUNT(*) FROM recharge_log"),
+                                               recharge_points=c1("SELECT COALESCE(SUM(points),0) FROM recharge_log")))
+                if a == "users":
+                    s = str(q.get("q", "")).strip()
+                    if s:
+                        like = f"%{s}%"
+                        rows = _web_rows(conn, "SELECT * FROM users WHERE CAST(user_id AS TEXT) LIKE ? OR username LIKE ? OR first_name LIKE ? ORDER BY joined_at DESC LIMIT 100", (like, like, like))
+                    else:
+                        rows = _web_rows(conn, "SELECT * FROM users ORDER BY joined_at DESC LIMIT 100")
+                    users = []
+                    for x in rows:
+                        d = _web_public_user(x); d["web"] = bool(x.get("web_password_hash")); users.append(d)
+                    return self._json(200, {"users": users, "total": c1("SELECT COUNT(*) FROM users")})
+                if a == "recharges":
+                    return self._json(200, {"recharges": _web_rows(conn, "SELECT user_id, points, method, note, created_at FROM recharge_log ORDER BY id DESC LIMIT 100")})
+                if a == "orders":
+                    return self._json(200, {"orders": _web_orders(conn, None, 100)})
+                if a == "db":
+                    tables = []
+                    for (n,) in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall():
+                        tables.append({"name": n, "rows": conn.execute(f'SELECT COUNT(*) FROM "{n}"').fetchone()[0]})
+                    return self._json(200, {"path": os.path.abspath(DB_PATH), "size": os.path.getsize(DB_PATH), "tables": tables})
+                if a == "backups":
+                    d = os.path.dirname(os.path.abspath(DB_PATH)); out = []
+                    for f in sorted(os.listdir(d)):
+                        if f.startswith("velox_backup_") and f.endswith(".db"):
+                            pth = os.path.join(d, f)
+                            out.append({"name": f, "size": os.path.getsize(pth), "mtime": datetime.fromtimestamp(os.path.getmtime(pth)).strftime("%Y-%m-%d %H:%M")})
+                    return self._json(200, {"backups": out[::-1]})
+                if a == "backups/download":
+                    name = os.path.basename(q.get("name", "")); pth = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), name)
+                    if not (name.startswith("velox_backup_") and name.endswith(".db") and os.path.isfile(pth)):
+                        return self._json(404, {"message": "الملف غير موجود"})
+                    with open(pth, "rb") as f:
+                        return self._file(f.read(), name, "application/octet-stream")
+                if a == "hosting":
+                    res = {}
+                    for mode in ("all", "main"):
+                        files = _hosting_collect(mode)
+                        res[mode] = {"files": len(files), "size": sum(os.path.getsize(x) for x, _ in files if os.path.exists(x))}
+                    return self._json(200, res)
+                if a == "hosting/zip":
+                    mode = "all" if q.get("mode") == "all" else "main"
+                    buf = _io.BytesIO()
+                    with _zipfile.ZipFile(buf, "w", _zipfile.ZIP_DEFLATED) as z:
+                        for full, arc in _hosting_collect(mode):
+                            try: z.write(full, arc)
+                            except Exception: pass
+                    return self._file(buf.getvalue(), f"velox_hosting_{mode}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip", "application/zip")
+                if a == "config":
+                    cfg = load_config()
+                    safe = {k: v for k, v in cfg.items() if isinstance(v, (str, int, float, bool)) and not re.search(r"token|key|secret|pass", str(k), re.I)}
+                    return self._json(200, {"config": safe})
+            return self._json(404, {"message": "غير موجود"})
+        finally:
+            conn.close()
+
+def _web_api_start():
+    """يشغّل خادم التطبيق داخل البوت. يرجع (تم، رسالة)."""
+    if _srv_running():
+        return True, "يعمل"
+    try:
+        _web_seed_admin()
+        srv = _TServer(("0.0.0.0", SITE_SERVER_PORT), _WebApi)
+        srv.daemon_threads = True
+        threading.Thread(target=srv.serve_forever, name="velox-web-api", daemon=True).start()
+        WEB_API_STATE["server"] = srv
+        WEB_API_STATE["error"] = ""
+        print(f"🌐 خادم التطبيق يعمل على المنفذ {SITE_SERVER_PORT}")
+        return True, "تم التشغيل"
+    except Exception as e:
+        WEB_API_STATE["error"] = str(e)
+        print(f"⚠️ تعذّر تشغيل خادم التطبيق: {e}")
+        return False, str(e)
 
 @bot.callback_query_handler(func=lambda c: c.data == "adm_exchange")
 def cb_adm_exchange(call):
@@ -10578,6 +10964,10 @@ if __name__ == "__main__":
     print("🔄 جاري تهيئة قاعدة البيانات...")
     init_db()
     start_mini_app()
+    try:
+        _web_api_start()
+    except Exception as _e:
+        print(f"⚠️ web api: {_e}")
     if not IS_CREATED_BOT and FACTORY_SYSTEM_ENABLED:
         try:
             _factory_migrate()
