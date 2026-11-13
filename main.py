@@ -2829,6 +2829,7 @@ def admin_keyboard():
     kb.add(btn_admin("🧠 الدعم الذكي", STYLE_GREEN, callback="adm_smart_support"))
     kb.add(btn_admin("🔒 الاشتراك الإجباري", STYLE_GREEN, callback="adm_mandatory"))
     kb.add(btn_admin("🗂️ ملفات الاستضافة", STYLE_GREEN, callback="adm_hosting_files"))
+    kb.add(btn_admin("🖥️ تفاصيل الخادم", STYLE_GREEN, callback="adm_server_info"))
     kb.add(btn_admin("رجوع", STYLE_RED, callback="adm_close"))
     return kb
 
@@ -5121,25 +5122,26 @@ def _web_code_valid(row, uid):
     except Exception:
         return False
 
-@bot.message_handler(content_types=["text"], func=lambda m: bool(m.text) and (user_states.get(m.from_user.id) == "web_wait_code" or re.fullmatch(r"VX-\d{5}", m.text.strip().upper()) is not None))
+@bot.message_handler(content_types=["text"], func=lambda m: bool(m.text) and not m.text.startswith("/") and (user_states.get(m.from_user.id) == "web_wait_code" or re.fullmatch(r"VX-\d{5}", m.text.strip().upper()) is not None))
 def web_link_code_msg(message):
     uid = message.from_user.id
     code = (message.text or "").strip().upper()
+    # أي محاولة (صحيحة أو خاطئة) تُنهي حالة الانتظار فلا يتكرر الطلب
+    user_states.pop(uid, None)
     if not re.fullmatch(r"VX-\d{5}", code):
-        bot.send_message(uid, "❌ الرمز غير صحيح.\nأرسل الرمز بهذا الشكل: VX-12345")
+        bot.send_message(uid, "❌ الرمز غير صحيح، تم إنهاء العملية.\nلإعادة المحاولة: حسابي ← 🔑 معرفة رمزي ثم أرسل الرمز بهذا الشكل: VX-12345")
         return
     _web_ensure_schema()
     row = _web_code_row(code)
     if not row:
-        bot.send_message(uid, "❌ الرمز غير موجود في التطبيق. تأكد منه أو أنشئ رمزاً جديداً.")
+        bot.send_message(uid, "❌ الرمز غير موجود في التطبيق. أنشئ رمزاً جديداً من التطبيق ثم أعد المحاولة.")
         return
     if int(row[0]) != int(uid):
         bot.send_message(uid, "❌ هذا الرمز لا يخص حسابك.")
         return
     if not _web_code_valid(row, uid):
-        bot.send_message(uid, "⌛ انتهت صلاحية الرمز. أنشئ رمزاً جديداً من التطبيق.")
+        bot.send_message(uid, "⌛ انتهت صلاحية الرمز أو استُخدم من قبل. أنشئ رمزاً جديداً من التطبيق.")
         return
-    user_states.pop(uid, None)
     # تحقق فوري: الرمز صحيح ويخص هذا المستخدم، فيُربط حسابه بالتطبيق مباشرة
     conn = get_conn()
     try:
@@ -8934,6 +8936,130 @@ def cb_hosting_fetch(call):
     bot.answer_callback_query(call.id)
     mode = "all" if call.data == "hosting_fetch_all" else "main"
     threading.Thread(target=_hosting_fetch_worker, args=(call.from_user.id, mode), daemon=True).start()
+
+# ─────────────────────────────────────────────────────────────
+# 🖥️  تفاصيل الخادم (اسم الاستضافة + عنوانها + عنوان خادم التطبيق)
+# ─────────────────────────────────────────────────────────────
+SITE_SERVER_PORT = int(os.environ.get("VELOX_SITE_PORT", "8080"))
+
+def _srv_public_ip():
+    for url in ("https://api.ipify.org", "https://ifconfig.me/ip", "https://icanhazip.com"):
+        try:
+            with urllib.request.urlopen(url, timeout=4) as r:
+                ip = r.read().decode().strip()
+                if re.fullmatch(r"[0-9a-fA-F:.]{3,45}", ip):
+                    return ip
+        except Exception:
+            continue
+    return ""
+
+def _srv_local_ip():
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except Exception:
+            return ""
+
+def _srv_provider():
+    env = os.environ
+    checks = [("RAILWAY_PROJECT_NAME", "Railway"), ("RENDER_SERVICE_NAME", "Render"), ("FLY_APP_NAME", "Fly.io"),
+              ("KOYEB_APP_NAME", "Koyeb"), ("REPL_SLUG", "Replit"), ("DYNO", "Heroku"), ("P_SERVER_UUID", "Pterodactyl"),
+              ("SPACE_ID", "Hugging Face"), ("CODESPACE_NAME", "GitHub Codespaces"), ("VERCEL", "Vercel")]
+    for key, name in checks:
+        if env.get(key):
+            extra = env.get(key) if key.endswith("_NAME") or key in ("REPL_SLUG", "SPACE_ID", "CODESPACE_NAME") else ""
+            return f"{name}" + (f" ({extra})" if extra else "")
+    if env.get("VELOX_HOST_NAME"):
+        return env["VELOX_HOST_NAME"]
+    import platform
+    return f"{platform.system()} {platform.release()}"
+
+def _srv_running():
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{SITE_SERVER_PORT}/api/stats", timeout=2) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+def _srv_script():
+    base = os.path.dirname(os.path.abspath(__file__))
+    for c in (os.path.join(base, "velox-site", "server", "server.py"), os.path.join(base, "server", "server.py")):
+        if os.path.isfile(c):
+            return c
+    return ""
+
+def _srv_text():
+    import socket
+    pub, loc = _srv_public_ip(), _srv_local_ip()
+    custom = os.environ.get("VELOX_PUBLIC_URL", "").strip().rstrip("/")
+    app_url = custom or (f"http://{pub}:{SITE_SERVER_PORT}" if pub else (f"http://{loc}:{SITE_SERVER_PORT}" if loc else "غير معروف"))
+    running = _srv_running()
+    lines = [
+        "🖥️ <b>تفاصيل الخادم</b>",
+        "",
+        f"🏷️ <b>اسم الاستضافة:</b> {_srv_provider()}",
+        f"💻 <b>اسم الجهاز:</b> <code>{socket.gethostname()}</code>",
+        f"🌐 <b>عنوان الاستضافة (IP العام):</b> <code>{pub or 'غير معروف'}</code>",
+        f"🏠 <b>العنوان الداخلي:</b> <code>{loc or 'غير معروف'}</code>",
+        "",
+        "📱 <b>عنوان الخادم المطلوب في التطبيق:</b>",
+        f"<code>{app_url}</code>",
+        "",
+        f"🔌 <b>حالة خادم التطبيق (المنفذ {SITE_SERVER_PORT}):</b> " + ("يعمل ✅" if running else "متوقف ❌"),
+        f"🗄️ <b>قاعدة البيانات:</b> <code>{os.path.abspath(DB_PATH)}</code>",
+    ]
+    if not running:
+        lines += ["", "⚠️ خادم التطبيق متوقف. اضغط «تشغيل خادم التطبيق» أو شغّل server.py يدوياً."]
+    lines += ["", "ℹ️ إذا كانت استضافتك تعطيك دومين/رابطاً رسمياً فاستخدمه بدل الـ IP (ويفضّل https). يمكنك تثبيته بمتغير VELOX_PUBLIC_URL."]
+    return "\n".join(lines), running
+
+def _srv_keyboard(running):
+    kb = InlineKeyboardMarkup()
+    if not running:
+        kb.add(btn_admin("▶️ تشغيل خادم التطبيق", STYLE_GREEN, callback="adm_server_start"))
+    kb.add(btn_admin("🔄 تحديث", STYLE_BLUE, callback="adm_server_info"))
+    kb.add(btn_admin("رجوع", STYLE_RED, callback="adm_back"))
+    return kb
+
+def _srv_show(call):
+    text, running = _srv_text()
+    kb = _srv_keyboard(running)
+    try:
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id, parse_mode="HTML", reply_markup=kb)
+    except Exception:
+        bot.send_message(call.from_user.id, text, parse_mode="HTML", reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data == "adm_server_info")
+def cb_adm_server_info(call):
+    if call.from_user.id != ADMIN_ID: return
+    bot.answer_callback_query(call.id)
+    _srv_show(call)
+
+@bot.callback_query_handler(func=lambda c: c.data == "adm_server_start")
+def cb_adm_server_start(call):
+    if call.from_user.id != ADMIN_ID: return
+    script = _srv_script()
+    if not script:
+        return bot.answer_callback_query(call.id, "ملف server.py غير موجود بجانب main.py (مجلد velox-site/server)", show_alert=True)
+    if not _srv_running():
+        try:
+            import subprocess, sys
+            env = dict(os.environ, VELOX_DB=os.path.abspath(DB_PATH), PORT=str(SITE_SERVER_PORT))
+            log = open(os.path.join(os.path.dirname(script), "server.log"), "ab")
+            subprocess.Popen([sys.executable, script], cwd=os.path.dirname(script), env=env, stdout=log, stderr=log,
+                             start_new_session=True)
+            time.sleep(3)
+        except Exception as e:
+            return bot.answer_callback_query(call.id, f"تعذّر التشغيل: {e}"[:190], show_alert=True)
+    bot.answer_callback_query(call.id, "تم الأمر")
+    _srv_show(call)
 
 @bot.callback_query_handler(func=lambda c: c.data == "adm_exchange")
 def cb_adm_exchange(call):
