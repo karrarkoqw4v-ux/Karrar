@@ -1,0 +1,50 @@
+name: Build Native APK (Turbo Rashq)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-a3115199-ehhgzi]
+    paths:
+      - 'android-native/**'
+      - '.github/workflows/android-native.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.10.2' }
+      - name: Restore signing key
+        id: ks
+        uses: actions/cache@v4
+        with:
+          path: android-native/ci.keystore
+          key: turbo-keystore-v1
+      - name: Create signing key (first build only)
+        if: steps.ks.outputs.cache-hit != 'true'
+        working-directory: android-native
+        run: keytool -genkeypair -keystore ci.keystore -alias turbo -storepass turbo-ci-pass -keypass turbo-ci-pass -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Turbo Rashq,O=Turbo,C=IQ"
+      - name: Build release APK
+        working-directory: android-native
+        env:
+          KS_FILE: ${{ github.workspace }}/android-native/ci.keystore
+          KS_PASS: turbo-ci-pass
+        run: gradle --no-daemon assembleRelease
+      - name: Collect APK
+        run: |
+          mkdir -p android-native/dist
+          cp android-native/app/build/outputs/apk/release/app-release.apk android-native/dist/TurboRashq.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: turbo-apk, path: android-native/dist/TurboRashq.apk }
+      - name: Commit APK
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          git add -f android-native/dist/TurboRashq.apk
+          git commit -m "Build Turbo Rashq APK" || echo none
+          git pull --rebase origin ${{ github.ref_name }} && git push
