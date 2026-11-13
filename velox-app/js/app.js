@@ -1,4 +1,4 @@
-/* Velox App — تطبيق مستقل. كل البيانات من خادم Velox App (velox_app_server.py). */
+/* Velox App — تطبيق مستقل يعمل بالكامل داخل الهاتف (بدون خادم). البيانات في local-db.js */
 (function () {
   'use strict';
   var IS_APP = /VeloxApp/.test(navigator.userAgent);
@@ -14,7 +14,6 @@
     set: function (k, v) { try { localStorage.setItem('vxa_' + k, JSON.stringify(v)); } catch (e) {} },
     del: function (k) { try { localStorage.removeItem('vxa_' + k); } catch (e) {} }
   };
-  var API = String(store.get('api') || window.VELOX_API || '/api').replace(/\/$/, '');
   var user = null, info = {};
 
   /* ───────── أدوات ───────── */
@@ -29,13 +28,7 @@
     setTimeout(function () { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; }, 2800);
     setTimeout(function () { t.remove(); }, 3300);
   }
-  function api(path, method, body) {
-    var h = { 'Content-Type': 'application/json' }, tok = store.get('token');
-    if (tok) h.Authorization = 'Bearer ' + tok;
-    return fetch(API + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
-      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); })
-      .catch(function () { return { ok: false, offline: true, status: 0, data: {} }; });
-  }
+  function api(path, method, body) { return window.VeloxLocal.request(method || 'GET', path, body); }
   function setBusy(btn, busy) {
     if (!btn) return;
     if (busy) { btn.dataset.html = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> جاري المعالجة...'; btn.style.pointerEvents = 'none'; }
@@ -46,7 +39,7 @@
     var f = el && el.closest && el.closest('.in');
     if (f) { f.classList.add('shake'); setTimeout(function () { f.classList.remove('shake'); }, 600); }
   }
-  function serverDown() { toast('تعذّر الاتصال بالخادم. تأكد من عنوان الخادم ومن أنه يعمل.', true); }
+  function serverDown() { toast('حدث خطأ، حاول مرة ثانية', true); }
   function statusClass(s) { s = String(s || ''); return /مكتمل/.test(s) ? 'g' : /مرفوض/.test(s) ? 'r' : 'y'; }
   function setBind(k, v) { $$('[data-bind="' + k + '"]').forEach(function (el) { el.textContent = v; }); }
   function showEmpty(n) { var e = $('[data-empty]'); if (e) e.hidden = !!n; var l = $('#list'); if (l && l.classList.contains('glass')) l.hidden = !n; }
@@ -107,22 +100,20 @@
   }
 
   function start() {
-    if (IS_APP && !store.get('api') && page !== 'server') { location.replace('server.html'); return; }
-    if (page === 'server') return;
     api('/app/info').then(function (r) {
       if (r.offline) { if (!isPublic || page === 'index') serverDown(); if (!isPublic) return; }
       else { info = r.data; bindInfo(); }
-      var tok = store.get('token');
+      var tok = localStorage.getItem('vxa_session');
       if (isPublic) {
         if (tok && (page === 'index' || page === 'login' || page === 'register')) {
-          api('/me').then(function (m) { if (m.ok) location.replace('home.html'); else if (m.status === 401) store.del('token'); });
+          api('/me').then(function (m) { if (m.ok) location.replace('home.html'); });
         }
         return;
       }
       if (!tok) { location.replace('login.html'); return; }
       api('/me').then(function (m) {
         if (m.offline) return serverDown();
-        if (!m.ok) { store.del('token'); if (m.status === 403) alert(m.data.message || 'الحساب محظور'); location.replace('login.html'); return; }
+        if (!m.ok) { localStorage.removeItem('vxa_session'); if (m.status === 403) alert(m.data.message || 'الحساب محظور'); location.replace('login.html'); return; }
         user = m.data.user; bindUser();
         if (/^admin/.test(page) && !user.admin) { location.replace('home.html'); return; }
         if (loaders[page]) loaders[page]();
@@ -338,11 +329,25 @@
         adm('settings/save', { settings: o }).then(function (r) { ok(r, 'تم حفظ الإعدادات'); });
       });
     },
-    'admin-backups': function () { $('[data-backup]').addEventListener('click', function () { download('/admin/backup', 'velox_app_backup.zip'); }); },
+    'admin-backups': function () {
+      $('[data-backup]').addEventListener('click', function () {
+        window.VeloxLocal.backupJson().then(function (txt) {
+          var name = 'velox_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+          if (window.VeloxApp && window.VeloxApp.save) { window.VeloxApp.save(name, 'application/json', btoa(unescape(encodeURIComponent(txt)))); return; }
+          var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+        });
+      });
+      $('[data-restore]').addEventListener('change', function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        var rd = new FileReader();
+        rd.onload = function () { window.VeloxLocal.restoreJson(String(rd.result)).then(function () { toast('تمت الاستعادة'); setTimeout(function () { location.href = 'login.html'; }, 800); }).catch(function () { toast('ملف النسخة غير صالح', true); }); };
+        rd.readAsText(f);
+      });
+    },
     'admin-server': function () {
-      adm('server').then(function (r) {
-        var s = r.data.server || {}, rows = [['اسم الجهاز', s.hostname], ['العنوان الداخلي', s.local_ip], ['المنفذ', s.port], ['النظام', s.os], ['بايثون', s.python], ['قاعدة البيانات', s.db], ['حجم القاعدة', ((s.db_size || 0) / 1024).toFixed(0) + ' KB'], ['عنوان الخادم الحالي', API.replace(/\/api$/, '')]];
-        $('#list').innerHTML = rows.map(function (x) { return '<div class="tr"><span class="mut">' + esc(x[0]) + '</span><b dir="ltr" style="margin-inline-start:auto;text-align:end;word-break:break-all">' + esc(x[1] == null ? '—' : x[1]) + '</b></div>'; }).join('');
+      adm('storage').then(function (r) {
+        var d = r.data.storage || {}, rows = [['الحسابات', d.users], ['الطلبات', d.orders], ['الخدمات', d.services], ['الأكواد', d.codes], ['حركات الرصيد', d.ledger], ['حجم البيانات', ((d.size || 0) / 1024).toFixed(1) + ' KB'], ['مكان التخزين', 'ذاكرة هذا الجهاز']];
+        $('#list').innerHTML = rows.map(function (x) { return '<div class="tr"><span class="mut">' + esc(x[0]) + '</span><b style="margin-inline-start:auto">' + esc(x[1]) + '</b></div>'; }).join('');
       });
     }
   });
@@ -363,18 +368,6 @@
         (o.note ? '<div class="item"><span class="eb y">' + emoji('e_1f514') + '</span><span class="fl xs" dir="auto">' + esc(o.note) + '</span></div>' : '') + '</div>';
     });
   }
-  function download(path, name) {
-    fetch(API + path, { headers: { Authorization: 'Bearer ' + store.get('token') } }).then(function (r) {
-      if (!r.ok) throw new Error(); var cd = r.headers.get('Content-Disposition') || '', m = /filename="?([^";]+)/i.exec(cd);
-      return r.blob().then(function (b) { return { b: b, n: (m && m[1]) || name }; });
-    }).then(function (x) {
-      if (window.VeloxApp && window.VeloxApp.save) {
-        var rd = new FileReader(); rd.onload = function () { window.VeloxApp.save(x.n, x.b.type || 'application/zip', String(rd.result).split(',')[1]); }; rd.readAsDataURL(x.b); return;
-      }
-      var a = document.createElement('a'); a.href = URL.createObjectURL(x.b); a.download = x.n; document.body.appendChild(a); a.click(); a.remove();
-    }).catch(function () { toast('تعذّر التحميل', true); });
-  }
-
   function doLogin(btn) {
     var id = val('id'), pw = val('pw');
     if (!id) return fail($('#id'), 'اكتب اسم المستخدم أو البريد أو الأيدي');
@@ -382,7 +375,7 @@
     setBusy(btn, true);
     api('/login', 'POST', { login: id, password: pw }).then(function (r) {
       setBusy(btn, false);
-      if (r.ok) { store.set('token', r.data.token); location.href = 'home.html'; }
+      if (r.ok) { location.href = 'home.html'; }
       else if (r.offline) serverDown(); else fail($('#pw'), r.data.message || 'بيانات الدخول غير صحيحة');
     });
   }
@@ -395,30 +388,17 @@
     setBusy(btn, true);
     api('/register', 'POST', { name: n, username: u, password: p, email: m }).then(function (r) {
       setBusy(btn, false);
-      if (r.ok) { store.set('token', r.data.token); location.href = 'home.html'; }
+      if (r.ok) { location.href = 'home.html'; }
       else if (r.offline) serverDown(); else fail($('#u'), r.data.message || 'تعذّر إنشاء الحساب');
     });
   }
-  function saveServer(btn) {
-    var u = val('srv').replace(/\/+$/, '').replace(/\/api$/, '');
-    if (!u) return fail($('#srv'), 'اكتب عنوان الخادم');
-    if (!/^https?:\/\//i.test(u)) u = 'http://' + u;
-    var st = $('#srvState'); setBusy(btn, true); st.textContent = '';
-    fetch(u + '/api/app/info').then(function (r) { return r.json(); }).then(function (d) {
-      setBusy(btn, false);
-      if (d && typeof d.name !== 'undefined') { store.set('api', u + '/api'); store.del('token'); st.style.color = '#7BE5A4'; st.textContent = 'تم الاتصال بنجاح'; setTimeout(function () { location.href = 'index.html'; }, 600); }
-      else throw new Error();
-    }).catch(function () { setBusy(btn, false); st.style.color = '#FFA3A3'; st.textContent = 'تعذّر الاتصال. تأكد من العنوان ومن أن الخادم يعمل والمنفذ مفتوح.'; });
-  }
-
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-submit],[data-toggle-pw],[data-logout],[data-track],[data-save-server],[data-redeem],[data-daily],[data-transfer],[data-chpw],[data-backup]');
+    var t = e.target.closest('[data-submit],[data-toggle-pw],[data-logout],[data-track],[data-redeem],[data-daily],[data-transfer],[data-chpw],[data-backup]');
     if (!t) return;
     if (t.matches('[data-submit="login"]')) doLogin(t);
     else if (t.matches('[data-submit="register"]')) doRegister(t);
-    else if (t.matches('[data-save-server]')) saveServer(t);
     else if (t.matches('[data-toggle-pw]')) { var i = $('#pw'); if (i) i.type = i.type === 'password' ? 'text' : 'password'; }
-    else if (t.matches('[data-logout]')) { store.del('token'); location.href = 'login.html'; }
+    else if (t.matches('[data-logout]')) { localStorage.removeItem('vxa_session'); location.href = 'login.html'; }
     else if (t.matches('[data-track]')) doTrack();
     else if (t.matches('[data-redeem]')) {
       var c = val('code'); if (!c) return fail($('#code'), 'اكتب الكود'); setBusy(t, true);
@@ -442,7 +422,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       if (page === 'login' || page === 'register') { var b = $('[data-submit]'); if (b) b.click(); }
-      else if (page === 'track') doTrack(); else if (page === 'server') { var s = $('[data-save-server]'); if (s) s.click(); }
+      else if (page === 'track') doTrack();
     }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"]')) { e.preventDefault(); e.target.click(); }
   });
