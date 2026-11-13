@@ -1,0 +1,62 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-a3115199-ehhgzi]
+    paths:
+      - 'android/**'
+      - 'velox-site/**'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Copy site into app assets
+        run: |
+          mkdir -p android/app/src/main/assets/www
+          rsync -a --exclude 'server' --exclude 'README.md' --exclude 'test-images.html' velox-site/ android/app/src/main/assets/www/
+
+      - name: Create signing key (sideload build)
+        working-directory: android
+        run: |
+          keytool -genkeypair -keystore ci.keystore -alias velox -storepass android -keypass android \
+            -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=Velox,O=Velox,C=IQ"
+
+      - name: Build release APK
+        working-directory: android
+        run: gradle --no-daemon assembleRelease
+
+      - name: Collect APK
+        run: |
+          mkdir -p android/dist
+          cp android/app/build/outputs/apk/release/app-release.apk android/dist/velox.apk
+          ls -la android/dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: velox-apk
+          path: android/dist/velox.apk
+
+      - name: Commit APK to branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -f android/dist/velox.apk
+          git commit -m "Build Velox APK" || echo "nothing to commit"
+          git push
