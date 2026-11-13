@@ -6,7 +6,7 @@ on:
     branches: [ccr-a3115199-ehhgzi]
     paths:
       - 'android/**'
-      - 'velox-site/**'
+      - 'velox-app/**'
       - '.github/workflows/android.yml'
 
 permissions:
@@ -30,9 +30,17 @@ jobs:
       - name: Copy site into app assets
         run: |
           mkdir -p android/app/src/main/assets/www
-          rsync -a --exclude 'server' --exclude 'README.md' --exclude 'test-images.html' velox-site/ android/app/src/main/assets/www/
+          rsync -a --exclude 'server' --exclude 'README.md' velox-app/ android/app/src/main/assets/www/
 
-      - name: Create signing key (sideload build)
+      - name: Restore signing key (keeps updates installable)
+        id: ks
+        uses: actions/cache@v4
+        with:
+          path: android/ci.keystore
+          key: velox-keystore-v1
+
+      - name: Create signing key (first build only)
+        if: steps.ks.outputs.cache-hit != 'true'
         working-directory: android
         run: |
           keytool -genkeypair -keystore ci.keystore -alias velox -storepass android -keypass android \
