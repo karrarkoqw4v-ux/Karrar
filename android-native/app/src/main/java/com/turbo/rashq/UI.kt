@@ -74,7 +74,7 @@ fun T(s: String, size: Int = 14, weight: FontWeight = FontWeight.Normal, color: 
 fun PremiumEmoji(spec: String, size: Dp = 26.dp) {
     val custom = spec.length >= 10 && spec.all { it.isDigit() }
     if (!custom) {
-        AsyncImage("file:///android_asset/emoji/e_$spec.webp", null, Modifier.size(size), imageLoader = Img)
+        AsyncImage("file:///android_asset/emoji/e_$spec.webp", null, modifier = Modifier.size(size), imageLoader = Img)
         return
     }
     val row = remember(spec) { Repo.emojiPath(spec) }
@@ -85,7 +85,7 @@ fun PremiumEmoji(spec: String, size: Dp = 26.dp) {
             val comp by rememberLottieComposition(LottieCompositionSpec.JsonString(json))
             LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
         }
-        else -> AsyncImage(File(row.first), null, Modifier.size(size), imageLoader = Img)
+        else -> AsyncImage(File(row.first), null, modifier = Modifier.size(size), imageLoader = Img)
     }
 }
 
@@ -169,8 +169,8 @@ fun Logo(cat: String, size: Dp = 52.dp) {
     val col = Defs.logoColors[brand] ?: 0xFF3B82F6
     Box(Modifier.size(size).clip(RoundedCornerShape(size / 3.2f)).background(Color(col)), contentAlignment = Alignment.Center) {
         when {
-            custom.isNotBlank() && File(custom).exists() -> AsyncImage(File(custom), null, Modifier.fillMaxSize(), imageLoader = Img, contentScale = ContentScale.Crop)
-            brand != null -> AsyncImage("file:///android_asset/brands/$brand.svg", null, Modifier.size(size * 0.58f), imageLoader = Img, colorFilter = ColorFilter.tint(Color.White))
+            custom.isNotBlank() && File(custom).exists() -> AsyncImage(File(custom), null, modifier = Modifier.fillMaxSize(), imageLoader = Img, contentScale = ContentScale.Crop)
+            brand != null -> AsyncImage("file:///android_asset/brands/$brand.svg", null, modifier = Modifier.size(size * 0.58f), imageLoader = Img, colorFilter = ColorFilter.tint(Color.White))
             else -> T(cat.take(1), (size.value * .45f).toInt(), FontWeight.ExtraBold, Color.White)
         }
     }

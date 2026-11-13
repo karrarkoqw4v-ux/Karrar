@@ -45,7 +45,7 @@ class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 1) {
 object Security {
     private val rnd = SecureRandom()
     private fun hex(b: ByteArray) = b.joinToString("") { "%02x".format(it) }
-    private fun unhex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16) }
+    private fun unhex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
     private fun derive(p: String, salt: ByteArray): ByteArray =
         SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1").generateSecret(PBEKeySpec(p.toCharArray(), salt, 10000, 256)).encoded
     fun hash(p: String): String { val s = ByteArray(16); rnd.nextBytes(s); return hex(s) + ":" + hex(derive(p, s)) }
