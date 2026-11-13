@@ -1,7 +1,8 @@
 /* Velox site — الواجهة. كل البيانات حقيقية من server/server.py (نفس قاعدة بيانات البوت). */
 (function () {
   'use strict';
-  var API = (window.VELOX_API || '/api').replace(/\/$/, '');
+  var IS_APP = /VeloxApp/.test(navigator.userAgent);
+  if (IS_APP) document.documentElement.classList.add('is-app');
   var GOOGLE_CLIENT_ID = window.VELOX_GOOGLE_CLIENT_ID || '';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -15,6 +16,7 @@
     del: function (k) { try { localStorage.removeItem('velox_' + k); } catch (e) {} }
   };
   var user = null;
+  var API = String(store.get('api') || window.VELOX_API || '/api').replace(/\/$/, '');
 
   /* ───────── أدوات ───────── */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -71,6 +73,7 @@
 
   /* ───────── بدء الصفحة ───────── */
   function start() {
+    if (IS_APP && !store.get('api') && page !== 'server') { location.replace('server.html'); return; }
     if (isPublic) {
       if (page === 'link-bot') setBind('linkCode', store.get('linkCode') || 'VX-00000');
       return;
@@ -308,6 +311,11 @@
       if (!r.ok) throw new Error(); var cd = r.headers.get('Content-Disposition') || '';
       var m = /filename\*?=(?:UTF-8'')?"?([^";]+)/i.exec(cd); return r.blob().then(function (b) { return { b: b, n: (m && decodeURIComponent(m[1])) || name }; });
     }).then(function (x) {
+      if (window.VeloxApp && window.VeloxApp.save) {
+        var rd = new FileReader();
+        rd.onload = function () { window.VeloxApp.save(x.n, x.b.type || 'application/octet-stream', String(rd.result).split(',')[1]); };
+        rd.readAsDataURL(x.b); return;
+      }
       var a = document.createElement('a'); a.href = URL.createObjectURL(x.b); a.download = x.n; document.body.appendChild(a); a.click(); a.remove();
     }).catch(function () { toast('تعذّر التحميل', true); });
   }
@@ -351,6 +359,18 @@
       else toast('لم يتم التحقق في البوت بعد. أرسل الرمز للبوت واضغط "نعم، تحقق" ثم حاول مرة ثانية.', true);
     });
   }
+  function saveServer(btn) {
+    var u = val('srv').replace(/\/+$/, '').replace(/\/api$/, '');
+    if (!u) return fail($('#srv'), 'اكتب عنوان الخادم');
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    var st = $('#srvState'); setBusy(btn, true); st.textContent = '';
+    fetch(u + '/api/stats').then(function (r) { return r.json(); }).then(function (d) {
+      setBusy(btn, false);
+      if (d && typeof d.total_orders !== 'undefined') { store.set('api', u + '/api'); st.style.color = '#7BE5A4'; st.textContent = 'تم الاتصال بنجاح'; setTimeout(function () { location.href = 'index.html'; }, 700); }
+      else throw new Error();
+    }).catch(function () { setBusy(btn, false); st.style.color = '#FFA3A3'; st.textContent = 'تعذّر الاتصال. تأكد من العنوان ومن أن server.py يعمل والمنفذ مفتوح.'; });
+  }
+
   function doGoogle() {
     if (!GOOGLE_CLIENT_ID) { toast('الدخول بـ Google غير مفعّل بعد (يحتاج Client ID في js/config.js)', true); return; }
     function go() {
@@ -370,6 +390,8 @@
   }
 
   document.addEventListener('click', function (e) {
+    var sv = e.target.closest('[data-save-server]');
+    if (sv) { saveServer(sv); return; }
     var t = e.target.closest('[data-submit],[data-toggle-pw],[data-logout],[data-google],[data-copy-code],[data-track],[data-zip],[data-dl]');
     if (!t) return;
     if (t.matches('[data-submit="login"]')) doLogin(t);
@@ -389,6 +411,7 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && (page === 'login' || page === 'register')) { var b = $('[data-submit]'); if (b) b.click(); }
     if (e.key === 'Enter' && page === 'track') doTrack();
+    if (e.key === 'Enter' && page === 'server') { var sb = $('[data-save-server]'); if (sb) sb.click(); }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[role="button"]')) { e.preventDefault(); e.target.click(); }
   });
 

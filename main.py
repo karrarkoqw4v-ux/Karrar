@@ -2797,6 +2797,7 @@ def account_keyboard():
            btn_account_btn("شحن النقاط", "recharge", STYLE_GREEN, callback="open_recharge", button_key="btn_acc_recharge"))
     kb.row(btn_account_btn("تجميع النقاط", "collect", STYLE_GREEN, callback="open_points", button_key="btn_acc_collect"),
            btn_account_btn("تحويل النقاط", "transfer", STYLE_BLUE, callback="open_transfer", button_key="btn_acc_transfer"))
+    kb.add(btn_account_btn("🔑 معرفة رمزي", "user", STYLE_GREEN, callback="web_my_code"))
     kb.add(btn_account_btn("رجوع", "back", STYLE_RED, callback="back_to_main", button_key="btn_back"))
     _eb_apply_layout(kb, 'account')
     return kb
@@ -5139,38 +5140,32 @@ def web_link_code_msg(message):
         bot.send_message(uid, "⌛ انتهت صلاحية الرمز. أنشئ رمزاً جديداً من التطبيق.")
         return
     user_states.pop(uid, None)
-    kb = InlineKeyboardMarkup()
-    kb.row(InlineKeyboardButton(text="✅ نعم، تحقق", style=STYLE_GREEN, callback_data=f"web_ok_{code}"),
-           InlineKeyboardButton(text="❌ لا", style=STYLE_RED, callback_data=f"web_no_{code}"))
-    bot.send_message(uid, f"🔐 <b>تأكيد ربط التطبيق</b>\n\nالرمز: <code>{code}</code>\n\nهل أنت من طلب ربط حسابك بالتطبيق؟\nاضغط <b>نعم، تحقق</b> لإتمام التحقق.", parse_mode="HTML", reply_markup=kb)
-
-@bot.callback_query_handler(func=lambda c: (c.data or "").startswith("web_ok_") or (c.data or "").startswith("web_no_"))
-def web_link_confirm_cb(call):
-    uid = call.from_user.id
-    ok = call.data.startswith("web_ok_")
-    code = call.data.split("_", 2)[2].upper()
-    row = _web_code_row(code)
-    if not _web_code_valid(row, uid):
-        bot.answer_callback_query(call.id, "الرمز غير صالح أو انتهت صلاحيته", show_alert=True)
-        return
+    # تحقق فوري: الرمز صحيح ويخص هذا المستخدم، فيُربط حسابه بالتطبيق مباشرة
     conn = get_conn()
     try:
-        if ok:
-            conn.execute("UPDATE web_link_codes SET confirmed=1, confirmed_at=? WHERE code=?", (datetime.now().isoformat(timespec="seconds"), code))
-            conn.execute("UPDATE users SET web_linked=1 WHERE user_id=?", (uid,))
-        else:
-            conn.execute("DELETE FROM web_link_codes WHERE code=?", (code,))
+        conn.execute("UPDATE web_link_codes SET confirmed=1, confirmed_at=? WHERE code=?", (datetime.now().isoformat(timespec="seconds"), code))
+        conn.execute("UPDATE users SET web_linked=1 WHERE user_id=?", (uid,))
         conn.commit()
     finally:
         conn.close()
-    try: bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-    except Exception: pass
-    if ok:
-        bot.answer_callback_query(call.id, "تم التحقق")
-        bot.send_message(uid, "✅ <b>تم التحقق</b>\n\nتمت عملية التحقق من أنك موجود في التطبيق.\nعد إلى التطبيق وسيظهر لك رصيدك وطلباتك وكل تفاصيل حسابك.", parse_mode="HTML")
-    else:
-        bot.answer_callback_query(call.id, "تم الإلغاء")
-        bot.send_message(uid, "تم إلغاء طلب الربط.")
+    u = get_user(uid)
+    bot.send_message(
+        uid,
+        "✅ <b>تم التحقق</b>\n\nتمت عملية التحقق من أنك موجود في التطبيق، وتم إرسال بياناتك إليه:\n\n"
+        f"🆔 الأيدي: <code>{uid}</code>\n"
+        f"🪙 الرصيد: {u.get('points', 0)} نقطة\n"
+        f"📦 الطلبات: {u.get('orders', 0)}\n\n"
+        "عد إلى التطبيق واضغط <b>تحقق الآن</b> وسيدخل حسابك تلقائياً.",
+        parse_mode="HTML")
+
+@bot.callback_query_handler(func=lambda c: c.data == "web_my_code")
+def web_my_code_cb(call):
+    uid = call.from_user.id
+    _web_ensure_schema()
+    clear_user_states(uid)
+    user_states[uid] = "web_wait_code"
+    bot.answer_callback_query(call.id)
+    bot.send_message(uid, "🔑 <b>معرفة رمزي</b>\n\nقم بفتح التطبيق، وإذا ظهر لك رمز أرسله لي هنا.\nمثال: <code>VX-12345</code>", parse_mode="HTML")
 
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
