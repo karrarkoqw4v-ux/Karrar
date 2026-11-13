@@ -14,3 +14,8 @@ input,textarea{-webkit-user-select:text;user-select:text;font-size:17px}
 .dock{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 .hd{padding-top:calc(20px + env(safe-area-inset-top,0px))}
 .app-only{display:none}.is-app .app-only{display:block}
+/*SHEET*/
+[hidden]{display:none!important}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:90;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;max-height:90vh;overflow:auto;background:#101830;border:1px solid rgba(255,255,255,.14);border-radius:28px 28px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;animation:rise .35s cubic-bezier(.22,.9,.28,1) both}
+.tr.px{cursor:pointer}

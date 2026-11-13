@@ -12,6 +12,8 @@ import android.util.Base64;
 import android.view.View;
 import android.view.Window;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -35,6 +37,8 @@ public class MainActivity extends Activity {
     private static final String HOST = "velox.app";
     private static final int BG = 0xFF070B18;
     private WebView web;
+    private ValueCallback<Uri[]> filePathCallback;
+    private static final int FILE_REQ = 4711;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -59,6 +63,23 @@ public class MainActivity extends Activity {
         s.setUserAgentString(s.getUserAgentString() + " VeloxApp/1.0");
 
         web.addJavascriptInterface(new Bridge(), "VeloxApp");
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
+                filePathCallback = callback;
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("*/*");
+                try {
+                    startActivityForResult(Intent.createChooser(i, "اختر ملف الربط"), FILE_REQ);
+                } catch (Exception e) {
+                    filePathCallback = null;
+                    return false;
+                }
+                return true;
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
@@ -92,6 +113,20 @@ public class MainActivity extends Activity {
         } else {
             web.restoreState(state);
         }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        if (req == FILE_REQ && filePathCallback != null) {
+            Uri[] result = null;
+            if (res == RESULT_OK && data != null && data.getData() != null) {
+                result = new Uri[]{data.getData()};
+            }
+            filePathCallback.onReceiveValue(result);
+            filePathCallback = null;
+            return;
+        }
+        super.onActivityResult(req, res, data);
     }
 
     private static String mime(String p) {

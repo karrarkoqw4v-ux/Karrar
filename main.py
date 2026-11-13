@@ -8996,36 +8996,29 @@ def _srv_script():
     return ""
 
 def _srv_text():
-    import socket
-    pub, loc = _srv_public_ip(), _srv_local_ip()
-    custom = os.environ.get("VELOX_PUBLIC_URL", "").strip().rstrip("/")
-    app_url = custom or (f"http://{pub}:{SITE_SERVER_PORT}" if pub else (f"http://{loc}:{SITE_SERVER_PORT}" if loc else "غير معروف"))
+    info = _web_server_info()
     running = _srv_running()
     lines = [
         "🖥️ <b>تفاصيل الخادم</b>",
         "",
-        f"🏷️ <b>اسم الاستضافة:</b> {_srv_provider()}",
-        f"💻 <b>اسم الجهاز:</b> <code>{socket.gethostname()}</code>",
-        f"🌐 <b>عنوان الاستضافة (IP العام):</b> <code>{pub or 'غير معروف'}</code>",
-        f"🏠 <b>العنوان الداخلي:</b> <code>{loc or 'غير معروف'}</code>",
-        "",
-        "📱 <b>عنوان الخادم المطلوب في التطبيق:</b>",
-        f"<code>{app_url}</code>",
-        "",
-        f"🔌 <b>حالة خادم التطبيق (المنفذ {SITE_SERVER_PORT}):</b> " + ("يعمل ✅" if running else "متوقف ❌"),
-        f"🗄️ <b>قاعدة البيانات:</b> <code>{os.path.abspath(DB_PATH)}</code>",
+        f"🏷️ اسم الاستضافة: <b>{info['provider']}</b>",
+        f"🌐 عنوان الاستضافة: <code>{info['public_ip'] or info['local_ip'] or 'غير معروف'}</code>",
+        f"📱 عنوان الخادم المطلوب في التطبيق:\n<code>{info['url'] or 'غير معروف'}</code>",
+        f"🔌 الحالة: " + ("يعمل ✅" if running else "متوقف ❌"),
+        f"🔗 ربط التطبيق: " + ("مفعّل ✅" if _web_linked() else "غير مفعّل (المستخدمون ينتظرون)"),
     ]
     if not running:
-        lines += ["", "⚠️ خادم التطبيق متوقف. اضغط «تشغيل خادم التطبيق» (الخادم مدمج داخل البوت ولا يحتاج ملفات إضافية)."]
+        lines += ["", "اضغط «تشغيل خادم التطبيق»."]
         if WEB_API_STATE.get("error"):
             lines += [f"❗ آخر خطأ: <code>{WEB_API_STATE['error']}</code>"]
-    lines += ["", "ℹ️ إذا كانت استضافتك تعطيك دومين/رابطاً رسمياً فاستخدمه بدل الـ IP (ويفضّل https). يمكنك تثبيته بمتغير VELOX_PUBLIC_URL."]
+    lines += ["", "لربط التطبيق اضغط «ملف الربط التطبيق» وأرسل الملف إلى التطبيق (من لوحة المطور ← ربط البوت)."]
     return "\n".join(lines), running
 
 def _srv_keyboard(running):
     kb = InlineKeyboardMarkup()
     if not running:
         kb.add(btn_admin("▶️ تشغيل خادم التطبيق", STYLE_GREEN, callback="adm_server_start"))
+    kb.add(btn_admin("📄 ملف الربط التطبيق", STYLE_GREEN, callback="adm_server_linkfile"))
     kb.add(btn_admin("🔄 تحديث", STYLE_BLUE, callback="adm_server_info"))
     kb.add(btn_admin("رجوع", STYLE_RED, callback="adm_back"))
     return kb
@@ -9043,6 +9036,32 @@ def cb_adm_server_info(call):
     if call.from_user.id != ADMIN_ID: return
     bot.answer_callback_query(call.id)
     _srv_show(call)
+
+@bot.callback_query_handler(func=lambda c: c.data == "adm_server_linkfile")
+def cb_adm_server_linkfile(call):
+    if call.from_user.id != ADMIN_ID: return
+    import io as _io2
+    ok, msg = _web_api_start()
+    if not ok:
+        return bot.answer_callback_query(call.id, f"خادم التطبيق متوقف: {msg}"[:190], show_alert=True)
+    info = _web_server_info()
+    data = {
+        "type": "velox-link", "version": 1,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "bot": _web_bot_info(),
+        "server": {"url": info["url"], "host": info["provider"], "ip": info["public_ip"] or info["local_ip"], "port": info["port"]},
+        "admin_id": str(ADMIN_ID),
+        "key": _web_link_key(new=True),
+    }
+    raw = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    f = _io2.BytesIO(raw); f.name = "velox-link.json"
+    bot.answer_callback_query(call.id)
+    bot.send_document(call.from_user.id, f, caption=(
+        "📄 <b>ملف الربط التطبيق</b>\n\n"
+        "1) افتح التطبيق ← سجّل دخول المطور ← «ربط البوت».\n"
+        "2) ارفع هذا الملف (الصيغة: <code>.json</code>).\n"
+        "3) سيتحقق التطبيق من البوت ويعرض تفاصيله، ثم اضغط «اربط الآن».\n\n"
+        "⚠️ الملف يحتوي مفتاح ربط سري، لا ترسله لأحد. كل ملف جديد يلغي القديم."), parse_mode="HTML")
 
 @bot.callback_query_handler(func=lambda c: c.data == "adm_server_start")
 def cb_adm_server_start(call):
@@ -9126,9 +9145,11 @@ def _web_seed_admin():
             conn.execute("INSERT INTO users (user_id, first_name, points, balance, orders, joined_at) VALUES (?,?,?,?,?,?)",
                          (ADMIN_ID, "Admin", 0, 0.0, 0, datetime.now().isoformat()))
             row = (None,)
-        if not row[0] or not str(row[0]).startswith("vx$") or os.environ.get("ADMIN_PASSWORD"):
+        if not row[0] or os.environ.get("ADMIN_PASSWORD"):
             conn.execute("UPDATE users SET web_password_hash=?, web_linked=1, web_name=COALESCE(web_name,'المسؤول') WHERE user_id=?",
                          (_web_hash(pw), ADMIN_ID))
+        conn.execute("UPDATE users SET web_email=? WHERE user_id=? AND (web_email IS NULL OR web_email='')",
+                     (os.environ.get("ADMIN_EMAIL", "admin@velox.app"), ADMIN_ID))
         conn.commit()
     finally:
         conn.close()
@@ -9175,6 +9196,56 @@ def _web_new_code(conn, uid):
             return code
     raise RuntimeError("code")
 
+def _web_linked():
+    return bool(get_config("app_linked", False))
+
+def _web_waiting(self_):
+    self_._json(403, {"waiting": True, "message": "انتظر حتى تتم إضافة البوت وربطه بالتطبيق"})
+
+def _web_link_key(new=False):
+    k = get_config("app_link_key", "")
+    if new or not k:
+        k = os.urandom(16).hex()
+        set_config("app_link_key", k)
+    return k
+
+def _web_bot_info():
+    try:
+        me = bot.get_me()
+        name, uname, bid = me.first_name, me.username, me.id
+    except Exception:
+        name, uname, bid = get_config("bot_name", "Velox"), BOT_USERNAME, ""
+    return {"name": name, "username": uname, "id": bid}
+
+def _web_server_info():
+    import socket, platform
+    pub, loc = _srv_public_ip(), _srv_local_ip()
+    custom = os.environ.get("VELOX_PUBLIC_URL", "").strip().rstrip("/")
+    url = custom or (f"http://{pub}:{SITE_SERVER_PORT}" if pub else (f"http://{loc}:{SITE_SERVER_PORT}" if loc else ""))
+    return {"provider": _srv_provider(), "hostname": socket.gethostname(), "public_ip": pub, "local_ip": loc,
+            "port": SITE_SERVER_PORT, "url": url, "os": f"{platform.system()} {platform.release()}", "python": platform.python_version(),
+            "db": os.path.abspath(DB_PATH)}
+
+def _web_notify_all(text, admin_note=True):
+    def run():
+        conn = get_conn()
+        try:
+            ids = [r[0] for r in conn.execute("SELECT user_id FROM users").fetchall()]
+        finally:
+            conn.close()
+        ok = 0
+        for uid in ids:
+            try:
+                bot.send_message(uid, text)
+                ok += 1
+            except Exception:
+                pass
+            time.sleep(0.05)
+        if admin_note:
+            try: bot.send_message(ADMIN_ID, f"📣 تم إرسال إشعار الربط إلى {ok} من {len(ids)} مستخدم.")
+            except Exception: pass
+    threading.Thread(target=run, name="velox-notify", daemon=True).start()
+
 class _WebApi(_BaseHandler):
     server_version = "Velox"
 
@@ -9189,7 +9260,6 @@ class _WebApi(_BaseHandler):
             self.send_header("Vary", "Origin")
             self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Expose-Headers", "Content-Disposition")
 
     def _json(self, status, obj):
         data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -9276,8 +9346,34 @@ class _WebApi(_BaseHandler):
                     return self._json(200, {"total_orders": int(get_total_orders())})
                 except Exception:
                     return self._json(200, {"total_orders": 0})
+            if r == "app/status" and m == "GET":
+                return self._json(200, {"linked": _web_linked(), "bot_name": get_config("bot_name", "Velox")})
+            if r == "bot/verify" and m == "POST":
+                if self._limited(20): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                if not _hmac.compare_digest(str(body.get("key", "")), str(get_config("app_link_key", "") or "x")):
+                    return self._json(403, {"message": "ملف الربط غير صالح أو قديم. أنشئ ملفاً جديداً من البوت."})
+                def c1(sql):
+                    try: return conn.execute(sql).fetchone()[0]
+                    except Exception: return 0
+                info = _web_bot_info()
+                info.update(users=c1("SELECT COUNT(*) FROM users"), orders=c1("SELECT COALESCE(value,0) FROM stats WHERE key='total_orders'"),
+                            games=sum(len(v) for v in services_db.values()), rashq=sum(len(v) for v in rashq_services_db.values()),
+                            channels=len(get_mandatory_channels()), linked=_web_linked(), server=_web_server_info(), admin_id=str(ADMIN_ID))
+                return self._json(200, {"ok": True, "bot": info})
+            if r == "bot/link" and m == "POST":
+                if self._limited(20): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                if not _hmac.compare_digest(str(body.get("key", "")), str(get_config("app_link_key", "") or "x")):
+                    return self._json(403, {"message": "ملف الربط غير صالح أو قديم. أنشئ ملفاً جديداً من البوت."})
+                first = not _web_linked()
+                set_config("app_linked", True)
+                set_config("app_linked_at", datetime.now().isoformat(timespec="seconds"))
+                if first:
+                    _web_notify_all("✅ تم ربط البوت بالتطبيق!\n\nالبوت يعمل الآن داخل التطبيق، ويمكنك استخدامه الآن للجميع حتى المطور.")
+                cnt = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+                return self._json(200, {"ok": True, "notified": cnt if first else 0, "already": not first})
             if r == "register" and m == "POST":
                 if self._limited(): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
+                if not _web_linked() and str(body.get("id", "")).strip() != str(ADMIN_ID): return _web_waiting(self)
                 name = str(body.get("name", "")).strip()[:40]; uid = str(body.get("id", "")).strip()
                 pw = str(body.get("password", "")); email = str(body.get("email", "")).strip().lower()[:120]
                 if len(name) < 2: return self._json(400, {"message": "اكتب اسمك"})
@@ -9305,13 +9401,19 @@ class _WebApi(_BaseHandler):
                     return self._json(200, {"linked": False})
                 if age > timedelta(minutes=20): return self._json(410, {"message": "انتهت صلاحية الكود، سجّل الدخول"})
                 u = _web_user_row(conn, row["user_id"])
+                if not _web_linked() and int(u["user_id"]) != int(ADMIN_ID): return _web_waiting(self)
                 return self._json(200, {"linked": True, "token": _web_token(u["user_id"]), "user": _web_public_user(u)})
             if r == "login" and m == "POST":
                 if self._limited(): return self._json(429, {"message": "محاولات كثيرة، انتظر دقيقة"})
                 uid = str(body.get("id", "")).strip(); pw = str(body.get("password", ""))
-                u = _web_user_row(conn, int(uid)) if uid.isdigit() else None
+                if "@" in uid:
+                    rr = _web_rows(conn, "SELECT * FROM users WHERE lower(web_email)=? LIMIT 1", (uid.lower(),))
+                    u = rr[0] if rr else None
+                else:
+                    u = _web_user_row(conn, int(uid)) if uid.isdigit() else None
                 if not u or not u.get("web_password_hash") or not _web_check(pw, u["web_password_hash"]):
                     return self._json(401, {"message": "الأيدي أو كلمة السر غير صحيحة"})
+                if int(u["user_id"]) != int(ADMIN_ID) and not _web_linked(): return _web_waiting(self)
                 if not u.get("web_linked"):
                     return self._json(403, {"message": "الحساب غير مربوط بالبوت بعد", "link_code": _web_new_code(conn, int(u["user_id"]))})
                 return self._json(200, {"ok": True, "token": _web_token(u["user_id"]), "user": _web_public_user(u)})
@@ -9322,6 +9424,7 @@ class _WebApi(_BaseHandler):
             if r == "me" and m == "GET":
                 u = self._auth(q)
                 if not u: return
+                if int(u["user_id"]) != int(ADMIN_ID) and not _web_linked(): return _web_waiting(self)
                 d = _web_public_user(u, full=True)
                 try: d["total_orders"] = int(get_total_orders())
                 except Exception: d["total_orders"] = 0
@@ -9367,6 +9470,121 @@ class _WebApi(_BaseHandler):
                 def c1(sql):
                     try: return conn.execute(sql).fetchone()[0]
                     except Exception: return 0
+                # ───── عمليات لوحة التحكم (نفس لوحة البوت) ─────
+                def to_int(v, d=0):
+                    try: return int(float(str(v).strip()))
+                    except Exception: return d
+                if a == "server" and m == "GET":
+                    return self._json(200, {"server": _web_server_info(), "running": True, "linked": _web_linked(), "linked_at": get_config("app_linked_at", "")})
+                if a == "toggles" and m == "GET":
+                    keys = [("funding_enabled", "قسم التمويل"), ("transfer_enabled", "تحويل النقاط"), ("codes_enabled", "أكواد الخصم"),
+                            ("asiacell_enabled", "شحن آسياسيل"), ("stars_enabled", "الشحن عبر النجوم")]
+                    return self._json(200, {"toggles": [{"key": k, "label": l, "on": bool(get_config(k, True))} for k, l in keys]})
+                if a == "toggles/set" and m == "POST":
+                    k = str(body.get("key", ""))
+                    if k not in ("funding_enabled", "transfer_enabled", "codes_enabled", "asiacell_enabled", "stars_enabled"):
+                        return self._json(400, {"message": "مفتاح غير مسموح"})
+                    set_config(k, not bool(get_config(k, True)))
+                    return self._json(200, {"ok": True, "on": bool(get_config(k, True))})
+                if a == "settings" and m == "GET":
+                    cfg = load_config() if False else dict(bot_config)
+                    items = [{"key": k, "value": v, "type": ("bool" if isinstance(v, bool) else "num" if isinstance(v, (int, float)) else "text")}
+                             for k, v in cfg.items() if isinstance(v, (str, int, float, bool)) and not re.search(r"token|key|secret|pass", str(k), re.I)]
+                    return self._json(200, {"items": items})
+                if a == "settings/set" and m == "POST":
+                    k = str(body.get("key", "")); v = body.get("value")
+                    if re.search(r"token|key|secret|pass", k, re.I) or k not in bot_config: return self._json(400, {"message": "مفتاح غير مسموح"})
+                    old = bot_config[k]
+                    if isinstance(old, bool): v = bool(v) if isinstance(v, bool) else str(v).lower() in ("1", "true", "on", "yes")
+                    elif isinstance(old, int): v = to_int(v)
+                    elif isinstance(old, float): v = float(v)
+                    else: v = str(v)
+                    set_config(k, v)
+                    return self._json(200, {"ok": True})
+                if a == "user/points" and m == "POST":
+                    uid = to_int(body.get("uid")); amt = abs(to_int(body.get("amount"))); mode = body.get("mode")
+                    u = _web_user_row(conn, uid)
+                    if not u: return self._json(404, {"message": "المستخدم غير موجود"})
+                    if mode == "add": update_points(uid, amt, is_free=True)
+                    elif mode == "deduct": update_points(uid, -amt)
+                    elif mode == "reset": update_points(uid, -int(u["points"] or 0))
+                    else: return self._json(400, {"message": "عملية غير معروفة"})
+                    nu = _web_user_row(conn, uid)
+                    return self._json(200, {"ok": True, "points": int(nu["points"])})
+                if a == "recharge/manual" and m == "POST":
+                    uid = to_int(body.get("uid")); pts = abs(to_int(body.get("points")))
+                    if not _web_user_row(conn, uid) or pts <= 0: return self._json(400, {"message": "تحقق من الأيدي والنقاط"})
+                    update_points(uid, pts, is_paid=True); log_recharge(uid, pts, "يدوي", "من لوحة التطبيق")
+                    try: bot.send_message(uid, f"✅ تم شحن رصيدك بـ {pts} نقطة.")
+                    except Exception: pass
+                    return self._json(200, {"ok": True})
+                if a == "codes" and m == "GET": return self._json(200, {"codes": get_all_codes()})
+                if a == "codes/add" and m == "POST":
+                    code = str(body.get("code", "")).strip().upper() or ("VX" + os.urandom(3).hex().upper())
+                    if not create_code(code, to_int(body.get("points")), to_int(body.get("max_uses"))): return self._json(409, {"message": "الكود موجود مسبقاً"})
+                    return self._json(200, {"ok": True, "code": code})
+                if a == "codes/delete" and m == "POST":
+                    delete_code(str(body.get("code", ""))); return self._json(200, {"ok": True})
+                if a == "gift/create" and m == "POST":
+                    lid = create_gift_link(to_int(body.get("points")), to_int(body.get("max_uses")), to_int(body.get("expiry_hours")))
+                    return self._json(200, {"ok": True, "link": f"https://t.me/{BOT_USERNAME}?start=gift_{lid}"})
+                if a == "channels" and m == "GET": return self._json(200, {"channels": get_mandatory_channels()})
+                if a == "channels/add" and m == "POST":
+                    cid = str(body.get("channel_id", "")).strip(); nm = str(body.get("channel_name", "")).strip() or cid
+                    if not cid: return self._json(400, {"message": "اكتب معرف القناة"})
+                    add_mandatory_channel(cid, nm, to_int(body.get("target_members")), str(body.get("invite_link", "")))
+                    return self._json(200, {"ok": True})
+                if a == "channels/delete" and m == "POST":
+                    remove_mandatory_channel(str(body.get("channel_id", ""))); return self._json(200, {"ok": True})
+                if a == "free" and m == "GET": return self._json(200, {"items": list(get_free_services())})
+                if a == "free/add" and m == "POST":
+                    nm = str(body.get("name", "")).strip()
+                    if not nm: return self._json(400, {"message": "اكتب اسم الخدمة"})
+                    add_free_service(nm, str(body.get("description", ""))); return self._json(200, {"ok": True})
+                if a == "free/delete" and m == "POST":
+                    return self._json(200, {"ok": bool(delete_free_service(to_int(body.get("index"), -1)))})
+                if a in ("games/add", "games/update", "games/delete"):
+                    cat = str(body.get("category", "")); idx = to_int(body.get("index"), -1)
+                    if cat not in services_db: return self._json(400, {"message": "القسم غير موجود"})
+                    if a == "games/add":
+                        add_service_to_category(cat, str(body.get("name", "")).strip(), str(body.get("quantity", "")), str(body.get("description", "")), to_int(body.get("price")), str(body.get("receive_id", "")))
+                    elif 0 <= idx < len(services_db[cat]):
+                        if a == "games/delete": delete_service_from_category(cat, idx)
+                        else:
+                            sv = services_db[cat][idx]
+                            for f in ("name", "quantity", "description", "receive_id"):
+                                if f in body: sv[f] = str(body[f])
+                            if "price" in body: sv["price"] = to_int(body["price"])
+                            save_services(services_db)
+                    else: return self._json(404, {"message": "الخدمة غير موجودة"})
+                    return self._json(200, {"ok": True})
+                if a in ("rashq/add", "rashq/update", "rashq/delete"):
+                    plat = str(body.get("platform", "")); idx = to_int(body.get("index"), -1)
+                    if plat not in rashq_services_db: return self._json(400, {"message": "المنصة غير موجودة"})
+                    if a == "rashq/add":
+                        add_rashq_service(plat, str(body.get("name", "")).strip(), to_int(body.get("price")), to_int(body.get("min")), to_int(body.get("max")), str(body.get("description", "")), str(body.get("api_id", "")))
+                    elif 0 <= idx < len(rashq_services_db[plat]):
+                        if a == "rashq/delete": delete_rashq_service(plat, idx)
+                        else:
+                            sv = rashq_services_db[plat][idx]
+                            for f in ("name", "description", "api_id"):
+                                if f in body: sv[f] = str(body[f])
+                            for f in ("price", "min", "max"):
+                                if f in body: sv[f] = to_int(body[f])
+                            save_rashq_services(rashq_services_db)
+                    else: return self._json(404, {"message": "الخدمة غير موجودة"})
+                    return self._json(200, {"ok": True})
+                if a == "backups/create" and m == "POST":
+                    d = os.path.dirname(os.path.abspath(DB_PATH)); name = f"velox_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+                    shutil.copy2(DB_PATH, os.path.join(d, name))
+                    return self._json(200, {"ok": True, "name": name})
+                if a == "backups/clean" and m == "POST":
+                    import glob as _glob
+                    files = _glob.glob(os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "velox_backup_*.db"))
+                    for f in files:
+                        try: os.remove(f)
+                        except Exception: pass
+                    return self._json(200, {"ok": True, "deleted": len(files)})
                 if a == "stats":
                     try: tot = int(get_total_orders())
                     except Exception: tot = 0

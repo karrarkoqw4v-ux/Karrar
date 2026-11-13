@@ -36,7 +36,10 @@
     if (tok) h.Authorization = 'Bearer ' + tok;
     return fetch(API + path, { method: method || 'GET', headers: h, body: body ? JSON.stringify(body) : undefined })
       .then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, status: r.status, data: d }; });
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          if (d && d.waiting && page !== 'waiting' && page !== 'bot-link') { location.replace('waiting.html'); }
+          return { ok: r.ok, status: r.status, data: d };
+        });
       }).catch(function () { return { ok: false, offline: true, status: 0, data: {} }; });
   }
   function emoji(n, size) { return '<img class="em" src="assets/emoji/' + n + '.webp" alt=""' + (size ? ' style="width:' + size + 'px;height:' + size + 'px"' : '') + '>'; }
@@ -69,13 +72,15 @@
     setBind('points', num(user.points)); setBind('spent_points', num(user.spent_points));
     setBind('referrals', num(user.referrals)); setBind('total_orders', num(user.total_orders));
     setBind('initial', (user.name || 'م').trim().charAt(0));
+    $$('[data-admin-only]').forEach(function (el) { el.hidden = !user.admin; });
   }
 
   /* ───────── بدء الصفحة ───────── */
   function start() {
-    if (IS_APP && !store.get('api') && page !== 'server') { location.replace('server.html'); return; }
+    if (IS_APP && !store.get('api') && page !== 'server' && page !== 'bot-link') { location.replace('server.html'); return; }
     if (isPublic) {
       if (page === 'link-bot') setBind('linkCode', store.get('linkCode') || 'VX-00000');
+      if (loaders[page]) loaders[page]();
       return;
     }
     if (!store.get('token')) { location.replace('login.html'); return; }
@@ -201,95 +206,312 @@
         }).join('');
         showEmpty(rows.length);
       });
-    },
-
-    /* المسؤول */
-    admin: function () {
-      api('/admin/stats').then(function (r) { Object.keys(r.data).forEach(function (k) { setBind('a_' + k, num(r.data[k])); }); });
-    },
-    'admin-users': function () {
-      var t;
-      function load() {
-        api('/admin/users?q=' + encodeURIComponent(val('q'))).then(function (r) {
-          var rows = r.data.users || [];
-          setBind('total', num(r.data.total));
-          $('#list').innerHTML = rows.map(function (u) {
-            return '<div class="tr"><div class="fl"><b>' + esc(u.name) + '</b><div class="xs mut"><bdi dir="ltr">' + esc(u.uid) + '</bdi>' + (u.username ? ' · <bdi dir="ltr">' + esc(u.username) + '</bdi>' : '') + '</div></div>' +
-              '<div style="text-align:end"><b>' + num(u.points) + '</b><div><span class="pill ' + (u.web ? 'g' : '') + '">' + (u.web ? 'بوت + موقع' : 'بوت') + '</span></div></div></div>';
-          }).join('');
-          $('#list').hidden = !rows.length; showEmpty(rows.length);
-        });
-      }
-      $('#q').addEventListener('input', function () { clearTimeout(t); t = setTimeout(load, 300); });
-      load();
-    },
-    'admin-recharge': function () {
-      api('/admin/stats').then(function (r) { setBind('a_recharges', num(r.data.recharges)); setBind('a_recharge_points', num(r.data.recharge_points)); });
-      api('/admin/recharges').then(function (r) {
-        var rows = r.data.recharges || [];
-        $('#list').innerHTML = rows.map(function (x) {
-          return '<div class="tr"><div class="fl"><b dir="ltr" style="display:block;text-align:start">' + esc(x.user_id) + '</b><div class="xs mut">' + ltr(x.created_at || '') + (x.note ? ' · ' + esc(x.note) : '') + '</div></div><span class="pill">' + esc(x.method || '') + '</span><b style="color:#7BE5A4"><bdi dir="ltr">+' + num(x.points) + '</bdi></b></div>';
-        }).join('');
-        $('#list').hidden = !rows.length; showEmpty(rows.length);
-      });
-    },
-    'admin-games': function () { adminServices('/services/games', 'category', false); },
-    'admin-rashq': function () { adminServices('/services/rashq', 'platform', true); },
-    'admin-backups': function () {
-      api('/admin/backups').then(function (r) {
-        var rows = r.data.backups || [];
-        $('#list').innerHTML = rows.map(function (b) {
-          return '<div class="item"><span class="eb g">' + emoji('e_1f5c2') + '</span><div class="fl"><b style="direction:ltr;display:block;text-align:start;font-size:13px">' + esc(b.name) + '</b><div class="xs mut">' + (b.size / 1048576).toFixed(2) + ' MB · ' + esc(b.mtime) + '</div></div><a class="back px" role="button" tabindex="0" data-dl="' + esc(b.name) + '" style="width:40px;height:40px;flex-basis:40px;border-radius:13px"><i class="ic i-down" style="width:18px;height:18px"></i></a></div>';
-        }).join('');
-        showEmpty(rows.length);
-      });
-    },
-    'admin-hosting': function () {
-      api('/admin/hosting').then(function (r) {
-        ['all', 'main'].forEach(function (m) {
-          setBind('h_' + m + '_files', num(r.data[m] && r.data[m].files));
-          setBind('h_' + m + '_size', ((r.data[m] ? r.data[m].size : 0) / 1048576).toFixed(1) + ' MB');
-        });
-      });
-    },
-    'admin-settings': function () {
-      api('/admin/config').then(function (r) {
-        var c = r.data.config || {}, keys = Object.keys(c);
-        $('#list').innerHTML = keys.map(function (k) {
-          return '<div class="tr"><div class="fl"><b style="direction:ltr;display:block;text-align:start;font-size:13px">' + esc(k) + '</b></div><span class="mut xs" style="max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c[k]) + '</span></div>';
-        }).join('');
-        $('#list').hidden = !keys.length; showEmpty(keys.length);
-      });
-    },
-    'admin-db': function () {
-      api('/admin/db').then(function (r) {
-        setBind('d_path', r.data.path || '—'); setBind('d_size', ((r.data.size || 0) / 1048576).toFixed(2) + ' MB');
-        $('#list').innerHTML = (r.data.tables || []).map(function (t) {
-          return '<div class="tr"><div class="fl"><b style="direction:ltr;display:block;text-align:start">' + esc(t.name) + '</b></div><span class="pill g">' + num(t.rows) + '</span></div>';
-        }).join('');
-      });
     }
   };
 
-  function adminServices(path, param, isRashq) {
-    var data = null;
-    api(path).then(function (r) {
-      data = r.data.platforms || r.data.categories || {};
-      var names = Object.keys(data);
-      $('#tabs').innerHTML = names.map(function (n, i) { return '<a data-n="' + esc(n) + '"' + (i ? '' : ' class="on"') + '>' + esc(n) + ' (' + data[n] + ')</a>'; }).join('');
-      $$('#tabs a').forEach(function (a) { a.addEventListener('click', function () { $$('#tabs a').forEach(function (x) { x.classList.remove('on'); }); a.classList.add('on'); draw(a.dataset.n); }); });
-      if (names.length) draw(names[0]); else showEmpty(0);
+
+  /* ───────── لوحة التحكم (نفس أقسام لوحة البوت) ───────── */
+  function sheet(title, fields, actions) {
+    var bg = document.createElement('div'); bg.className = 'sheet-bg';
+    var h = '<div class="sheet"><h2 style="font-size:20px">' + esc(title) + '</h2>';
+    fields.forEach(function (f) {
+      h += '<div class="fld2"><label for="sf_' + f.id + '">' + esc(f.label) + '</label><div class="in">' +
+        (f.type === 'textarea'
+          ? '<textarea id="sf_' + f.id + '" style="all:unset;flex:1;min-height:96px;font:600 16px Tajawal,sans-serif;color:#fff;white-space:pre-wrap;padding:12px 0;direction:rtl">' + esc(f.value) + '</textarea>'
+          : '<input id="sf_' + f.id + '" ' + (f.type === 'number' ? 'inputmode="numeric" ' : '') + (f.ro ? 'readonly ' : '') + 'value="' + esc(f.value == null ? '' : f.value) + '" placeholder="' + esc(f.ph || '') + '">') + '</div></div>';
     });
-    function draw(n) {
-      api(path + '?' + param + '=' + encodeURIComponent(n)).then(function (r) {
-        var rows = r.data.services || [];
-        $('#list').innerHTML = rows.map(function (s) {
-          return '<div class="tr"><div class="fl"><b dir="auto">' + esc(s.name) + '</b><div class="xs mut">' + (isRashq ? 'من ' + num(s.min) + ' إلى ' + num(s.max) : esc(s.quantity || '')) + '</div></div><span class="pill y">💎 ' + num(s.price) + '</span></div>';
-        }).join('');
-        $('#list').hidden = !rows.length; showEmpty(rows.length);
+    h += '<div class="col2" style="margin-top:4px">';
+    actions.forEach(function (a, i) { h += '<a class="cta ' + (a.cls || 'g') + ' sm px rp" data-act="' + i + '" role="button" tabindex="0" style="height:52px;' + (a.wide ? 'grid-column:1/-1;' : '') + '">' + esc(a.label) + '</a>'; });
+    h += '</div></div>';
+    bg.innerHTML = h; document.body.appendChild(bg);
+    function close() { bg.remove(); }
+    bg.addEventListener('click', function (e) {
+      if (e.target === bg) return close();
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      var a = actions[+b.dataset.act], vals = {};
+      fields.forEach(function (f) { var el = $('#sf_' + f.id, bg); vals[f.id] = el ? el.value.trim() : ''; });
+      if (a.close) return close();
+      setBusy(b, true);
+      Promise.resolve(a.fn(vals)).then(function (ok) { setBusy(b, false); if (ok !== false) close(); });
+    });
+    return close;
+  }
+  function adm(path, body) { return api('/admin/' + path, body ? 'POST' : 'GET', body); }
+  function okmsg(r, msg) { if (r.ok) { toast(msg || 'تم'); return true; } toast((r.data && r.data.message) || 'فشلت العملية', true); return false; }
+  function trow(i, title, sub, right) {
+    return '<div class="tr px" data-i="' + i + '"><div class="fl"><b dir="auto">' + esc(title) + '</b><div class="xs mut" dir="auto">' + esc(sub || '') + '</div></div>' + (right || '') + '</div>';
+  }
+  function clicks(listSel, fn) { $(listSel).addEventListener('click', function (e) { var t = e.target.closest('[data-i]'); if (t) fn(+t.dataset.i); }); }
+  function swHtml(on) { return '<span class="sw' + (on ? ' on' : '') + '"></span>'; }
+  function showList(rows) { var l = $('#list'); l.hidden = !rows; showEmpty(rows); }
+
+  function servicesAdmin(kind) {
+    var isR = kind === 'rashq', cur = '', rows = [];
+    var base = isR ? '/services/rashq' : '/services/games', param = isR ? 'platform' : 'category', key = isR ? 'platform' : 'category';
+    function tabs() {
+      api(base).then(function (r) {
+        var d = r.data.platforms || r.data.categories || {}, names = Object.keys(d);
+        if (!cur && names.length) cur = names[0];
+        $('#tabs').innerHTML = names.map(function (n) { return '<a data-n="' + esc(n) + '"' + (n === cur ? ' class="on"' : '') + '>' + esc(n) + ' (' + d[n] + ')</a>'; }).join('');
+        draw();
       });
     }
+    function draw() {
+      if (!cur) return showList(0);
+      api(base + '?' + param + '=' + encodeURIComponent(cur)).then(function (r) {
+        rows = r.data.services || [];
+        $('#list').innerHTML = rows.map(function (s, i) {
+          return trow(i, s.name, isR ? 'من ' + num(s.min) + ' إلى ' + num(s.max) : (s.quantity || ''), '<span class="pill y">' + emoji('e_1f48e', 14) + ' ' + ltr(num(s.price)) + '</span>');
+        }).join('');
+        showList(rows.length);
+      });
+    }
+    function fields(s) {
+      s = s || {};
+      return isR
+        ? [{ id: 'name', label: 'اسم الخدمة', value: s.name }, { id: 'price', label: 'السعر لكل 1000', type: 'number', value: s.price }, { id: 'min', label: 'الحد الأدنى', type: 'number', value: s.min }, { id: 'max', label: 'الحد الأقصى', type: 'number', value: s.max }, { id: 'description', label: 'الوصف', value: s.description }, { id: 'api_id', label: 'رقم الخدمة في الموقع', value: s.api_id }]
+        : [{ id: 'name', label: 'اسم الخدمة', value: s.name }, { id: 'quantity', label: 'الكمية', value: s.quantity }, { id: 'price', label: 'السعر', type: 'number', value: s.price }, { id: 'description', label: 'الوصف', value: s.description }, { id: 'receive_id', label: 'معرف الاستلام', value: s.receive_id }];
+    }
+    $('#tabs').addEventListener('click', function (e) { var a = e.target.closest('[data-n]'); if (a) { cur = a.dataset.n; tabs(); } });
+    clicks('#list', function (i) {
+      var s = rows[i];
+      sheet('تعديل: ' + s.name, fields(s), [
+        { label: 'حفظ', fn: function (v) { v[key] = cur; v.index = i; return adm(kind + '/update', v).then(function (r) { var ok = okmsg(r, 'تم الحفظ'); if (ok) draw(); return ok; }); } },
+        { label: 'حذف', cls: 'r', fn: function () { return adm(kind + '/delete', (function () { var o = { index: i }; o[key] = cur; return o; })()).then(function (r) { var ok = okmsg(r, 'تم الحذف'); if (ok) tabs(); return ok; }); } }
+      ]);
+    });
+    $('[data-add]').addEventListener('click', function () {
+      sheet('إضافة خدمة إلى: ' + cur, fields(), [{ label: 'إضافة', wide: true, fn: function (v) { v[key] = cur; return adm(kind + '/add', v).then(function (r) { var ok = okmsg(r, 'تمت الإضافة'); if (ok) tabs(); return ok; }); } }]);
+    });
+    tabs();
   }
+
+  Object.assign(loaders, {
+    admin: function () { adm('stats').then(function (r) { Object.keys(r.data).forEach(function (k) { setBind('a_' + k, num(r.data[k])); }); }); },
+    'admin-stats': function () { loaders.admin(); },
+    'admin-games': function () { servicesAdmin('games'); },
+    'admin-rashq': function () { servicesAdmin('rashq'); },
+
+    'admin-users': function () {
+      var t, rows = [];
+      function load() {
+        adm('users?q=' + encodeURIComponent(val('q'))).then(function (r) {
+          rows = r.data.users || []; setBind('total', num(r.data.total));
+          $('#list').innerHTML = rows.map(function (u, i) {
+            return trow(i, u.name, u.uid + (u.username ? ' · ' + u.username : ''), '<div style="text-align:end"><b>' + num(u.points) + '</b><div><span class="pill ' + (u.web ? 'g' : '') + '">' + (u.web ? 'بوت + تطبيق' : 'بوت') + '</span></div></div>');
+          }).join('');
+          showList(rows.length);
+        });
+      }
+      $('#q').addEventListener('input', function () { clearTimeout(t); t = setTimeout(load, 300); });
+      clicks('#list', function (i) {
+        var u = rows[i];
+        function op(mode) { return function (v) { return adm('user/points', { uid: u.uid, amount: v.amount || 0, mode: mode }).then(function (r) { okmsg(r, 'تم'); if (r.ok) load(); return r.ok; }); }; }
+        sheet(u.name + ' · ' + num(u.points) + ' نقطة', [{ id: 'amount', label: 'عدد النقاط', type: 'number', ph: '100' }], [
+          { label: '➕ إضافة', fn: op('add') }, { label: '➖ خصم', cls: 'r', fn: op('deduct') },
+          { label: '🔄 تصفير النقاط', cls: 'r', wide: true, fn: op('reset') }]);
+      });
+      load();
+    },
+
+    'admin-recharge': function () {
+      adm('stats').then(function (r) { setBind('a_recharges', num(r.data.recharges)); setBind('a_recharge_points', num(r.data.recharge_points)); });
+      function toggles() {
+        adm('toggles').then(function (r) {
+          var t = (r.data.toggles || []).filter(function (x) { return /asiacell|stars/.test(x.key); });
+          $('#rtoggles').innerHTML = t.map(function (x) { return '<div class="item px" data-k="' + x.key + '"><div class="fl"><b>' + esc(x.label) + '</b></div>' + swHtml(x.on) + '</div>'; }).join('');
+        });
+      }
+      $('#rtoggles').addEventListener('click', function (e) { var t = e.target.closest('[data-k]'); if (t) adm('toggles/set', { key: t.dataset.k }).then(function (r) { okmsg(r, 'تم التغيير'); toggles(); }); });
+      function log() {
+        adm('recharges').then(function (r) {
+          var rows = r.data.recharges || [];
+          $('#list').innerHTML = rows.map(function (x, i) { return trow(i, x.user_id, (x.created_at || '') + (x.note ? ' · ' + x.note : ''), '<span class="pill">' + esc(x.method || '') + '</span><b style="color:#7BE5A4">' + ltr('+' + num(x.points)) + '</b>'); }).join('');
+          showList(rows.length);
+        });
+      }
+      $('[data-add]').addEventListener('click', function () {
+        sheet('شحن يدوي لمستخدم', [{ id: 'uid', label: 'أيدي المستخدم', type: 'number' }, { id: 'points', label: 'عدد النقاط', type: 'number' }], [
+          { label: 'شحن', wide: true, fn: function (v) { return adm('recharge/manual', v).then(function (r) { var ok = okmsg(r, 'تم الشحن'); if (ok) log(); return ok; }); } }]);
+      });
+      toggles(); log();
+    },
+
+    'admin-toggles': function () {
+      function load() {
+        adm('toggles').then(function (r) {
+          var t = r.data.toggles || [];
+          $('#list').innerHTML = t.map(function (x, i) { return trow(i, x.label, x.key, swHtml(x.on)); }).join('');
+          showList(t.length); $('#list').dataset.keys = JSON.stringify(t.map(function (x) { return x.key; }));
+        });
+      }
+      clicks('#list', function (i) { var ks = JSON.parse($('#list').dataset.keys); adm('toggles/set', { key: ks[i] }).then(function (r) { okmsg(r, 'تم التغيير'); load(); }); });
+      load();
+    },
+
+    'admin-settings': function () {
+      var items = [];
+      function load() {
+        adm('settings').then(function (r) {
+          items = r.data.items || [];
+          $('#list').innerHTML = items.map(function (x, i) {
+            var shown = x.type === 'bool' ? '' : String(x.value).slice(0, 26);
+            return trow(i, x.key, x.type === 'text' ? 'نص' : x.type === 'num' ? 'رقم' : 'تشغيل/إيقاف', x.type === 'bool' ? swHtml(x.value) : '<span class="mut xs" dir="auto" style="max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(shown) + '</span>');
+          }).join('');
+          showList(items.length);
+        });
+      }
+      clicks('#list', function (i) {
+        var x = items[i];
+        if (x.type === 'bool') { adm('settings/set', { key: x.key, value: !x.value }).then(function (r) { okmsg(r, 'تم'); load(); }); return; }
+        sheet(x.key, [{ id: 'value', label: 'القيمة', type: x.type === 'num' ? 'number' : (String(x.value).length > 40 ? 'textarea' : 'text'), value: x.value }], [
+          { label: 'حفظ', wide: true, fn: function (v) { return adm('settings/set', { key: x.key, value: v.value }).then(function (r) { var ok = okmsg(r, 'تم الحفظ'); if (ok) load(); return ok; }); } }]);
+      });
+      load();
+    },
+
+    'admin-codes': function () {
+      var rows = [];
+      function load() {
+        adm('codes').then(function (r) {
+          rows = r.data.codes || [];
+          $('#list').innerHTML = rows.map(function (c, i) { return trow(i, c.code, 'استُخدم ' + c.used_count + ' من ' + (c.max_uses || '∞'), '<span class="pill y">' + emoji('e_1f48e', 14) + ' ' + ltr(num(c.points)) + '</span>'); }).join('');
+          showList(rows.length);
+        });
+      }
+      clicks('#list', function (i) {
+        sheet('الكود: ' + rows[i].code, [], [{ label: 'حذف الكود', cls: 'r', wide: true, fn: function () { return adm('codes/delete', { code: rows[i].code }).then(function (r) { var ok = okmsg(r, 'تم الحذف'); if (ok) load(); return ok; }); } }]);
+      });
+      $('[data-add]').addEventListener('click', function () {
+        sheet('كود جديد', [{ id: 'code', label: 'الكود (اتركه فارغاً لإنشاء تلقائي)' }, { id: 'points', label: 'النقاط', type: 'number' }, { id: 'max_uses', label: 'أقصى استخدام (0 = غير محدود)', type: 'number', value: 0 }], [
+          { label: 'إنشاء', wide: true, fn: function (v) { return adm('codes/add', v).then(function (r) { var ok = okmsg(r, 'تم إنشاء الكود ' + (r.data.code || '')); if (ok) load(); return ok; }); } }]);
+      });
+      $('[data-gift]').addEventListener('click', function () {
+        sheet('رابط هدية', [{ id: 'points', label: 'النقاط', type: 'number' }, { id: 'max_uses', label: 'أقصى استخدام (0 = غير محدود)', type: 'number', value: 0 }, { id: 'expiry_hours', label: 'المدة بالساعات (0 = بدون)', type: 'number', value: 0 }], [
+          { label: 'إنشاء الرابط', wide: true, fn: function (v) {
+            return adm('gift/create', v).then(function (r) {
+              if (!okmsg(r, 'تم إنشاء الرابط')) return false;
+              setTimeout(function () { sheet('رابط الهدية', [{ id: 'l', label: 'انسخ الرابط', value: r.data.link, ro: true }], [{ label: 'إغلاق', close: true, wide: true }]); }, 200);
+              return true;
+            });
+          } }]);
+      });
+      load();
+    },
+
+    'admin-channels': function () {
+      var rows = [];
+      function load() {
+        adm('channels').then(function (r) {
+          rows = r.data.channels || [];
+          $('#list').innerHTML = rows.map(function (c, i) { return trow(i, c.channel_name || c.channel_id, c.channel_id, '<span class="pill">' + num(c.target_members) + '</span>'); }).join('');
+          showList(rows.length);
+        });
+      }
+      clicks('#list', function (i) {
+        sheet(rows[i].channel_name || rows[i].channel_id, [], [{ label: 'حذف القناة', cls: 'r', wide: true, fn: function () { return adm('channels/delete', { channel_id: rows[i].channel_id }).then(function (r) { var ok = okmsg(r, 'تم الحذف'); if (ok) load(); return ok; }); } }]);
+      });
+      $('[data-add]').addEventListener('click', function () {
+        sheet('إضافة قناة', [{ id: 'channel_id', label: 'معرف القناة (@channel أو -100...)' }, { id: 'channel_name', label: 'الاسم' }, { id: 'target_members', label: 'العدد المستهدف', type: 'number', value: 0 }, { id: 'invite_link', label: 'رابط الدعوة (اختياري)' }], [
+          { label: 'إضافة', wide: true, fn: function (v) { return adm('channels/add', v).then(function (r) { var ok = okmsg(r, 'تمت الإضافة'); if (ok) load(); return ok; }); } }]);
+      });
+      load();
+    },
+
+    'admin-free': function () {
+      var rows = [];
+      function load() {
+        adm('free').then(function (r) {
+          rows = r.data.items || [];
+          $('#list').innerHTML = rows.map(function (x, i) { return trow(i, x.name, x.description || x.created_at || '', ''); }).join('');
+          showList(rows.length);
+        });
+      }
+      clicks('#list', function (i) {
+        sheet(rows[i].name, [], [{ label: 'حذف الخدمة', cls: 'r', wide: true, fn: function () { return adm('free/delete', { index: i }).then(function (r) { var ok = okmsg(r, 'تم الحذف'); if (ok) load(); return ok; }); } }]);
+      });
+      $('[data-add]').addEventListener('click', function () {
+        sheet('خدمة مجانية', [{ id: 'name', label: 'الاسم' }, { id: 'description', label: 'الوصف' }], [
+          { label: 'إضافة', wide: true, fn: function (v) { return adm('free/add', v).then(function (r) { var ok = okmsg(r, 'تمت الإضافة'); if (ok) load(); return ok; }); } }]);
+      });
+      load();
+    },
+
+    'admin-backups': function () {
+      function load() {
+        adm('backups').then(function (r) {
+          var rows = r.data.backups || [];
+          $('#list').innerHTML = rows.map(function (b, i) { return trow(i, b.name, (b.size / 1048576).toFixed(2) + ' MB · ' + b.mtime, '<a class="back px" role="button" tabindex="0" data-dl="' + esc(b.name) + '" style="width:40px;height:40px;flex-basis:40px;border-radius:13px"><i class="ic i-down" style="width:18px;height:18px"></i></a>'); }).join('');
+          showList(rows.length);
+        });
+      }
+      $('[data-backup]').addEventListener('click', function () { adm('backups/create', {}).then(function (r) { okmsg(r, 'تم إنشاء النسخة'); load(); }); });
+      $('[data-clean]').addEventListener('click', function () { sheet('حذف كل النسخ القديمة؟', [], [{ label: 'نعم، احذف', cls: 'r', fn: function () { return adm('backups/clean', {}).then(function (r) { var ok = okmsg(r, 'تم الحذف'); if (ok) load(); return ok; }); } }, { label: 'إلغاء', close: true, cls: 'dk' }]); });
+      load();
+    },
+
+    'admin-server': function () {
+      adm('server').then(function (r) {
+        var s = r.data.server || {}, rows = [['اسم الاستضافة', s.provider], ['اسم الجهاز', s.hostname], ['عنوان الاستضافة (IP)', s.public_ip || s.local_ip], ['المنفذ', s.port], ['عنوان الخادم للتطبيق', s.url], ['النظام', s.os], ['بايثون', s.python], ['ربط التطبيق', r.data.linked ? 'مفعّل ' + (r.data.linked_at || '') : 'غير مفعّل']];
+        $('#list').innerHTML = rows.map(function (x) { return '<div class="tr"><span class="mut">' + esc(x[0]) + '</span><b dir="ltr" style="margin-inline-start:auto;text-align:end;word-break:break-all">' + esc(x[1] == null ? '—' : x[1]) + '</b></div>'; }).join('');
+      });
+    },
+
+    'bot-link': function () {
+      var msgEl = $('#linkMsg');
+      function msg(t, err) { msgEl.textContent = t; msgEl.style.color = err ? '#FFA3A3' : '#A9B6DA'; }
+      $('#lf').addEventListener('change', function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        if (f.size > 20480) return msg('حجم الملف كبير. الحد الأقصى 20 KB', true);
+        var rd = new FileReader();
+        rd.onload = function () {
+          var j; try { j = JSON.parse(String(rd.result)); } catch (e) { return msg('الملف ليس بصيغة JSON صحيحة', true); }
+          if (!j || j.type !== 'velox-link' || !j.key || !j.server || !j.server.url) return msg('ملف ربط غير صالح. المطلوب: type=velox-link و key و server.url', true);
+          verify(j);
+        };
+        rd.readAsText(f);
+      });
+      function post(base, path, key) {
+        return fetch(base + '/api' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key }) })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); });
+      }
+      function verify(j) {
+        var base = String(j.server.url).replace(/\/+$/, '');
+        msg('جاري التحقق من البوت...');
+        post(base, '/bot/verify', j.key).then(function (x) {
+          if (!x.ok) return msg(x.d.message || 'فشل التحقق من البوت', true);
+          card(x.d.bot, base, j.key);
+        }).catch(function () { msg('تعذّر الاتصال بالخادم ' + base + ' (تأكد أنه يعمل والمنفذ مفتوح)', true); });
+      }
+      function card(b, base, key) {
+        msg('');
+        var rows = [['اسم البوت', b.name], ['معرف البوت', '@' + b.username], ['رقم البوت', b.id], ['عدد المستخدمين', num(b.users)], ['الطلبات المنجزة', num(b.orders)], ['خدمات الألعاب', num(b.games)], ['خدمات الرشق', num(b.rashq)], ['قنوات الاشتراك', num(b.channels)], ['الاستضافة', b.server && b.server.provider], ['عنوان الخادم', b.server && b.server.url]];
+        var el = $('#botCard'); el.style.display = 'flex';
+        el.innerHTML = '<div class="glass rise" style="display:flex;flex-direction:column;gap:6px"><div class="rw" style="margin-bottom:6px"><span class="eb g">' + emoji('e_2705') + '</span><div class="fl"><h2 style="font-size:19px">تم التحقق من البوت</h2><div class="xs mut">تأكد من التفاصيل ثم اربطه</div></div></div>' +
+          rows.map(function (x) { return '<div class="rw s" style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07)"><span class="mut">' + esc(x[0]) + '</span><b dir="ltr" style="text-align:end;word-break:break-all">' + esc(x[1] == null ? '—' : x[1]) + '</b></div>'; }).join('') + '</div>' +
+          (b.linked ? '<div class="item"><span class="eb g">' + emoji('e_2705') + '</span><span class="fl xs">هذا البوت مربوط بالتطبيق مسبقاً.</span></div>' : '') +
+          '<a class="cta g px rp" id="doLink" role="button" tabindex="0">' + (b.linked ? 'إعادة تثبيت الربط' : 'اربط الآن') + '</a>';
+        $('#doLink').addEventListener('click', function () {
+          var btn = this; setBusy(btn, true);
+          post(base, '/bot/link', key).then(function (x) {
+            setBusy(btn, false);
+            if (!x.ok) return msg(x.d.message || 'فشل الربط', true);
+            store.set('api', base + '/api');
+            btn.outerHTML = '<div class="glass" style="text-align:center;display:flex;flex-direction:column;gap:10px"><span style="margin:0 auto">' + emoji('e_2705', 56) + '</span><h2>تم ربط البوت بالتطبيق</h2><p class="mut" style="line-height:1.7">' + (x.d.already ? 'كان البوت مربوطاً مسبقاً.' : 'أُرسل إشعار إلى ' + num(x.d.notified) + ' مستخدم: البوت يعمل الآن داخل التطبيق للجميع حتى المطور.') + '</p><a class="cta g px rp" href="login.html">تسجيل الدخول</a></div>';
+          }).catch(function () { setBusy(btn, false); msg('تعذّر الاتصال بالخادم', true); });
+        });
+      }
+    },
+
+    waiting: function () {
+      $('[data-retry]').addEventListener('click', function () {
+        api('/app/status').then(function (r) {
+          if (r.ok && r.data.linked) location.href = 'login.html';
+          else toast(r.offline ? 'تعذّر الاتصال بالخادم' : 'ما زال البوت غير مربوط. سيصلك إشعار عند التفعيل.', true);
+        });
+      });
+    }
+  });
 
   function doTrack() {
     var id = val('oid').replace(/^#/, '');
@@ -323,7 +545,7 @@
   /* ───────── الدخول والتسجيل ───────── */
   function doLogin(btn) {
     var id = val('id'), pw = val('pw');
-    if (!/^\d{5,15}$/.test(id)) return fail($('#id'), 'اكتب الأيدي (أرقام فقط)');
+    if (!/^\d{5,15}$/.test(id) && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(id)) return fail($('#id'), 'اكتب الأيدي (أرقام) أو البريد الإلكتروني');
     if (!pw) return fail($('#pw'), 'اكتب كلمة السر');
     setBusy(btn, true);
     api('/login', 'POST', { id: id, password: pw }).then(function (r) {
