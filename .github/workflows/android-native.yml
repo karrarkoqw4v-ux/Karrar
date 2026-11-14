@@ -66,18 +66,33 @@ jobs:
       - name: Build debug APK
         working-directory: android-native
         run: gradle --no-daemon assembleDebug
-      - name: Screenshots on emulator
+      - name: Screenshots (user screens)
+        continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          ram-size: 4096M
           disable-animations: true
-          script: bash android-native/shots.sh
+          script: bash android-native/shots.sh user
+      - name: Screenshots (admin screens)
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disable-animations: true
+          script: bash android-native/shots.sh admin
       - uses: actions/upload-artifact@v4
+        if: always()
         with: { name: turbo-shots, path: shots-out/*.png }
       - name: Commit screenshots
+        if: always()
         run: |
           git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
           mkdir -p android-native/shots-out && cp shots-out/*.png android-native/shots-out/
