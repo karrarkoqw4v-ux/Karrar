@@ -212,7 +212,7 @@ class ToolRunner {
         if (out == Out.video || out == Out.gif || out == Out.image) {
           args.addAll(['-map', fc.contains('[v]') ? '[v]' : '0:v']);
           if (out == Out.video || vidSrcAv) {
-            if (fc.contains('[a]')) {
+            if ('[a]'.allMatches(fc).length == 1) {
               args.addAll(['-map', '[a]']);
             } else if (!s.noAudio && ctx.hasA && s.allInputs == null) {
               args.addAll(['-map', '0:a?']);
