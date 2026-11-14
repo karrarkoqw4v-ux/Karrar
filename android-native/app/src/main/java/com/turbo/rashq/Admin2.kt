@@ -39,7 +39,7 @@ fun ToggleRow(label: String, key: String, def: Boolean = true) {
 data class HubItem(val route: String, val label: String, val emoji: String, val style: String = "success")
 
 @Composable
-fun Hub(title: String, items: List<HubItem>, extra: @Composable ColumnScope.() -> Unit = {}) {
+fun Hub(title: String, items: List<HubItem>, extra: @Composable ColumnScope.() -> Unit = {}, footer: @Composable ColumnScope.() -> Unit = {}) {
     Page(title) {
         extra()
         items.chunked(2).forEach { row ->
@@ -48,6 +48,7 @@ fun Hub(title: String, items: List<HubItem>, extra: @Composable ColumnScope.() -
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+        footer()
     }
 }
 

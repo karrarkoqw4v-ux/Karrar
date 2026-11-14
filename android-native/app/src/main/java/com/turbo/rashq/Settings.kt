@@ -17,12 +17,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun UserSettings() {
-    val u = Session.user ?: return
+    var confirm by remember { mutableStateOf(false) }
     Hub("الإعدادات", listOf(
         HubItem("set/info", "معلومات الحساب", E.user, "primary"), HubItem("set/username", "تغيير اسم المستخدم", E.edit, "primary"),
         HubItem("set/email", "تغيير البريد الإلكتروني", E.edit, "primary"), HubItem("set/pass", "تغيير كلمة السر", E.lock, "primary"),
         HubItem("set/privacy", "الخصوصية", E.lock, "success"), HubItem("set/notif", "الإشعارات", E.mega, "success"),
-        HubItem("set/colors", "الألوان", E.free, "success"), HubItem("msg", "الرسائل", E.mega, "success")))
+        HubItem("set/colors", "الألوان", E.free, "success"), HubItem("msg", "الرسائل", E.mega, "success")),
+        footer = { Spacer(Modifier.height(6.dp)); Btn("تسجيل الخروج", "danger", emoji = E.lock) { confirm = true } })
+    if (confirm) ConfirmDialog("تسجيل الخروج", "هل تريد تسجيل الخروج من حسابك؟", { Repo.setCurrent(null); Nav.reset(); Session.refresh() }) { confirm = false }
 }
 
 @Composable
