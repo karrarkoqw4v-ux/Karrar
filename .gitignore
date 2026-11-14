@@ -4,3 +4,6 @@ app/tools/*.keystore
 app/config/signing.env
 app/Karrar-AI.apk
 app/Karrar-AI.apk.idsig
+montage/build/
+montage/.dart_tool/flutter_build/
+montage/.dart_tool/hooks_runner/
