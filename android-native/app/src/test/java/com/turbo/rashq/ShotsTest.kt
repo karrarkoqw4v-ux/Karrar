@@ -12,7 +12,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import io.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,7 +31,9 @@ class ShotsTest {
         Nav.reset(); if (route != "home") Nav.go(route)
         Session.refresh()
         rule.waitForIdle(); Thread.sleep(1500); rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots-jvm/$name.png")
+        val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
+        val f = File("build/shots-jvm/$name.png"); f.parentFile?.mkdirs()
+        f.outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test

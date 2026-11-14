@@ -116,7 +116,7 @@ jobs:
         working-directory: android-native
         timeout-minutes: 25
         continue-on-error: true
-        run: gradle --no-daemon testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+        run: gradle --no-daemon testDebugUnitTest --stacktrace
       - name: Collect
         if: always()
         run: |
