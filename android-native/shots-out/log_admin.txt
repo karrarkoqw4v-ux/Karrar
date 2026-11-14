@@ -1,0 +1,39 @@
+== 20_admin_home
+error: closed
+- waiting for device -
+== 21_admin_settings
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 22_admin_gifts
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 23_admin_toggle
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 24_button_editor
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 25_admin_services
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 26_emoji_manager
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 27_admin_recharge
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 28_admin_texts
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 29_admin_sites
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
