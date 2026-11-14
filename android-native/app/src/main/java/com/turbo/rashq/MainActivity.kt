@@ -110,8 +110,8 @@ fun BottomBar() {
     val cur = Nav.stack.last()
     val u = Session.user
     val unread = if (u != null) remember(Session.tick.intValue) { Repo.unreadCount(u.uid) } else 0
-    val tabs = listOf(Triple("home", "الرئيسية", "5050874036788134809"), Triple("orders", "طلباتي", "5375338737028841420"),
-        Triple("menu/recharge", "شحن", "5866369239740320716"), Triple("menu/account", "حسابي", "4956418939920843885"), Triple("notifs", "الإشعارات", "5251511475515712980"))
+    val tabs = listOf(Triple("home", "الرئيسية", "5050874036788134809"), Triple("orders", "طلباتي", "5935832686416366431"),
+        Triple("menu/recharge", "شحن", "5866369239740320716"), Triple("menu/account", "حسابي", "4956418939920843885"), Triple("notifs", "الإشعارات", Cat.id("🔔") ?: "5251511475515712980"))
     androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().background(Color(0xFF0E142B)).border(1.dp, Color.White.copy(alpha = .08f)).navigationBarsPadding().padding(vertical = 6.dp)) {
         tabs.forEach { (r, l, e) ->
             val sel = cur == r

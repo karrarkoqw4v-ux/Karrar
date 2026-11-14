@@ -141,7 +141,8 @@ fun CatScreen(cat: String) {
     var pick by remember { mutableStateOf<Service?>(null) }
     val isRashq = Defs.ofCat("rashq").any { Defs.name(it.key) == cat }
     Page(cat) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Logo(cat, 52.dp); Column(Modifier.weight(1f)) { RichText(if (isRashq) Tx.platPage(cat, list.size) else if (cat == "تمويل قناتك") Tx.tamweel() else Tx.gamePage(cat, list.size), 13) } }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Logo(cat, 52.dp); Column { T(cat, 20, FontWeight.ExtraBold); T("${list.size} خدمة متاحة", 12, color = C.sub) } }
+        Card { RichText(if (isRashq) Tx.platPage(cat, list.size) else if (cat == "تمويل قناتك") Tx.tamweel() else Tx.gamePage(cat, list.size), 13) }
         if (list.isEmpty()) Card { T("لا توجد خدمات هنا بعد. يضيفها المطور من لوحة التحكم.", 13, color = C.sub, align = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
         list.forEach { s ->
             Card(onClick = { pick = s }) {
