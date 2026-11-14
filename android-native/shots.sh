@@ -2,7 +2,7 @@ APK=android-native/app/build/outputs/apk/debug/app-debug.apk
 adb install -r $APK
 adb shell pm grant com.turbo.rashq android.permission.POST_NOTIFICATIONS || true
 mkdir -p shots-out
-shot() { adb shell am force-stop com.turbo.rashq; adb shell am start -n com.turbo.rashq/.MainActivity --es shot_login "$2" --es shot_route "$1"; sleep 7; timeout 30 adb exec-out screencap -p > "shots-out/$3.png"; }
+shot() { adb shell am force-stop com.turbo.rashq; adb shell am start -n com.turbo.rashq/.MainActivity --es shot_login "$2" --es shot_route "$1"; sleep 14; timeout 30 adb exec-out screencap -p > "shots-out/$3.png"; }
 if [ "$1" = "user" ]; then
 shot home user 01_home
 shot menu/rashq user 02_rashq
@@ -33,4 +33,5 @@ shot admin/texts admin 28_admin_texts
 shot admin/sites admin 29_admin_sites
 shot admin/fetch admin 30_admin_fetch
 fi
+adb logcat -d -t 400 *:E AndroidRuntime:E > shots-out/log_$1.txt 2>&1 || true
 exit 0
