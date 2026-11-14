@@ -231,11 +231,11 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Future<void> _pickMusic() async {
-    final r = await FilePicker.platform.pickFiles(type: FileType.audio);
-    if (r == null || r.files.single.path == null) return;
+    final f = await FilePicker.pickFile(type: FileType.audio);
+    if (f == null || f.path == null) return;
     setState(() {
-      p.musicPath = r.files.single.path;
-      p.musicName = r.files.single.name;
+      p.musicPath = f.path;
+      p.musicName = f.name;
     });
     _save();
     await _loadMusic();
