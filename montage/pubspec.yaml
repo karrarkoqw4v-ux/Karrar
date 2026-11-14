@@ -1,0 +1,42 @@
+name: montage_murtaah
+description: مونتاج مرتاح - تطبيق مونتاج فيديو وصور مجاني بدون علامة مائية
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  video_player: ^2.9.0
+  image_picker: ^1.1.0
+  file_picker: ^8.1.2
+  path_provider: ^2.1.0
+  path: ^1.9.0
+  shared_preferences: ^2.2.0
+  crypto: ^3.0.3
+  gal: ^2.3.0
+  ffmpeg_kit_flutter_new: ^4.6.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
+  fonts:
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/tajawal_regular.ttf
+        - asset: assets/fonts/tajawal_medium.ttf
+          weight: 500
+        - asset: assets/fonts/tajawal_bold.ttf
+          weight: 700
+        - asset: assets/fonts/tajawal_extrabold.ttf
+          weight: 800
