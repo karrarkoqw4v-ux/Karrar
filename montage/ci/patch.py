@@ -17,6 +17,8 @@ t = open(g, encoding='utf-8').read()
 t = t.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
 if 'checkReleaseBuilds' not in t:
     t = t.replace('android {', 'android {\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }', 1)
+if 'useLegacyPackaging' not in t:
+    t = t.replace('android {', 'android {\n    packaging {\n        jniLibs {\n            useLegacyPackaging = true\n        }\n    }', 1)
 open(g, 'w', encoding='utf-8').write(t)
 # icons
 for d in os.listdir(os.path.join(root, 'ci/icons')):
