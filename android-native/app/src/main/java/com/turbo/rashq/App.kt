@@ -42,14 +42,14 @@ fun doRoute(r: String) {
     when {
         r.startsWith("menu:") -> Nav.go("menu/" + r.removePrefix("menu:"))
         r.startsWith("cat:") -> Nav.go("cat/" + r.removePrefix("cat:"))
-        r == "tamweel" -> Nav.go("cat/تمويل قناتك")
+        r == "tamweel" -> if (Repo.get("funding_enabled", "1") == "1") Nav.go("cat/تمويل قناتك") else toast("قسم التمويل متوقف حالياً")
         r == "channels" -> Nav.go("orders")
         r.startsWith("url:") -> openUrl(Repo.get(r.removePrefix("url:")))
         r == "stats" -> toast("طلبات أُنجزت: ${Repo.doneCount()}")
         r.startsWith("gift:") -> {
             val k = r.removePrefix("gift:")
-            val err = if (k == "daily") Repo.claim(u, "يومية", 24, Repo.getLong("gift_daily", 5)) else Repo.claim(u, "أسبوعية", 168, Repo.getLong("gift_weekly", 25))
-            if (err == null) { toast("تمت إضافة الهدية إلى رصيدك"); Repo.pushNotif(u.uid, "هدية 🎁", "تمت إضافة هديتك"); Session.refresh() } else toast(err)
+            val err = if (k == "daily") Repo.claim(u, "يومية", 24, Repo.getLong("gift_points", 50)) else Repo.claim(u, "أسبوعية", 168, Repo.getLong("weekly_gift_points", 100))
+            if (err == null) { toast("تمت إضافة الهدية إلى رصيدك"); Repo.pushNotif(u.uid, "هدية 🎁", "تمت إضافة هديتك إلى رصيدك", "gift"); Session.refresh() } else toast(err)
         }
         else -> Nav.go(r)
     }
@@ -60,7 +60,7 @@ fun AuthScreen() {
     var mode by remember { mutableStateOf("choose") }
     var name by remember { mutableStateOf("") }; var user by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }; var email by remember { mutableStateOf("") }
-    var pass by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }; var ref by remember { mutableStateOf("") }; var err by remember { mutableStateOf("") }
     Page("Turbo Rashq", onBack = if (mode == "choose") null else ({ mode = "choose"; err = "" })) {
         Spacer(Modifier.height(8.dp))
         Box(Modifier.align(Alignment.CenterHorizontally).size(96.dp).clip(RoundedCornerShape(28.dp))
@@ -72,9 +72,9 @@ fun AuthScreen() {
             "register" -> {
                 Field(name, { name = it }, "الاسم"); Field(user, { user = it }, "اسم المستخدم (إنجليزي)")
                 Field(phone, { phone = it }, "رقم الهاتف", number = true); Field(email, { email = it }, "البريد (اختياري)")
-                Field(pass, { pass = it }, "كلمة السر", password = true)
+                Field(pass, { pass = it }, "كلمة السر", password = true); Field(ref, { ref = it.filter(Char::isDigit) }, "رمز الدعوة (اختياري)", number = true)
                 if (err.isNotBlank()) T(err, 13, color = C.red)
-                Btn("إنشاء الحساب", "primary") { val e = Repo.register(name, user, phone, email, pass); if (e == null) { Session.refresh() } else err = e }
+                Btn("إنشاء الحساب", "primary") { val e = Repo.register(name, user, phone, email, pass, ref); if (e == null) { Session.refresh() } else err = e }
             }
             else -> {
                 Field(user, { user = it }, "اسم المستخدم أو البريد أو الأيدي"); Field(pass, { pass = it }, "كلمة السر", password = true)
@@ -94,11 +94,15 @@ fun HomeScreen() {
         Box { IconButton({ Nav.go("notifs") }) { Icon(Icons.Filled.Notifications, null, tint = C.text) }
             if (unread > 0) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(18.dp).clip(RoundedCornerShape(9.dp)).background(C.red), contentAlignment = Alignment.Center) { T("$unread", 10, FontWeight.Bold, Color.White) } }
     }) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Color(0xFF2563EB), Color(0xFF0EA5E9)))).padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Repo.accent(u.uid), Color(0xFF0EA5E9)))).padding(16.dp)) {
             T("أهلاً ${u.name}", 14, color = Color.White.copy(alpha = .85f))
-            T("${u.balance} نقطة", 24, FontWeight.ExtraBold, Color.White)
+            T(if (Repo.pref(u.uid, "hide_bal", false)) "••••• ${Repo.cur()}" else "${u.balance} ${Repo.cur()}", 24, FontWeight.ExtraBold, Color.White)
             T("ID: ${u.uid}  •  @${u.username}", 12, color = Color.White.copy(alpha = .8f))
         }
+        val wel = Repo.get("welcome")
+        if (wel.isNotBlank()) Card { T(wel.replace("#first_name", u.name).replace("#username", u.username).replace("#id", u.uid).replace("#balance", u.balance.toString()).replace("#points", u.balance.toString()), 13) }
+        val mand = Repo.get("mand_channels").lines().filter { it.isNotBlank() }
+        if (mand.isNotEmpty()) Card { T(Repo.get("mand_text", "اشترك بالقنوات التالية"), 13, FontWeight.Bold); mand.forEach { l -> TextButton({ openUrl(l.trim().let { if (it.startsWith("@")) "t.me/" + it.drop(1) else it }) }) { T(l.trim(), 13, color = C.blue) } } }
         ButtonRows("main") { doRoute(it) }
         if (u.admin) Btn("لوحة المطور", "danger", emoji = "1f6e0") { Nav.go("admin") }
     }
@@ -111,7 +115,7 @@ fun MenuScreen(cat: String) {
 
 @Composable
 fun AccountMenu() {
-    Page("حسابي") { Btn("بياناتي وسجل الرصيد", "primary", emoji = "1f464") { Nav.go("accinfo") }; ButtonRows("account") { doRoute(it) } }
+    Page("حسابي") { Btn("بياناتي وسجل الرصيد", "primary", emoji = E.user) { Nav.go("accinfo") }; Btn("الإعدادات", "success", emoji = E.settings) { Nav.go("set") }; Btn("الرسائل", "primary", emoji = E.mega) { Nav.go("msg") }; ButtonRows("account") { doRoute(it) } }
 }
 
 @Composable
@@ -188,9 +192,15 @@ fun CodeScreen() {
 
 @Composable
 fun SupportScreen() {
-    Page("الدعم") {
-        Card { T("للشراء أو الاستفسار تواصل مع المطور.", 14); T(Repo.get("support_link").ifBlank { "لم يتم تحديد رابط الدعم بعد" }, 13, color = C.sub) }
-        Btn("فتح الدعم", "primary", emoji = "1f4ac") { openUrl(Repo.get("support_link")) }
+    var q by remember { mutableStateOf("") }
+    val faq = remember { Repo.get("support_faq").lines().mapNotNull { l -> l.split("|").takeIf { it.size >= 2 }?.let { it[0].trim() to it[1].trim() } } }
+    val hits = if (q.isBlank()) faq else faq.filter { f -> q.trim().split(" ").any { w -> w.length > 1 && (f.first.contains(w) || f.second.contains(w)) } }
+    Page("الدعم الذكي") {
+        Card { Row(verticalAlignment = Alignment.CenterVertically) { PremiumEmoji("6006107551198874621", 36.dp); Spacer(Modifier.width(8.dp)); T(Repo.get("support_welcome", "اهلاً بك في الدعم الذكي. اكتب مشكلتك للحصول على الحل."), 13) } }
+        Field(q, { q = it }, "اكتب مشكلتك")
+        hits.forEach { Card { T(it.first, 14, FontWeight.Bold); T(it.second, 13, color = C.sub) } }
+        if (q.isNotBlank() && hits.isEmpty()) T("لم أجد جواباً. تواصل مع الدعم مباشرة.", 12, color = C.sub)
+        Btn("التواصل مع الدعم", "primary", emoji = "5237697567906617034") { openUrl(Repo.get("support_link")) }
     }
 }
 
@@ -202,9 +212,9 @@ fun WheelScreen() {
     val u = Session.user ?: return
     var out by remember { mutableStateOf("") }
     Page("عجلة الحظ") {
-        Card { Row(verticalAlignment = Alignment.CenterVertically) { PremiumEmoji("1f3a1", 48.dp); Spacer(Modifier.width(10.dp)); T("لفّة كل 24 ساعة. الجوائز من 1 إلى ${Repo.getLong("wheel_max", 20)} نقطة.", 13) } }
+        Card { Row(verticalAlignment = Alignment.CenterVertically) { PremiumEmoji("1f3a1", 48.dp); Spacer(Modifier.width(10.dp)); T("لفّة كل 24 ساعة. الجوائز من ${Repo.getLong("wheel_min", 30)} إلى ${Repo.getLong("wheel_max", 1000)} ${Repo.cur()}.", 13) } }
         Btn("لف العجلة", "success", emoji = "1f3a1") {
-            val prize = (1..Repo.getLong("wheel_max", 20).toInt().coerceAtLeast(1)).random().toLong()
+            val lo = Repo.getLong("wheel_min", 30).toInt(); val hi = Repo.getLong("wheel_max", 1000).toInt().coerceAtLeast(lo); val prize = (lo..hi).random().toLong()
             val e = Repo.claim(u, "عجلة الحظ", 24, prize); if (e == null) { out = "ربحت $prize نقطة 🎉"; Session.refresh() } else out = e }
         if (out.isNotBlank()) T(out, 16, FontWeight.Bold, C.gold, align = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
@@ -264,6 +274,6 @@ fun NotifsScreen() {
     LaunchedEffect(Unit) { Repo.markRead(u.uid) }
     Page("الإشعارات") {
         if (list.isEmpty()) Card { T("لا توجد إشعارات", 13, color = C.sub, align = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-        list.forEach { n -> Card { T(n.title, 15, FontWeight.Bold); T(n.body, 13, color = C.sub); T(fmtTime(n.ts), 11, color = C.sub) } }
+        list.forEach { NotifBubble(it, Repo.bubble(u.uid)) }
     }
 }

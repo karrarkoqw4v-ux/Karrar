@@ -21,12 +21,16 @@ object Notify {
             c.getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         }
     }
+    private fun icon(c: Context, type: String): android.graphics.Bitmap? {
+        val f = when (type) { "transfer" -> "e_1f4b0"; "gift" -> "e_1f381"; "broadcast", "post" -> "e_1f4e2"; "msg" -> "e_1f4ac"; "order" -> "e_1f4e6"; else -> "e_1f680" }
+        return try { c.assets.open("emoji/$f.webp").use { android.graphics.BitmapFactory.decodeStream(it) } } catch (e: Exception) { null }
+    }
     fun show(c: Context, n: Notif) {
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         val pi = PendingIntent.getActivity(c, 0, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val nb = NotificationCompat.Builder(c, CH)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_stat).setColor(0xFF2563EB.toInt()).setSubText("تيربو رشق").setLargeIcon(icon(c, n.type))
             .setContentTitle(n.title).setContentText(n.body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(n.body))
             .setAutoCancel(true).setContentIntent(pi).setPriority(NotificationCompat.PRIORITY_HIGH).build()

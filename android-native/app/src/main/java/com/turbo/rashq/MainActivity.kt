@@ -82,11 +82,20 @@ fun Router(r: String) {
         r == "transfer:username" -> TransferScreen(false)
         r == "transfer:id" -> TransferScreen(true)
         r == "accinfo" -> AccountInfoScreen()
+        r == "set" -> UserSettings(); r == "set/info" -> SetInfo(); r == "set/pass" -> SetPass(); r == "set/privacy" -> SetPrivacy(); r == "set/notif" -> SetNotif(); r == "set/colors" -> SetColors()
+        r == "set/username" -> EditOne("تغيير اسم المستخدم", "اسم المستخدم الجديد", u?.username ?: "") { Repo.changeUsername(u!!.uid, it) }
+        r == "set/email" -> EditOne("تغيير البريد الإلكتروني", "البريد", u?.email ?: "") { Repo.changeEmail(u!!.uid, it) }
+        r == "msg" -> MessagesScreen()
         r == "notifs" -> NotifsScreen()
-        r.startsWith("admin") && u?.admin == true -> when (r) {
-            "admin/stats" -> AdminStats(); "admin/services" -> AdminServices(); "admin/orders" -> AdminOrders(); "admin/users" -> AdminUsers()
-            "admin/codes" -> AdminCodes(); "admin/notify" -> AdminNotify(); "admin/buttons" -> AdminButtons(); "admin/emoji" -> AdminEmoji()
-            "admin/settings" -> AdminSettings(); "admin/backup" -> AdminBackup(); else -> AdminHome()
+        r.startsWith("admin") && u?.admin == true -> when {
+            r == "admin/stats" -> AdminStats(); r == "admin/services" -> AdminServices(); r == "admin/games" -> AdminServices("games"); r == "admin/rashq" -> AdminServices("rashq")
+            r == "admin/free" -> AdminServices("free"); r == "admin/sites" -> AdminSites(); r == "admin/toggle" -> AdminToggle(); r == "admin/settings" -> AdminSettingsHub()
+            r == "admin/exchange" -> AdminExchange(); r == "admin/funding" -> AdminFunding(); r == "admin/gifts" -> { AdminGiftsHub() }; r == "admin/giftlink" -> AdminGiftLink()
+            r == "admin/pts" -> AdminPts(); r == "admin/accounts" -> AdminAccounts(); r == "admin/recharge" -> AdminRecharge(); r == "admin/backup" -> AdminBackup()
+            r == "admin/texts" -> AdminTexts(); r == "admin/codes" -> AdminCodes(); r == "admin/support" -> AdminSupport(); r == "admin/mandatory" -> AdminMandatory()
+            r == "admin/orders" -> AdminOrders(); r == "admin/users" -> AdminUsers(); r == "admin/notify" -> AdminNotify(); r == "admin/buttons" -> AdminButtons()
+            r == "admin/emoji" -> AdminEmoji(); r == "admin/appinfo" -> AdminAppInfo(); r.startsWith("admin/set/") -> AdminSet2(r.removePrefix("admin/set/"))
+            else -> AdminHome()
         }
         else -> HomeScreen()
     }

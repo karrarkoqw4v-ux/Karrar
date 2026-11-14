@@ -22,21 +22,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
-fun AdminHome() {
-    Page("لوحة المطور") {
-        val items = listOf("admin/stats" to "الإحصائيات", "admin/services" to "الخدمات والمتجر", "admin/orders" to "الطلبات", "admin/users" to "المستخدمون",
-            "admin/codes" to "الأكواد", "admin/notify" to "إذاعة • هدايا • منشورات", "admin/buttons" to "تعديل الأزرار", "admin/emoji" to "الإيموجي المميز",
-            "admin/settings" to "الإعدادات", "admin/backup" to "النسخ الاحتياطي")
-        val emo = listOf("1f4ca", "1f6d2".let { "1f4e6" }, "1f4dd", "1f465", "1f39f", "1f4e2", "1f527", "1f31f", "2699", "1f4be")
-        items.chunked(2).forEachIndexed { r, row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEachIndexed { i, (route, label) -> TgButton(label, if ((r + i) % 3 == 0) "primary" else if ((r + i) % 3 == 1) "success" else "primary", emo[r * 2 + i], Modifier.weight(1f)) { Nav.go(route) } }
-            }
-        }
-    }
-}
-
-@Composable
 fun AdminStats() {
     val tick = Session.tick.intValue
     Page("الإحصائيات") {
@@ -49,9 +34,10 @@ fun AdminStats() {
 }
 
 @Composable
-fun AdminServices() {
+fun AdminServices(group: String = "all") {
     val tick = Session.tick.intValue
-    val list = remember(tick) { Repo.allServices() }
+    val gcats = when (group) { "rashq" -> Defs.ofCat("rashq").map { Defs.name(it.key) }; "games" -> Defs.ofCat("games").map { Defs.name(it.key) }; "free" -> listOf("خدمات مجانية"); else -> null }
+    val list = remember(tick) { Repo.allServices().filter { gcats == null || it.cat in gcats } }
     var edit by remember { mutableStateOf<Service?>(null) }
     var delete by remember { mutableStateOf<Service?>(null) }
     var logoFor by remember { mutableStateOf("") }
@@ -63,8 +49,8 @@ fun AdminServices() {
             Repo.put("logo_$logoFor", f.absolutePath); Session.refresh(); toast("تم حفظ الصورة")
         }
     }
-    val cats = (Defs.ofCat("rashq") + Defs.ofCat("games")).map { Defs.name(it.key) } .let { it + "تمويل قناتك" }.distinct()
-    Page("الخدمات والمتجر") {
+    val cats = gcats ?: ((Defs.ofCat("rashq") + Defs.ofCat("games")).map { Defs.name(it.key) } + "تمويل قناتك").distinct()
+    Page(when (group) { "rashq" -> "إدارة خدمات الرشق"; "games" -> "إدارة خدمات الألعاب"; "free" -> "إدارة الخدمات المجانية"; else -> "الخدمات والمتجر" }) {
         Btn("إضافة خدمة", "success", emoji = "2705") { edit = Service(0, cats.first(), "", 0, "fixed", 1, false) }
         T("صور التصنيفات (اضغط لاختيار صورة رسمية)", 13, color = C.sub)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(cats) { c -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp).clip(RoundedCornerShape(12.dp)).let { it }) {
@@ -122,7 +108,7 @@ fun AdminUsers() {
         AlertDialog(onDismissRequest = { sel = null }, containerColor = C.card, title = { T(u.name, 17, FontWeight.Bold) },
             text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { T("@${u.username} • ID ${u.uid}\nالرصيد ${u.balance}", 13, color = C.sub); Field(amt, { amt = it.filter(Char::isDigit) }, "المبلغ", number = true) } },
             confirmButton = { Column { Row {
-                TextButton({ val a = amt.toLongOrNull() ?: 0; if (a > 0) { Repo.addBalance(u.uid, a, "إضافة من المطور"); Repo.pushNotif(u.uid, "تمت إضافة رصيد 💰", "أضاف لك المطور $a نقطة"); sel = null; Session.refresh() } }) { T("إضافة", 13, color = C.green) }
+                TextButton({ val a = amt.toLongOrNull() ?: 0; if (a > 0) { Repo.addBalance(u.uid, a, "إضافة من المطور"); Repo.pushNotif(u.uid, "تمت إضافة رصيد 💰", "أضاف لك المطور $a ${Repo.cur()}", "gift"); sel = null; Session.refresh() } }) { T("إضافة", 13, color = C.green) }
                 TextButton({ val a = amt.toLongOrNull() ?: 0; if (a > 0) { Repo.addBalance(u.uid, -a, "خصم من المطور"); sel = null; Session.refresh() } }) { T("خصم", 13, color = C.red) } }
                 TextButton({ Repo.setBanned(u.uid, !u.banned); sel = null; Session.refresh() }) { T(if (u.banned) "فك الحظر" else "حظر", 13, color = C.gold) } } },
             dismissButton = { TextButton({ sel = null }) { T("إغلاق", 14, color = C.sub) } })
@@ -155,42 +141,15 @@ fun AdminNotify() {
             if (title.isBlank()) { toast("اكتب العنوان"); return@Btn }
             when (tab) {
                 0 -> toast("أُرسلت إلى ${Repo.broadcast("📢 $title", body)} مستخدم")
-                2 -> toast("نُشر إلى ${Repo.broadcast("📰 $title", body)} مستخدم")
+                2 -> toast("نُشر إلى ${Repo.broadcast("📰 $title", body, "post")} مستخدم")
                 else -> { val a = amt.toLongOrNull() ?: 0
                     val targets = if (to.isBlank()) Repo.users().filter { !it.admin } else listOfNotNull(Repo.userByUsername(to))
                     if (targets.isEmpty()) { toast("المستخدم غير موجود"); return@Btn }
-                    targets.forEach { if (a > 0) Repo.addBalance(it.uid, a, "هدية من المطور"); Repo.pushNotif(it.uid, "🎁 $title", if (a > 0) "$body\n+$a نقطة" else body) }
+                    targets.forEach { if (a > 0) Repo.addBalance(it.uid, a, "هدية من المطور"); Repo.pushNotif(it.uid, "🎁 $title", if (a > 0) "$body\n+$a ${Repo.cur()}" else body, "gift") }
                     toast("أُرسلت الهدية إلى ${targets.size}") } }
             Session.refresh(); title = ""; body = ""
         }
         Card { T("تصل الإشعارات إلى كل الحسابات المسجلة على هذا الهاتف وتظهر في شريط الإشعارات. لإيصالها لهواتف أخرى يلزم خادم.", 12, color = C.sub) }
-    }
-}
-
-@Composable
-fun AdminSettings() {
-    val keys = listOf("support_link" to "رابط الدعم", "channel_link" to "رابط القناة", "gift_daily" to "الهدية اليومية (نقاط)", "gift_weekly" to "الهدية الأسبوعية", "wheel_max" to "أقصى جائزة للعجلة", "sub_channels" to "مهام الاشتراك (نص)", "terms" to "الشروط والأحكام")
-    val vals = remember { keys.map { mutableStateOf(Repo.get(it.first)) } }
-    Page("الإعدادات") {
-        keys.forEachIndexed { i, (k, l) -> Field(vals[i].value, { vals[i].value = it }, l, single = k != "terms" && k != "sub_channels") }
-        Btn("حفظ", "success") { keys.forEachIndexed { i, (k, _) -> Repo.put(k, vals[i].value) }; toast("تم الحفظ"); Session.refresh() }
-    }
-}
-
-@Composable
-fun AdminBackup() {
-    val ctx = LocalContext.current
-    val exp = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
-        if (uri != null) { Repo.db.close(); ctx.contentResolver.openOutputStream(uri)?.use { o -> Repo.dbFile().inputStream().use { it.copyTo(o) } }; toast("تم حفظ النسخة") }
-    }
-    val imp = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) { Repo.db.close(); ctx.contentResolver.openInputStream(uri)?.use { i -> Repo.dbFile().outputStream().use { i.copyTo(it) } }
-            Repo.db = Db(ctx); Session.refresh(); toast("تمت الاستعادة") }
-    }
-    Page("النسخ الاحتياطي") {
-        Card { T("قاعدة البيانات محفوظة داخل الهاتف (SQLite). احفظ نسخة قبل حذف التطبيق أو لنقلها لهاتف آخر.", 13, color = C.sub) }
-        Btn("حفظ نسخة", "primary", emoji = "1f4be") { exp.launch("turbo-backup.db") }
-        Btn("استعادة نسخة", "danger", emoji = "267b") { imp.launch(arrayOf("*/*")) }
     }
 }
 

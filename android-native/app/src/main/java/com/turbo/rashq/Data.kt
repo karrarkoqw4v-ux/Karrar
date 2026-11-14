@@ -16,11 +16,11 @@ data class Service(val id: Long, val cat: String, val name: String, val price: L
                    val minQty: Long, val hidden: Boolean)
 data class Order(val id: Long, val uid: String, val title: String, val target: String, val qty: Long,
                  val price: Long, val status: String, val ts: Long, val userName: String)
-data class Notif(val id: Long, val title: String, val body: String, val ts: Long, val read: Boolean)
+data class Notif(val id: Long, val title: String, val body: String, val ts: Long, val read: Boolean, val type: String = "sys")
 data class CodeRow(val code: String, val amount: Long, val maxUses: Int, val used: Int)
 data class Ledger(val delta: Long, val note: String, val ts: Long)
 
-class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 1) {
+class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 2) {
     override fun onCreate(d: SQLiteDatabase) {
         d.execSQL("CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT UNIQUE, name TEXT, username TEXT UNIQUE, email TEXT, phone TEXT, pass TEXT, balance INTEGER DEFAULT 0, banned INTEGER DEFAULT 0, admin INTEGER DEFAULT 0, created INTEGER)")
         d.execSQL("CREATE TABLE services(id INTEGER PRIMARY KEY AUTOINCREMENT, cat TEXT, name TEXT, price INTEGER, kind TEXT, minq INTEGER DEFAULT 1, hidden INTEGER DEFAULT 0)")
@@ -29,7 +29,7 @@ class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 1) {
         d.execSQL("CREATE TABLE code_uses(code TEXT, uid TEXT)")
         d.execSQL("CREATE TABLE ledger(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, delta INTEGER, note TEXT, ts INTEGER)")
         d.execSQL("CREATE TABLE settings(k TEXT PRIMARY KEY, v TEXT)")
-        d.execSQL("CREATE TABLE notifs(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, title TEXT, body TEXT, ts INTEGER, read INTEGER DEFAULT 0, shown INTEGER DEFAULT 0)")
+        d.execSQL("CREATE TABLE notifs(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, title TEXT, body TEXT, ts INTEGER, read INTEGER DEFAULT 0, shown INTEGER DEFAULT 0, type TEXT DEFAULT 'sys')")
         d.execSQL("CREATE TABLE emoji(id TEXT PRIMARY KEY, path TEXT, kind TEXT, setname TEXT)")
         // developer account
         val cv = ContentValues().apply {
@@ -39,7 +39,7 @@ class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 1) {
         }
         d.insert("users", null, cv)
     }
-    override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) {}
+    override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) { if (o < 2) d.execSQL("ALTER TABLE notifs ADD COLUMN type TEXT DEFAULT 'sys'") }
 }
 
 object Security {
@@ -69,6 +69,13 @@ object Repo {
     fun del(k: String) { w.execSQL("DELETE FROM settings WHERE k=?", arrayOf(k)) }
     fun getLong(k: String, def: Long) = get(k, def.toString()).toLongOrNull() ?: def
 
+    fun accent(uid: String) = androidx.compose.ui.graphics.Color(prefStr(uid, "accent", 0xFF2563EBL.toString()).toLong())
+    fun bubble(uid: String) = androidx.compose.ui.graphics.Color(prefStr(uid, "bubble", 0xFF2563EBL.toString()).toLong())
+    fun cur() = get("currency", "نقطة")
+    fun pref(uid: String, k: String, def: Boolean = true) = get("u_${uid}_$k", if (def) "1" else "0") == "1"
+    fun setPref(uid: String, k: String, v: Boolean) = put("u_${uid}_$k", if (v) "1" else "0")
+    fun prefStr(uid: String, k: String, def: String) = get("u_${uid}_$k", def)
+
     // ---- users
     private fun user(c: Cursor) = User(c.getLong(0), c.getString(1), c.getString(2) ?: "", c.getString(3) ?: "",
         c.getString(4) ?: "", c.getString(5) ?: "", c.getLong(6), c.getInt(7) == 1, c.getInt(8) == 1)
@@ -81,7 +88,7 @@ object Repo {
     }
     fun userCount() = w.rawQuery("SELECT COUNT(*) FROM users", null).use { it.moveToFirst(); it.getLong(0) }
 
-    fun register(name: String, username: String, phone: String, email: String, pass: String): String? {
+    fun register(name: String, username: String, phone: String, email: String, pass: String, ref: String = ""): String? {
         if (name.isBlank() || username.isBlank() || pass.length < 4) return "املأ الاسم واسم المستخدم وكلمة سر (4 أحرف على الأقل)"
         val un = username.trim().removePrefix("@")
         if (!Regex("[A-Za-z0-9_]{3,20}").matches(un)) return "اسم المستخدم: حروف إنجليزية وأرقام و _ (3-20)"
@@ -94,6 +101,11 @@ object Repo {
         }
         w.insert("users", null, cv)
         setCurrent(uid)
+        if (ref.isNotBlank()) userByUid(ref.trim())?.let { inv ->
+            val pts = getLong("referral_points", 200)
+            addBalance(inv.uid, pts, "دعوة ${name.trim()}")
+            pushNotif(inv.uid, "🎉 دعوة جديدة", "سجّل ${name.trim()} برمز دعوتك وأضفنا لك $pts ${cur()}", "gift")
+        }
         return null
     }
     fun login(id: String, pass: String): String? {
@@ -115,6 +127,27 @@ object Repo {
         if (new.length < 4) return "كلمة السر قصيرة"
         w.execSQL("UPDATE users SET pass=? WHERE uid=?", arrayOf(Security.hash(new), uid)); return null
     }
+    fun changeUsername(uid: String, nu: String): String? {
+        val un = nu.trim().removePrefix("@")
+        if (!Regex("[A-Za-z0-9_]{3,20}").matches(un)) return "اسم المستخدم: حروف إنجليزية وأرقام و _ (3-20)"
+        val ex = userByUsername(un); if (ex != null && ex.uid != uid) return "اسم المستخدم مستخدم"
+        w.execSQL("UPDATE users SET username=? WHERE uid=?", arrayOf(un, uid)); return null
+    }
+    fun changeEmail(uid: String, e: String): String? { w.execSQL("UPDATE users SET email=? WHERE uid=?", arrayOf(e.trim(), uid)); return null }
+    fun changeName(uid: String, n: String): String? { if (n.isBlank()) return "اكتب الاسم"; w.execSQL("UPDATE users SET name=? WHERE uid=?", arrayOf(n.trim(), uid)); return null }
+    fun changePhone(uid: String, p: String): String? { w.execSQL("UPDATE users SET phone=? WHERE uid=?", arrayOf(p.trim(), uid)); return null }
+    fun setBalance(uid: String, v: Long) { val cur = userByUid(uid)?.balance ?: 0; addBalance(uid, v - cur, "تصفير/ضبط من المطور") }
+    fun resetAllBalances() { w.execSQL("UPDATE users SET balance=0") }
+    fun sendMessage(from: User, toUsername: String, text: String): String? {
+        val to = userByUsername(toUsername) ?: return "المستخدم غير موجود"
+        if (text.isBlank()) return "اكتب الرسالة"
+        pushNotif(to.uid, "💬 رسالة من ${from.name}", text.trim(), "msg"); return null
+    }
+    fun backupDir() = java.io.File(ctx.filesDir, "backups").also { it.mkdirs() }
+    fun createBackup(): String { val f = java.io.File(backupDir(), "turbo-${System.currentTimeMillis()}.db"); db.close(); dbFile().copyTo(f, true); return f.name }
+    fun backups(): List<java.io.File> = backupDir().listFiles()?.sortedByDescending { it.name } ?: emptyList()
+    fun restoreBackup(f: java.io.File) { db.close(); f.copyTo(dbFile(), true) }
+    fun cleanBackups(keep: Int = 3) { backups().drop(keep).forEach { it.delete() } }
     fun setBanned(uid: String, b: Boolean) { w.execSQL("UPDATE users SET banned=? WHERE uid=?", arrayOf(if (b) 1 else 0, uid)) }
 
     // ---- balance
@@ -128,6 +161,8 @@ object Repo {
         if (amount <= 0) return "أدخل مبلغاً صحيحاً"
         val to = (if (byId) userByUid(toUsername.trim()) else userByUsername(toUsername)) ?: return "المستخدم غير موجود"
         if (to.uid == from.uid) return "لا يمكنك التحويل لنفسك"
+        if (get("transfer_enabled", "1") != "1") return "التحويل متوقف حالياً"
+        if (!pref(to.uid, "allow_in", true)) return "هذا المستخدم أوقف استقبال التحويلات"
         val fresh = userByUid(from.uid) ?: return "خطأ"
         if (fresh.balance < amount) return "رصيدك غير كافٍ"
         w.beginTransaction()
@@ -136,7 +171,8 @@ object Repo {
             addBalance(to.uid, amount, "تحويل من @${from.username}")
             w.setTransactionSuccessful()
         } finally { w.endTransaction() }
-        pushNotif(to.uid, "وصلك تحويل 💰", "استلمت $amount نقطة من ${from.name} (@${from.username})")
+        val anon = pref(from.uid, "anon_send", false)
+        pushNotif(to.uid, "وصلك تحويل 💰", "استلمت $amount ${cur()} من " + (if (anon) "مستخدم مجهول" else "${from.name} (@${from.username})"), "transfer")
         return null
     }
 
@@ -174,7 +210,7 @@ object Repo {
     fun setOrderStatus(o: Order, st: String) {
         w.execSQL("UPDATE orders SET status=? WHERE id=?", arrayOf(st, o.id))
         if (st == "مرفوض" && o.status != "مرفوض") addBalance(o.uid, o.price, "استرجاع طلب #${o.id}")
-        pushNotif(o.uid, "تحديث الطلب #${o.id}", "${o.title}: $st")
+        pushNotif(o.uid, "تحديث الطلب #${o.id}", "${o.title}: $st", "order")
     }
     fun doneCount() = w.rawQuery("SELECT COUNT(*) FROM orders WHERE status='مكتمل'", null).use { it.moveToFirst(); it.getLong(0) }
 
@@ -183,6 +219,7 @@ object Repo {
     fun addCode(code: String, amount: Long, max: Int) { w.execSQL("INSERT OR REPLACE INTO codes(code,amount,maxuses,used) VALUES(?,?,?,0)", arrayOf(code.trim(), amount, max)) }
     fun delCode(code: String) { w.execSQL("DELETE FROM codes WHERE code=?", arrayOf(code)) }
     fun useCode(u: User, code: String): String? {
+        if (get("codes_enabled", "1") != "1") return "الأكواد متوقفة حالياً"
         val c = code.trim()
         val row = codes().firstOrNull { it.code == c } ?: return "الكود غير صحيح"
         if (row.used >= row.maxUses) return "انتهت صلاحية الكود"
@@ -207,23 +244,23 @@ object Repo {
     }
 
     // ---- notifications
-    fun pushNotif(uid: String, title: String, body: String) {
-        w.execSQL("INSERT INTO notifs(uid,title,body,ts) VALUES(?,?,?,?)", arrayOf(uid, title, body, System.currentTimeMillis()))
+    fun pushNotif(uid: String, title: String, body: String, type: String = "sys") {
+        w.execSQL("INSERT INTO notifs(uid,title,body,ts,type) VALUES(?,?,?,?,?)", arrayOf(uid, title, body, System.currentTimeMillis(), type))
     }
-    fun broadcast(title: String, body: String): Int {
+    fun broadcast(title: String, body: String, type: String = "broadcast"): Int {
         val ids = users().map { it.uid }
         w.beginTransaction()
-        try { ids.forEach { pushNotif(it, title, body) }; w.setTransactionSuccessful() } finally { w.endTransaction() }
+        try { ids.forEach { pushNotif(it, title, body, type) }; w.setTransactionSuccessful() } finally { w.endTransaction() }
         return ids.size
     }
-    fun notifs(uid: String): List<Notif> = w.rawQuery("SELECT id,title,body,ts,read FROM notifs WHERE uid=? ORDER BY id DESC LIMIT 200", arrayOf(uid)).use { c -> buildList { while (c.moveToNext()) add(Notif(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), c.getInt(4) == 1)) } }
+    fun notifs(uid: String): List<Notif> = w.rawQuery("SELECT id,title,body,ts,read,type FROM notifs WHERE uid=? ORDER BY id DESC LIMIT 200", arrayOf(uid)).use { c -> buildList { while (c.moveToNext()) add(Notif(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), c.getInt(4) == 1, c.getString(5) ?: "sys")) } }
     fun unreadCount(uid: String) = w.rawQuery("SELECT COUNT(*) FROM notifs WHERE uid=? AND read=0", arrayOf(uid)).use { it.moveToFirst(); it.getInt(0) }
     fun markRead(uid: String) { w.execSQL("UPDATE notifs SET read=1 WHERE uid=?", arrayOf(uid)) }
     /** returns notifications not yet shown as system notifications and marks them shown */
     fun takeUnshown(uid: String): List<Notif> {
-        val l = w.rawQuery("SELECT id,title,body,ts,read FROM notifs WHERE uid=? AND shown=0 ORDER BY id", arrayOf(uid)).use { c -> buildList { while (c.moveToNext()) add(Notif(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), false)) } }
+        val l = w.rawQuery("SELECT id,title,body,ts,read,type FROM notifs WHERE uid=? AND shown=0 ORDER BY id", arrayOf(uid)).use { c -> buildList { while (c.moveToNext()) add(Notif(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), false, c.getString(5) ?: "sys")) } }
         if (l.isNotEmpty()) w.execSQL("UPDATE notifs SET shown=1 WHERE uid=?", arrayOf(uid))
-        return l
+        return l.filter { pref(uid, "n_" + it.type, true) && pref(uid, "n_all", true) }
     }
 
     // ---- emoji cache
@@ -239,5 +276,8 @@ object Repo {
         saveService(Service(0, "شدات ببجي موبايل", "325 شدة", 6000, "fixed", 1, false))
         val me = userByUsername("weswod"); if (me != null && me.balance == 0L) addBalance(me.uid, 32, "شاشة اختبار")
     }
+    fun recentCharges(): List<Triple<String, Long, Long>> = w.rawQuery(
+        "SELECT u.name,l.delta,l.ts FROM ledger l LEFT JOIN users u ON u.uid=l.uid WHERE l.delta>0 AND (l.note LIKE 'كود%' OR l.note LIKE 'شحن%' OR l.note LIKE 'إضافة%') ORDER BY l.id DESC LIMIT 100", null)
+        .use { c -> buildList { while (c.moveToNext()) add(Triple(c.getString(0) ?: "?", c.getLong(1), c.getLong(2))) } }
     fun dbFile() = ctx.getDatabasePath("turbo.db")
 }
