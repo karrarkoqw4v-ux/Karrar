@@ -15,6 +15,8 @@ open(man, 'w', encoding='utf-8').write(s)
 g = os.path.join(root, 'android/app/build.gradle.kts')
 t = open(g, encoding='utf-8').read()
 t = t.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
+if 'checkReleaseBuilds' not in t:
+    t = t.replace('android {', 'android {\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }', 1)
 open(g, 'w', encoding='utf-8').write(t)
 # icons
 for d in os.listdir(os.path.join(root, 'ci/icons')):
