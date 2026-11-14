@@ -1,7 +1,14 @@
 == 01_home
-error: closed
-adb: device offline
-- waiting for device -
+2989
+--------- beginning of system
+11-14 11:35:48.167   521   575 W ActivityManager: Scheduling restart of crashed service com.google.android.gm/com.android.email.job.UpgradeJob$UpgradeJobService in 1000ms for connection
+11-14 11:35:48.196   521  2132 W ActivityManager: finishReceiver: no app for android.os.BinderProxy@948e49d
+11-14 11:35:48.197   521  1756 W ActivityManager: ProcessRecord{3904eaf 0:com.google.android.gm/u0a141} is attached to a previous process 3033
+11-14 11:35:48.427   521   552 W ActivityManager: Slow operation: 635ms so far, now at startProcess: returned from zygote!
+11-14 11:35:48.431   521   552 W ActivityManager: Slow operation: 639ms so far, now at startProcess: done updating battery stats
+11-14 11:35:48.431   521   552 W ActivityManager: Slow operation: 639ms so far, now at startProcess: building log message
+11-14 11:35:48.431   521   552 W ActivityManager: Slow operation: 639ms so far, now at startProcess: starting to update pids map
+11-14 11:35:48.431   521   552 W ActivityManager: Slow operation: 640ms so far, now at startProcess: done updating pids map
 == 02_rashq
 adb: device 'emulator-5554' not found
 adb: device 'emulator-5554' not found
@@ -55,3 +62,6 @@ adb: device 'emulator-5554' not found
 adb: device 'emulator-5554' not found
 - waiting for device -
 == 16_orders
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -

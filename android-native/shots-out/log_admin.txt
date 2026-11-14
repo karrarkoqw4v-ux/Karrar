@@ -1,5 +1,6 @@
 == 20_admin_home
 error: closed
+adb: device offline
 - waiting for device -
 == 21_admin_settings
 adb: device 'emulator-5554' not found
