@@ -316,3 +316,5 @@ fun NotifsScreen() {
         list.forEach { NotifBubble(it, Repo.bubble(u.uid)) }
     }
 }
+
+fun statusColor(s: String) = when (s) { "مكتمل" -> C.green; "مرفوض" -> C.red; else -> C.gold }
