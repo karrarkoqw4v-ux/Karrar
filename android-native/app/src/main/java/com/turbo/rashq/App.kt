@@ -3,6 +3,7 @@ package com.turbo.rashq
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -97,7 +98,7 @@ fun HomeScreen() {
         Box { IconButton({ Nav.go("notifs") }) { Icon(Icons.Filled.Notifications, null, tint = C.text) }
             if (unread > 0) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(18.dp).clip(RoundedCornerShape(9.dp)).background(C.red), contentAlignment = Alignment.Center) { T("$unread", 10, FontWeight.Bold, Color.White) } }
     }) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Repo.accent(u.uid), Color(0xFF0EA5E9)))).padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Repo.accent(u.uid).copy(alpha = .55f), Color(0xFF0EA5E9).copy(alpha = .35f)))).border(1.dp, Color.White.copy(alpha = .18f), RoundedCornerShape(20.dp)).padding(16.dp)) {
             T("أهلاً ${u.name}", 14, color = Color.White.copy(alpha = .85f))
             T(if (Repo.pref(u.uid, "hide_bal", false)) "••••• ${Repo.cur()}" else "${u.balance} ${Repo.cur()}", 24, FontWeight.ExtraBold, Color.White)
             T("ID: ${u.uid}  •  @${u.username}", 12, color = Color.White.copy(alpha = .8f))

@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -110,7 +111,7 @@ fun BottomBar() {
     val unread = if (u != null) remember(Session.tick.intValue) { Repo.unreadCount(u.uid) } else 0
     val tabs = listOf(Triple("home", "الرئيسية", "5050874036788134809"), Triple("orders", "طلباتي", "5375338737028841420"),
         Triple("menu/recharge", "شحن", "5866369239740320716"), Triple("menu/account", "حسابي", "4956418939920843885"), Triple("notifs", "الإشعارات", "5251511475515712980"))
-    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().background(C.card).navigationBarsPadding().padding(vertical = 6.dp)) {
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().background(Color(0xFF0E142B)).border(1.dp, Color.White.copy(alpha = .08f)).navigationBarsPadding().padding(vertical = 6.dp)) {
         tabs.forEach { (r, l, e) ->
             val sel = cur == r
             Column(Modifier.weight(1f).clickable { Nav.reset(); if (r != "home") Nav.go(r) }.padding(vertical = 2.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {

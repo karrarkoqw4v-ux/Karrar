@@ -3,6 +3,9 @@ package com.turbo.rashq
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -124,15 +127,17 @@ fun styleColors(s: String): Pair<Color, Color> = when (s) {
     else -> C.plain to C.plain2
 }
 
-/** Telegram-style inline button: fixed height, one line, text always centered and fully visible. */
+/** Glass button: translucent surface, light border, colored accent edge, same Telegram colors. */
 @Composable
 fun TgButton(text: String, style: String, emoji: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val (a, b) = styleColors(style)
+    val (a, _) = styleColors(style)
     val fs = when { text.length <= 8 -> 14; text.length <= 12 -> 13; text.length <= 16 -> 12; text.length <= 20 -> 11; else -> 10 }
-    Box(modifier.height(46.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(listOf(a, b))).clickable(onClick = onClick).padding(horizontal = 6.dp),
-        contentAlignment = Alignment.Center) {
+    val shape = RoundedCornerShape(15.dp)
+    Box(modifier.height(46.dp).clip(shape).background(Brush.horizontalGradient(listOf(Color.White.copy(alpha = .07f), a.copy(alpha = .20f))))
+        .border(1.dp, Color.White.copy(alpha = .14f), shape).clickable(onClick = onClick).padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().width(4.dp).background(a))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            if (emoji != null) { PremiumEmoji(emoji, 20.dp); Spacer(Modifier.width(5.dp)) }
+            if (emoji != null) { PremiumEmoji(emoji, 20.dp); Spacer(Modifier.width(6.dp)) }
             Text(text, fontSize = fs.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = Tajawal, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip, textAlign = TextAlign.Center)
         }
     }
@@ -157,7 +162,11 @@ fun ButtonRows(cat: String, onRoute: (String) -> Unit) {
 
 @Composable
 fun Page(title: String, onBack: (() -> Unit)? = Nav::back, scroll: Boolean = true, actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().background(C.bg).statusBarsPadding().imePadding()) {
+    Column(Modifier.fillMaxSize().background(C.bg).drawBehind {
+        drawRect(Brush.radialGradient(listOf(Color(0x551E3A8A), Color.Transparent), Offset(size.width * .9f, 0f), size.width * .9f))
+        drawRect(Brush.radialGradient(listOf(Color(0x447C3AED), Color.Transparent), Offset(0f, size.height * .6f), size.width * .8f))
+        drawRect(Brush.radialGradient(listOf(Color(0x4406B6D4), Color.Transparent), Offset(size.width, size.height), size.width * .8f))
+    }.statusBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = C.text) } else Spacer(Modifier.width(12.dp))
             T(title, 18, FontWeight.ExtraBold, modifier = Modifier.weight(1f), maxLines = 1)
@@ -170,7 +179,7 @@ fun Page(title: String, onBack: (() -> Unit)? = Nav::back, scroll: Boolean = tru
 
 @Composable
 fun Card(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    val m = modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(C.card).let { if (onClick != null) it.clickable(onClick = onClick) else it }
+    val m = modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .06f)).border(1.dp, Color.White.copy(alpha = .12f), RoundedCornerShape(18.dp)).let { if (onClick != null) it.clickable(onClick = onClick) else it }
     Column(m.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
 }
 
