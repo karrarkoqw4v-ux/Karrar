@@ -360,13 +360,13 @@ final List<JobDef> kNewTools = [
     final l = await c.layer('bolt');
     final dd = c.isVideo ? null : c.n('dur', 6);
     return Spec(
-        fc: "[0:v]scale=${c.w}:${c.h},eq=brightness=-0.08,eq=brightness='0.35*lt(mod(t,4),0.15)':eval=frame[a];[a][1:v]overlay=0:0:enable='lt(mod(t,4),0.15)+between(mod(t,4),0.3,0.4)':format=auto[v]",
+        fc: "[0:v]scale=${c.w}:${c.h},eq=brightness=-0.08,eq=brightness='0.35*lt(mod(t,4),0.15)':eval=frame[a];[a][1:v]overlay=0:0:enable='lt(mod(t,4),0.15)+between(mod(t,4),0.3,0.4)':format=auto:shortest=1[v]",
         inputs: ['-loop', '1', '-framerate', '30', '-i', l], anim: true, dur: dd);
   }, opts: const [_durOpt]),
   _t('fog', sPart, 'إضافة تأثير الضباب', In.both, (c) => _particles(c, 'fog', speed: 35, fall: false), opts: const [_durOpt]),
   _t('rays', sPart, 'إضافة تأثير الأشعة الضوئية', In.both, (c) async {
     final l = await c.layer('rays');
-    return Spec(fc: '[0:v]scale=${c.w}:${c.h}[a];[a][1:v]overlay=0:0:format=auto[v]', inputs: ['-loop', '1', '-framerate', '30', '-i', l]);
+    return Spec(fc: '[0:v]scale=${c.w}:${c.h}[a];[a][1:v]overlay=0:0:format=auto:shortest=1[v]', inputs: ['-loop', '1', '-framerate', '30', '-i', l]);
   }),
 
   // ================= إضافات على الفيديو =================
