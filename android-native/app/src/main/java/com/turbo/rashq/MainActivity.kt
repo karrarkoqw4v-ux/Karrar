@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Repo.init(this); Img = buildLoader(this); Notify.channel(this)
         if (BuildConfig.DEBUG) intent.getStringExtra("shot_login")?.let { l ->
+            Flags.still = true
             if (l == "admin") Repo.login("admin", "1005")
             else if (Repo.userByUsername("weswod") == null) Repo.register("كروري", "weswod", "", "", "1234") else Repo.login("weswod", "1234")
             Repo.seedShots()

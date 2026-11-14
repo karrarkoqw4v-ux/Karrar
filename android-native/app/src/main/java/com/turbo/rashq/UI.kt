@@ -79,6 +79,7 @@ fun RichText(text: String, size: Int = 14, color: Color = C.text, weight: FontWe
 }
 
 lateinit var Img: ImageLoader
+object Flags { var still = false }
 object Bundled { val set: Set<String> by lazy { Repo.ctx.assets.list("tge")?.toSet() ?: emptySet() } }
 fun toast(m: String) = Toast.makeText(Repo.ctx, m, Toast.LENGTH_SHORT).show()
 fun buildLoader(c: android.content.Context) = ImageLoader.Builder(c).components { add(SvgDecoder.Factory()); if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory()) }.build()
@@ -109,14 +110,14 @@ fun PremiumEmoji(spec: String, size: Dp = 26.dp) {
     when {
         "$spec.json" in Bundled.set -> {
             val comp by rememberLottieComposition(LottieCompositionSpec.Asset("tge/$spec.json"))
-            LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
+            if (Flags.still) LottieAnimation(comp, { 0.35f }, Modifier.size(size)) else LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
         }
         "$spec.webp" in Bundled.set -> AsyncImage("file:///android_asset/tge/$spec.webp", null, modifier = Modifier.size(size), imageLoader = Img)
         row == null -> Box(Modifier.size(size))
         row.second == "tgs" -> {
             val json = remember(row.first) { runCatching { GZIPInputStream(File(row.first).inputStream()).readBytes().decodeToString() }.getOrDefault("{}") }
             val comp by rememberLottieComposition(LottieCompositionSpec.JsonString(json))
-            LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
+            if (Flags.still) LottieAnimation(comp, { 0.35f }, Modifier.size(size)) else LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
         }
         else -> AsyncImage(File(row.first), null, modifier = Modifier.size(size), imageLoader = Img)
     }
