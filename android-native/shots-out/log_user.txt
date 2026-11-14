@@ -1,0 +1,60 @@
+== 01_home
+error: closed
+adb: device offline
+- waiting for device -
+== 02_rashq
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 03_games
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 04_tiktok_services
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 05_pubg_store
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 06_points
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 07_recharge
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 08_account
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 09_settings
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 10_colors
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 11_privacy
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 12_notifications
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 14_transfer_menu
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 15_terms
+adb: device 'emulator-5554' not found
+adb: device 'emulator-5554' not found
+- waiting for device -
+== 16_orders
+adb: device offline
+adb: device offline
+- waiting for device -
