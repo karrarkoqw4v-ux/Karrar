@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'export.dart';
 import 'filters.dart';
 import 'media.dart';
+import 'toolrun.dart';
 
 /// خيار داخل أداة المونتاج المخصص (اختيار واحد أو متعدد)
 class JobOpt {
@@ -11,7 +12,8 @@ class JobOpt {
   final List<(String, String)> choices;
   final String def;
   final bool multi;
-  const JobOpt(this.key, this.label, this.choices, this.def, {this.multi = false});
+  final bool text; // حقل نص حر
+  const JobOpt(this.key, this.label, this.choices, this.def, {this.multi = false, this.text = false});
 }
 
 class JobDef {
@@ -23,7 +25,10 @@ class JobDef {
   final PickKind kind;
   final bool needsMusic;
   final List<JobOpt> opts;
-  const JobDef(this.id, this.group, this.title, this.sub, this.icon, this.kind, this.opts, {this.needsMusic = false});
+  final In inp;
+  final Extra extra;
+  final Future<Spec> Function(Ctx c)? build;
+  JobDef(this.id, this.group, this.title, this.sub, this.icon, this.kind, this.opts, {this.needsMusic = false, this.inp = In.both, this.extra = Extra.none, this.build});
 }
 
 const _frames = [('9:16', 'طولي 9:16'), ('1:1', 'مربع 1:1'), ('4:5', '4:5'), ('16:9', 'عرضي 16:9')];

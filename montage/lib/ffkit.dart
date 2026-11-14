@@ -28,4 +28,28 @@ class KitRunner implements FfRunner {
     } catch (_) {}
     return false;
   }
+
+  @override
+  Future<MInfo> probe(String path) async {
+    var w = 0, h = 0;
+    var dur = 0.0;
+    var hv = false, ha = false;
+    try {
+      final s = await FFprobeKit.getMediaInformation(path);
+      final info = s.getMediaInformation();
+      if (info != null) {
+        dur = double.tryParse(info.getDuration() ?? '') ?? 0;
+        for (final st in info.getStreams()) {
+          if (st.getType() == 'video' && !hv) {
+            hv = true;
+            w = st.getWidth() ?? 0;
+            h = st.getHeight() ?? 0;
+          } else if (st.getType() == 'audio') {
+            ha = true;
+          }
+        }
+      }
+    } catch (_) {}
+    return MInfo(w, h, dur, hv, ha);
+  }
 }

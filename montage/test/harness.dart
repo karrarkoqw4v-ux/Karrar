@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -31,6 +32,24 @@ class ProcessRunner implements FfRunner {
   Future<bool> hasAudio(String path) async {
     final r = await Process.run('ffprobe', ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', path]);
     return r.stdout.toString().trim().isNotEmpty;
+  }
+
+  @override
+  Future<MInfo> probe(String path) async {
+    final r = await Process.run('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height:format=duration', '-of', 'json', path]);
+    final j = jsonDecode(r.stdout.toString()) as Map;
+    var w = 0, h = 0, hv = false, ha = false;
+    for (final st in (j['streams'] as List? ?? [])) {
+      if (st['codec_type'] == 'video' && !hv) {
+        hv = true;
+        w = st['width'] ?? 0;
+        h = st['height'] ?? 0;
+      } else if (st['codec_type'] == 'audio') {
+        ha = true;
+      }
+    }
+    final d = double.tryParse('${(j['format'] as Map?)?['duration'] ?? ''}') ?? 0;
+    return MInfo(w, h, d, hv, ha);
   }
 }
 

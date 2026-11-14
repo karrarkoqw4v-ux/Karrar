@@ -6,9 +6,17 @@ import 'filters.dart';
 import 'models.dart';
 
 /// واجهة تنفيذ FFmpeg (على الجهاز: ffmpeg_kit، وفي الاختبار: ffmpeg النظام).
+class MInfo {
+  final int w, h;
+  final double dur;
+  final bool hasVideo, hasAudio;
+  const MInfo(this.w, this.h, this.dur, this.hasVideo, this.hasAudio);
+}
+
 abstract class FfRunner {
   Future<bool> run(List<String> args, {void Function(double seconds)? onTime, void Function(String line)? onLog});
   Future<bool> hasAudio(String path);
+  Future<MInfo> probe(String path);
 }
 
 class ExportResult {
