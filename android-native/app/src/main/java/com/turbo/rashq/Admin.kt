@@ -52,12 +52,13 @@ fun AdminServices(group: String = "all") {
     val cats = gcats ?: ((Defs.ofCat("rashq") + Defs.ofCat("games")).map { Defs.name(it.key) } + "تمويل قناتك").distinct()
     Page(when (group) { "rashq" -> "إدارة خدمات الرشق"; "games" -> "إدارة خدمات الألعاب"; "free" -> "إدارة الخدمات المجانية"; else -> "الخدمات والمتجر" }) {
         Btn("إضافة خدمة", "success", emoji = "2705") { edit = Service(0, cats.first(), "", 0, "fixed", 1, false) }
+        if (group == "rashq" || group == "all") Btn("⬇️ جلب الخدمات من الموقع", "primary", emoji = E.rashq) { Nav.go("admin/fetch") }
         T("صور التصنيفات (اضغط لاختيار صورة رسمية)", 13, color = C.sub)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(cats) { c -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp).clip(RoundedCornerShape(12.dp)).let { it }) {
             Box(Modifier.clip(RoundedCornerShape(16.dp))) { Logo(c, 56.dp) }
             TextButton({ logoFor = c; picker.launch(arrayOf("image/*")) }) { T(c, 10, color = C.blue, maxLines = 2, align = TextAlign.Center) } } } }
         list.forEach { s -> Card { Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { T(s.name, 15, FontWeight.Bold); T("${s.cat} • ${s.price} • ${if (s.kind == "per1000") "لكل 1000" else "ثابت"}", 12, color = C.sub) }
+            Column(Modifier.weight(1f)) { T(s.name, 15, FontWeight.Bold); T("${s.cat} • ${s.price} • ${if (s.kind == "per1000") "لكل 1000" else "ثابت"}${if (s.apiId.isNotBlank()) " • 🔗 موقع" else ""}", 12, color = C.sub) }
             if (s.hidden) Chip("مخفي", C.gold) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton({ edit = s }) { T("تعديل", 13, color = C.blue) }
@@ -66,14 +67,15 @@ fun AdminServices(group: String = "all") {
     }
     edit?.let { s ->
         var cat by remember { mutableStateOf(s.cat) }; var name by remember { mutableStateOf(s.name) }; var price by remember { mutableStateOf(s.price.toString()) }
-        var kind by remember { mutableStateOf(s.kind) }; var minq by remember { mutableStateOf(s.minQty.toString()) }
+        var kind by remember { mutableStateOf(s.kind) }; var minq by remember { mutableStateOf(s.minQty.toString()) }; var maxq by remember { mutableStateOf(s.maxQty.toString()) }
         AlertDialog(onDismissRequest = { edit = null }, containerColor = C.card, title = { T(if (s.id == 0L) "خدمة جديدة" else "تعديل الخدمة", 17, FontWeight.Bold) },
             text = { Column(Modifier.let { it }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(cats) { c -> FilterChip(cat == c, { cat = c }, label = { T(c, 12) }) } }
                 Field(cat, { cat = it }, "التصنيف"); Field(name, { name = it }, "اسم الخدمة"); Field(price, { price = it.filter(Char::isDigit) }, "السعر (نقاط)", number = true)
                 Row(verticalAlignment = Alignment.CenterVertically) { Switch(kind == "per1000", { kind = if (it) "per1000" else "fixed" }); Spacer(Modifier.width(8.dp)); T("سعر لكل 1000 (رشق)", 13) }
-                if (kind == "per1000") Field(minq, { minq = it.filter(Char::isDigit) }, "أقل كمية", number = true) } },
-            confirmButton = { TextButton({ if (name.isBlank()) toast("اكتب الاسم") else { Repo.saveService(s.copy(cat = cat.trim(), name = name.trim(), price = price.toLongOrNull() ?: 0, kind = kind, minQty = minq.toLongOrNull() ?: 1)); edit = null; Session.refresh() } }) { T("حفظ", 14, FontWeight.Bold, C.blue) } },
+                if (kind == "per1000") { Field(minq, { minq = it.filter(Char::isDigit) }, "أقل كمية", number = true); Field(maxq, { maxq = it.filter(Char::isDigit) }, "أكبر كمية", number = true) }
+                if (s.apiId.isNotBlank()) T("مربوطة بالموقع ${s.site} • API #${s.apiId}", 11, color = C.sub) } },
+            confirmButton = { TextButton({ if (name.isBlank()) toast("اكتب الاسم") else { Repo.saveService(s.copy(cat = cat.trim(), name = name.trim(), price = price.toLongOrNull() ?: 0, kind = kind, minQty = minq.toLongOrNull() ?: 1, maxQty = maxq.toLongOrNull() ?: 1000000)); edit = null; Session.refresh() } }) { T("حفظ", 14, FontWeight.Bold, C.blue) } },
             dismissButton = { TextButton({ edit = null }) { T("إلغاء", 14, color = C.sub) } })
     }
     delete?.let { s -> ConfirmDialog("حذف الخدمة", s.name, { Repo.deleteService(s.id); Session.refresh() }) { delete = null } }

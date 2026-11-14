@@ -18,6 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object Session {
     val tick = mutableIntStateOf(0)
@@ -99,8 +102,7 @@ fun HomeScreen() {
             T(if (Repo.pref(u.uid, "hide_bal", false)) "••••• ${Repo.cur()}" else "${u.balance} ${Repo.cur()}", 24, FontWeight.ExtraBold, Color.White)
             T("ID: ${u.uid}  •  @${u.username}", 12, color = Color.White.copy(alpha = .8f))
         }
-        val wel = Repo.get("welcome")
-        if (wel.isNotBlank()) Card { T(wel.replace("#first_name", u.name).replace("#username", u.username).replace("#id", u.uid).replace("#balance", u.balance.toString()).replace("#points", u.balance.toString()), 13) }
+        Card { RichText(Tx.welcome(u), 13) }
         val mand = Repo.get("mand_channels").lines().filter { it.isNotBlank() }
         if (mand.isNotEmpty()) Card { T(Repo.get("mand_text", "اشترك بالقنوات التالية"), 13, FontWeight.Bold); mand.forEach { l -> TextButton({ openUrl(l.trim().let { if (it.startsWith("@")) "t.me/" + it.drop(1) else it }) }) { T(l.trim(), 13, color = C.blue) } } }
         ButtonRows("main") { doRoute(it) }
@@ -110,12 +112,23 @@ fun HomeScreen() {
 
 @Composable
 fun MenuScreen(cat: String) {
-    Page(Defs.titles[cat] ?: cat) { ButtonRows(cat) { doRoute(it) } }
+    val u = Session.user
+    Page(Defs.titles[cat] ?: cat) {
+        val h = when (cat) { "rashq" -> Tx.rashqMenu(); "games" -> Tx.games(u); "points" -> Tx.points(u); "recharge" -> Tx.recharge(u); "transfer" -> if (u != null) Tx.transfer(u) else ""; else -> "" }
+        if (h.isNotBlank()) Card { RichText(h, 13) }
+        ButtonRows(cat) { doRoute(it) }
+    }
 }
 
 @Composable
 fun AccountMenu() {
-    Page("حسابي") { Btn("بياناتي وسجل الرصيد", "primary", emoji = E.user) { Nav.go("accinfo") }; Btn("الإعدادات", "success", emoji = E.settings) { Nav.go("set") }; Btn("الرسائل", "primary", emoji = E.mega) { Nav.go("msg") }; ButtonRows("account") { doRoute(it) } }
+    val u = Session.user ?: return
+    val tick = Session.tick.intValue
+    Page("حسابي") {
+        Card { RichText(remember(tick) { Tx.account(u) }, 13) }
+        Btn("الإعدادات", "success", emoji = E.settings) { Nav.go("set") }; Btn("الرسائل", "primary", emoji = E.mega) { Nav.go("msg") }
+        ButtonRows("account") { doRoute(it) }
+    }
 }
 
 @Composable
@@ -123,17 +136,17 @@ fun CatScreen(cat: String) {
     val u = Session.user ?: return
     val tick = Session.tick.intValue
     val list = remember(tick, cat) { Repo.services(cat) }
+    val scope = rememberCoroutineScope()
     var pick by remember { mutableStateOf<Service?>(null) }
+    val isRashq = Defs.ofCat("rashq").any { Defs.name(it.key) == cat }
     Page(cat) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Logo(cat, 56.dp); Column { T(cat, 18, FontWeight.ExtraBold); T("${list.size} خدمة متاحة", 12, color = C.sub) }
-        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Logo(cat, 52.dp); Column(Modifier.weight(1f)) { RichText(if (isRashq) Tx.platPage(cat, list.size) else if (cat == "تمويل قناتك") Tx.tamweel() else Tx.gamePage(cat, list.size), 13) } }
         if (list.isEmpty()) Card { T("لا توجد خدمات هنا بعد. يضيفها المطور من لوحة التحكم.", 13, color = C.sub, align = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
         list.forEach { s ->
             Card(onClick = { pick = s }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Logo(cat, 40.dp); Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) { T(s.name, 15, FontWeight.Bold); T(if (s.kind == "per1000") "لكل 1000 • الحد الأدنى ${s.minQty}" else "سعر ثابت", 12, color = C.sub) }
+                    Column(Modifier.weight(1f)) { T(s.name, 14, FontWeight.Bold, maxLines = 2); T(if (s.kind == "per1000") "لكل 1000 • من ${s.minQty} إلى ${s.maxQty}" else "سعر ثابت", 11, color = C.sub) }
                     Chip("${s.price} نقطة", C.green)
                 }
             }
@@ -144,26 +157,50 @@ fun CatScreen(cat: String) {
         val q = qty.toLongOrNull() ?: 0
         val cost = if (s.kind == "per1000") (s.price * q + 999) / 1000 else s.price
         AlertDialog(onDismissRequest = { pick = null }, containerColor = C.card,
-            title = { T(s.name, 17, FontWeight.Bold) },
+            title = { T(s.name, 15, FontWeight.Bold, maxLines = 2) },
             text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Field(target, { target = it }, if (s.kind == "per1000") "الرابط" else "الأيدي / الرقم / المعلومات")
+                if (s.kind == "per1000") RichText(Tx.detail(s.name, s.price, s.minQty, s.maxQty), 12)
+                Field(target, { target = it }, if (s.kind == "per1000") "رابط الطلب" else "الأيدي / الرقم / المعلومات")
                 if (s.kind == "per1000") Field(qty, { qty = it.filter(Char::isDigit) }, "الكمية", number = true)
                 T("التكلفة: $cost نقطة  •  رصيدك: ${u.balance}", 13, color = C.sub) } },
-            confirmButton = { TextButton({ val e = Repo.placeOrder(u, s, target, q); if (e == null) { toast("تم إرسال الطلب"); pick = null; Session.refresh() } else toast(e) }) { T("اطلب", 14, FontWeight.Bold, C.blue) } },
+            confirmButton = { TextButton({
+                val e = Repo.placeOrder(u, s, target, q)
+                if (e == null) {
+                    toast("تم استلام طلبك"); pick = null; Session.refresh()
+                    val oid = Repo.lastOrderId
+                    val site = Repo.sites().firstOrNull { it.optString("name") == s.site }
+                    if (s.apiId.isNotBlank() && site != null) scope.launch {
+                        val r = withContext(Dispatchers.IO) { runCatching { Smm.add(site.optString("url"), site.optString("key"), s.apiId, target.trim(), if (s.kind == "per1000") q else 1) } }
+                        r.onSuccess { Repo.setSiteOrder(oid, it); Session.refresh() }
+                        r.onFailure { Repo.orderById(oid)?.let { o -> Repo.setOrderStatus(o, "مرفوض") }; toast("رفض الموقع الطلب: ${it.message}"); Session.refresh() }
+                    }
+                } else toast(e) }) { T("اطلب", 14, FontWeight.Bold, C.blue) } },
             dismissButton = { TextButton({ pick = null }) { T("إلغاء", 14, color = C.sub) } })
     }
 }
 
-fun statusColor(s: String) = when (s) { "مكتمل" -> C.green; "مرفوض" -> C.red; else -> C.gold }
-
 @Composable
 fun OrdersScreen() {
     val u = Session.user ?: return
+    val scope = rememberCoroutineScope()
     val list = remember(Session.tick.intValue) { Repo.orders(u.uid) }
+    var busy by remember { mutableStateOf(false) }
     Page("طلباتي") {
-        if (list.isEmpty()) Card { T("لا توجد طلبات بعد", 13, color = C.sub, align = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-        list.forEach { o -> Card { Row { T("#${o.id}  ${o.title}", 15, FontWeight.Bold, modifier = Modifier.weight(1f)); Chip(o.status, statusColor(o.status)) }
+        Card { RichText(Tx.orders(list.size), 13) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TgButton(if (busy) "جاري التحديث..." else "تحديث", "primary", null, Modifier.weight(1f)) {
+                if (!busy) { busy = true; scope.launch { withContext(Dispatchers.IO) { refreshSiteOrders(u.uid) }; busy = false; Session.refresh() } } }
+            TgButton("فحص بايدي الطلب", "danger", null, Modifier.weight(1f)) { Nav.go("track") }
+        }
+        list.forEach { o -> Card { Row { T("#${o.id}  ${o.title}", 14, FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 2); Chip(o.status, statusColor(o.status)) }
             T("الكمية ${o.qty}  •  ${o.price} نقطة", 12, color = C.sub); T(o.target, 12, color = C.sub, maxLines = 1); T(fmtTime(o.ts), 11, color = C.sub) } }
+    }
+}
+
+fun refreshSiteOrders(uid: String?) {
+    Repo.pendingSiteOrders(uid).forEach { o ->
+        val site = Repo.sites().firstOrNull { it.optString("name") == o.site } ?: return@forEach
+        runCatching { Smm.mapStatus(Smm.status(site.optString("url"), site.optString("key"), o.siteOrder)) }.getOrNull()?.let { st -> if (st != o.status) Repo.setOrderStatus(o, st) }
     }
 }
 
@@ -172,6 +209,7 @@ fun TrackScreen() {
     val u = Session.user ?: return
     var id by remember { mutableStateOf("") }; var res by remember { mutableStateOf<Order?>(null) }; var msg by remember { mutableStateOf("") }
     Page("تتبع طلب") {
+        Card { RichText(Tx.track(), 13) }
         Field(id, { id = it.filter(Char::isDigit) }, "رقم الطلب", number = true)
         Btn("تتبع", "primary", emoji = "1f50d") { val o = id.toLongOrNull()?.let { Repo.orderById(it) }; if (o != null && (o.uid == u.uid || u.admin)) { res = o; msg = "" } else { res = null; msg = "لم يتم العثور على الطلب" } }
         if (msg.isNotBlank()) T(msg, 13, color = C.red)
@@ -205,7 +243,7 @@ fun SupportScreen() {
 }
 
 @Composable
-fun TermsScreen() { Page("الشروط والأحكام") { Card { T(Repo.get("terms").ifBlank { "1) النقاط غير قابلة للاسترجاع بعد التنفيذ.\n2) تأكد من الرابط قبل الطلب.\n3) الطلبات المرفوضة تُرجع نقاطها." }, 14) } } }
+fun TermsScreen() { Page("الشروط والأحكام") { Card { RichText(Tx.terms(Session.user), 14) } } }
 
 @Composable
 fun WheelScreen() {

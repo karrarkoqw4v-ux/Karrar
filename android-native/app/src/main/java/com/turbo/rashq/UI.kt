@@ -37,6 +37,11 @@ import coil.compose.AsyncImage
 import coil.decode.GifDecoder
 import coil.decode.SvgDecoder
 import com.airbnb.lottie.compose.*
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import java.io.File
 import java.util.zip.GZIPInputStream
 
@@ -50,6 +55,25 @@ object C {
 
 val Tajawal = FontFamily(Font(R.font.tajawal_regular, FontWeight.Normal), Font(R.font.tajawal_medium, FontWeight.Medium),
     Font(R.font.tajawal_bold, FontWeight.Bold), Font(R.font.tajawal_extrabold, FontWeight.ExtraBold))
+
+object Cat { val map: Map<String, String> by lazy { runCatching { val a = org.json.JSONArray(Repo.ctx.assets.open("tge_catalog.json").bufferedReader().readText())
+    (0 until a.length()).associate { i -> a.getJSONObject(i).let { o -> o.getString("e").replace("\uFE0F", "") to o.getString("id") } } }.getOrDefault(emptyMap()) }
+    fun id(ch: String): String? = map[ch.replace("\uFE0F", "")] }
+
+@Composable
+fun RichText(text: String, size: Int = 14, color: Color = C.text, weight: FontWeight = FontWeight.Normal, modifier: Modifier = Modifier, align: TextAlign? = null) {
+    val raw = remember(text) { Regex("\\{c:([^}]+)\\}").replace(text) { m -> Cat.id(m.groupValues[1])?.let { "{e:$it}" } ?: m.groupValues[1] } }
+    val re = Regex("\\{e:(\\d+)\\}")
+    val ids = re.findAll(raw).map { it.groupValues[1] }.toSet()
+    val s = buildAnnotatedString {
+        var last = 0
+        re.findAll(raw).forEach { m -> append(raw.substring(last, m.range.first)); appendInlineContent(m.groupValues[1], "\u25A1"); last = m.range.last + 1 }
+        append(raw.substring(last))
+    }
+    val ph = (size + 6).sp
+    val inline = ids.associateWith { id -> InlineTextContent(Placeholder(ph, ph, PlaceholderVerticalAlign.TextCenter)) { PremiumEmoji(id, (size + 6).dp) } }
+    Text(s, inlineContent = inline, fontSize = size.sp, color = color, fontWeight = weight, fontFamily = Tajawal, modifier = modifier, textAlign = align, lineHeight = (size + 11).sp)
+}
 
 lateinit var Img: ImageLoader
 object Bundled { val set: Set<String> by lazy { Repo.ctx.assets.list("tge")?.toSet() ?: emptySet() } }
@@ -100,16 +124,16 @@ fun styleColors(s: String): Pair<Color, Color> = when (s) {
     else -> C.plain to C.plain2
 }
 
-/** Telegram-style inline button. Fixed height, compact text that always fits. */
+/** Telegram-style inline button: fixed height, one line, text always centered and fully visible. */
 @Composable
 fun TgButton(text: String, style: String, emoji: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val (a, b) = styleColors(style)
-    val fs = when { text.length <= 11 -> 13; text.length <= 17 -> 12; else -> 11 }
-    Box(modifier.height(48.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(listOf(a, b))).clickable(onClick = onClick).padding(horizontal = 8.dp),
+    val fs = when { text.length <= 8 -> 14; text.length <= 12 -> 13; text.length <= 16 -> 12; text.length <= 20 -> 11; else -> 10 }
+    Box(modifier.height(46.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(listOf(a, b))).clickable(onClick = onClick).padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            if (emoji != null) { PremiumEmoji(emoji, 22.dp); Spacer(Modifier.width(6.dp)) }
-            T(text, fs, FontWeight.Bold, Color.White, align = TextAlign.Center, maxLines = 2)
+            if (emoji != null) { PremiumEmoji(emoji, 20.dp); Spacer(Modifier.width(5.dp)) }
+            Text(text, fontSize = fs.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = Tajawal, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip, textAlign = TextAlign.Center)
         }
     }
 }

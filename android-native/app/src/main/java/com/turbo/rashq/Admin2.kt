@@ -4,6 +4,10 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,10 +75,101 @@ fun AdminHome() {
     ))
 }
 
+fun normUrl(u: String): String { val t = u.trim().trimEnd('/'); return if (t.startsWith("http")) t else "https://$t" }
+
 @Composable
 fun AdminSites() {
-    SettingsScreen("ربط الموقع الرسمي", listOf(SItem("site_urls", "روابط المواقع (رابط بكل سطر)", "", true), SItem("channel_link", "رابط القناة"), SItem("support_link", "رابط الدعم")),
-        "تظهر الروابط للمستخدمين كأزرار فتح.")
+    val tick = Session.tick.intValue
+    val sites = remember(tick) { Repo.sites() }
+    var url by remember { mutableStateOf("") }; var key by remember { mutableStateOf("") }; var msg by remember { mutableStateOf("") }; var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    Page("ربط الموقع الرسمي") {
+        if (sites.isEmpty()) Card { T("⚠️ لا يوجد مواقع مربوطة", 13, color = C.red) }
+        sites.forEach { s -> Card(onClick = { Nav.go("admin/site/" + s.optString("name")) }) {
+            Row(verticalAlignment = Alignment.CenterVertically) { T((if (s.optBoolean("active", true)) "🟢 " else "🔴 ") + s.optString("name"), 15, FontWeight.Bold, modifier = Modifier.weight(1f)); Chip("💰 " + s.optString("balance"), C.green) }
+            T(s.optString("url"), 11, color = C.sub) } }
+        Card {
+            T("➕ إضافة موقع جديد", 15, FontWeight.Bold)
+            Field(url, { url = it }, "رابط الموقع"); Field(key, { key = it }, "مفتاح API", password = true)
+            Btn(if (busy) "جاري التحقق..." else "🔗 ربط الموقع", "success", emoji = E.check) {
+                if (url.isBlank() || key.isBlank()) { toast("أدخل الرابط والمفتاح"); return@Btn }
+                if (busy) return@Btn
+                busy = true; msg = "⏳ جاري التحقق من الموقع..."
+                val u = normUrl(url); val k = key.trim()
+                scope.launch {
+                    val r = withContext(Dispatchers.IO) { runCatching { Smm.verify(u, k) } }
+                    busy = false
+                    r.onSuccess { bal ->
+                        val name = runCatching { java.net.URI(u).host }.getOrNull() ?: u
+                        val l = Repo.sites().filter { it.optString("name") != name }.toMutableList()
+                        l.add(org.json.JSONObject().put("name", name).put("url", u).put("key", k).put("balance", bal).put("active", true))
+                        Repo.saveSites(l); msg = "✅ تم ربط الموقع بنجاح!\n🌐 الاسم: $name\n🔗 الرابط: $u\n🪙 الرصيد: $bal"; url = ""; key = ""; Session.refresh() }
+                    r.onFailure { msg = "❌ فشل التحقق!\n⚠️ السبب: ${it.message}" }
+                }
+            }
+            if (msg.isNotBlank()) T(msg, 13)
+        }
+    }
+}
+
+@Composable
+fun AdminSiteDetail(name: String) {
+    val tick = Session.tick.intValue
+    val site = remember(tick) { Repo.sites().firstOrNull { it.optString("name") == name } }
+    val scope = rememberCoroutineScope(); var msg by remember { mutableStateOf("") }; var del by remember { mutableStateOf(false) }
+    if (site == null) { Page("الموقع") { T("الموقع غير موجود", 13, color = C.red) }; return }
+    fun update(f: (org.json.JSONObject) -> Unit) { Repo.saveSites(Repo.sites().map { if (it.optString("name") == name) it.also(f) else it }); Session.refresh() }
+    Page(name) {
+        Card { T("🌐 $name", 16, FontWeight.ExtraBold); T("🔗 ${site.optString("url")}", 12, color = C.sub); T("🪙 الرصيد: ${site.optString("balance")}", 14, FontWeight.Bold, C.green)
+            T(if (site.optBoolean("active", true)) "🟢 الموقع مفعّل" else "🔴 الموقع متوقف", 13) }
+        Btn("📦 جلب الخدمات", "success", emoji = E.rashq) { Nav.go("admin/fetch") }
+        Btn("🔍 فحص الاتصال وتحديث الرصيد", "primary") {
+            msg = "⏳ جاري الفحص..."
+            scope.launch { val r = withContext(Dispatchers.IO) { runCatching { Smm.verify(site.optString("url"), site.optString("key")) } }
+                r.onSuccess { b -> update { it.put("balance", b) }; msg = "✅ الاتصال سليم • الرصيد: $b" }; r.onFailure { msg = "❌ فشل الاتصال: ${it.message}" } } }
+        if (msg.isNotBlank()) Card { T(msg, 13) }
+        if (site.optBoolean("active", true)) Btn("⏹️ توقيف الموقع", "danger") { update { it.put("active", false) } } else Btn("▶️ تشغيل الموقع", "success") { update { it.put("active", true) } }
+        Btn("🗑️ حذف الموقع", "danger") { del = true }
+    }
+    if (del) ConfirmDialog("حذف الموقع", name, { Repo.saveSites(Repo.sites().filter { it.optString("name") != name }); Nav.back(); Session.refresh() }) { del = false }
+}
+
+@Composable
+fun AdminFetch() {
+    val site = Repo.currentSite()
+    val scope = rememberCoroutineScope()
+    var platform by remember { mutableStateOf(Defs.name("btn_plat_tiktok")) }
+    var remote by remember { mutableStateOf<List<Smm.Remote>?>(null) }; var err by remember { mutableStateOf("") }; var loading by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(setOf<String>()) }; var shown by remember { mutableStateOf(40) }
+    val plats = Defs.ofCat("rashq").map { Defs.name(it.key) }
+    Page("جلب الخدمات من الموقع") {
+        if (site == null) { Card { T("⚠️ اربط موقعاً أولاً من «ربط الموقع الرسمي»", 13, color = C.red) }; return@Page }
+        Card { T("🌐 ${site.optString("name")}  •  🪙 ${site.optString("balance")}", 13, FontWeight.Bold); T("المنصات فقط (بدون الألعاب والتطبيقات)", 11, color = C.sub) }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { items(plats) { p -> FilterChip(platform == p, { platform = p; selected = emptySet(); shown = 40 }, label = { T(p, 12) }) } }
+        Btn(if (loading) "جاري الجلب..." else "⬇️ جلب خدمات $platform", "success") {
+            if (loading) return@Btn
+            loading = true; err = ""
+            scope.launch { val r = withContext(Dispatchers.IO) { runCatching { Smm.services(site.optString("url"), site.optString("key")) } }
+                loading = false; r.onSuccess { remote = it; selected = emptySet(); shown = 40 }; r.onFailure { err = "❌ فشل جلب الخدمات: ${it.message}" } } }
+        if (err.isNotBlank()) T(err, 13, color = C.red)
+        val list = remember(remote, platform) { remote?.let { Smm.filterFor(platform, it) } ?: emptyList() }
+        if (remote != null) {
+            Card { T("📦 خدمات $platform المتاحة للاسترداد", 14, FontWeight.Bold); T("📊 الإجمالي: ${list.size}  •  ✅ المحدد: ${selected.size}", 12, color = C.sub) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TgButton("تحديد الكل", "primary", null, Modifier.weight(1f)) { selected = list.map { it.id }.toSet() }
+                TgButton("إلغاء التحديد", "plain", null, Modifier.weight(1f)) { selected = emptySet() } }
+            list.take(shown).forEach { s -> Card(onClick = { selected = if (s.id in selected) selected - s.id else selected + s.id }) {
+                Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(s.id in selected, { selected = if (it) selected + s.id else selected - s.id })
+                    Column(Modifier.weight(1f)) { T(s.name, 13, FontWeight.Bold, maxLines = 2); T("#${s.id} • ${(s.rate * 1000).toLong()} نقطة/1000 • ${s.min}-${s.max}", 11, color = C.sub) } } } }
+            if (list.size > shown) Btn("عرض المزيد (${list.size - shown})", "primary") { shown += 40 }
+            Btn("✅ استرداد المحدد (${selected.size})", "success", emoji = E.check) {
+                val chosen = list.filter { it.id in selected }
+                if (chosen.isEmpty()) { toast("لم تحدد أي خدمة"); return@Btn }
+                Repo.allServices().filter { it.cat == platform && it.apiId.isNotBlank() }.forEach { Repo.deleteService(it.id) }
+                chosen.forEach { Repo.saveService(Service(0, platform, it.name, (it.rate * 1000).toLong(), "per1000", it.min, false, it.max, it.id, site.optString("name"))) }
+                toast("✅ تم استرداد ${chosen.size} خدمة لـ $platform"); selected = emptySet(); Session.refresh() }
+        }
+    }
 }
 
 @Composable
@@ -82,7 +177,7 @@ fun AdminExchange() { Page("قسم الاستبدال") { Card { T("قسم ال�
 
 @Composable
 fun AdminFunding() {
-    SettingsScreen("قسم التمويل", listOf(SItem("tamweel_price", "💰 سعر العضو", "10"), SItem("tamweel_min", "🔽 الحد الأدنى", "10"), SItem("tamweel_max", "🔼 الحد الأقصى", "10000"),
+    SettingsScreen("قسم التمويل", listOf(SItem("tamweel_price", "💰 سعر العضو", "16"), SItem("tamweel_min", "🔽 الحد الأدنى", "50"), SItem("tamweel_max", "🔼 الحد الأقصى", "100000"),
         SItem("tamweel_txt", "🚀 كليشة التمويل", "", true)), "قسم التمويل يظهر للمستخدمين من زر «تمويل قناتك».")
 }
 
@@ -103,7 +198,7 @@ fun AdminSettingsHub() {
 
 @Composable
 fun AdminSet(g: String) = when (g) {
-    "main" -> SettingsScreen("الكلايش والمتغيرات", listOf(SItem("bot_name", "📝 اسم التطبيق", "تيربو رشق"), SItem("currency", "💱 العملة", "نقطة"),
+    "main" -> SettingsScreen("الكلايش والمتغيرات", listOf(SItem("bot_name", "📝 اسم التطبيق", "تيربو رشق"), SItem("currency", "💱 العملة", "نقطة"), SItem("transfer_min", "📊 أقل تحويل", "60000"), SItem("transfer_fee", "٪ عمولة التحويل", "1"),
         SItem("recharge_txt", "💰 كليشة الشحن", "", true), SItem("terms", "📋 كليشة الشروط", "", true), SItem("collect_txt", "📊 كليشة التجميع", "", true),
         SItem("tamweel_txt", "🚀 كليشة التمويل", "", true), SItem("stars_txt", "⭐ كليشة النجوم", "", true), SItem("welcome", "👋 رسالة الترحيب (#first_name #balance #id)", "", true)))
     "channels" -> SettingsScreen("قنوات الإشعارات", listOf(SItem("orders_channel", "📢 قناة إكمال الطلب"), SItem("game_bot_link", "🔗 رابط بوت الألعاب"), SItem("rashq_bot_link", "🔗 رابط بوت الرشق"), SItem("channel_link", "📣 رابط القناة")))

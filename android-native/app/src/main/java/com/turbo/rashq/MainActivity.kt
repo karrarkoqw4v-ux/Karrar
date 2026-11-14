@@ -88,7 +88,7 @@ fun Router(r: String) {
         r == "msg" -> MessagesScreen()
         r == "notifs" -> NotifsScreen()
         r.startsWith("admin") && u?.admin == true -> when {
-            r == "admin/stats" -> AdminStats(); r == "admin/services" -> AdminServices(); r == "admin/games" -> AdminServices("games"); r == "admin/rashq" -> AdminServices("rashq")
+            r == "admin/fetch" -> AdminFetch(); r.startsWith("admin/site/") -> AdminSiteDetail(r.removePrefix("admin/site/")); r == "admin/stats" -> AdminStats(); r == "admin/services" -> AdminServices(); r == "admin/games" -> AdminServices("games"); r == "admin/rashq" -> AdminServices("rashq")
             r == "admin/free" -> AdminServices("free"); r == "admin/sites" -> AdminSites(); r == "admin/toggle" -> AdminToggle(); r == "admin/settings" -> AdminSettingsHub()
             r == "admin/exchange" -> AdminExchange(); r == "admin/funding" -> AdminFunding(); r == "admin/gifts" -> { AdminGiftsHub() }; r == "admin/giftlink" -> AdminGiftLink()
             r == "admin/pts" -> AdminPts(); r == "admin/accounts" -> AdminAccounts(); r == "admin/recharge" -> AdminRecharge(); r == "admin/backup" -> AdminBackup()

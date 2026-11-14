@@ -16,6 +16,9 @@ shot set user 09_settings
 shot set/colors user 10_colors
 shot set/privacy user 11_privacy
 shot notifs user 12_notifications
+shot menu/transfer user 14_transfer_menu
+shot terms user 15_terms
+shot orders user 16_orders
 shot transfer:username user 13_transfer
 else
 shot admin admin 20_admin_home
@@ -27,5 +30,7 @@ shot admin/services admin 25_admin_services
 shot admin/emoji admin 26_emoji_manager
 shot admin/recharge admin 27_admin_recharge
 shot admin/texts admin 28_admin_texts
+shot admin/sites admin 29_admin_sites
+shot admin/fetch admin 30_admin_fetch
 fi
 exit 0

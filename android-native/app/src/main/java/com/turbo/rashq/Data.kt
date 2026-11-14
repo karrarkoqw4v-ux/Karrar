@@ -13,18 +13,18 @@ import javax.crypto.spec.PBEKeySpec
 data class User(val id: Long, val uid: String, val name: String, val username: String, val email: String,
                 val phone: String, val balance: Long, val banned: Boolean, val admin: Boolean)
 data class Service(val id: Long, val cat: String, val name: String, val price: Long, val kind: String,
-                   val minQty: Long, val hidden: Boolean)
+                   val minQty: Long, val hidden: Boolean, val maxQty: Long = 1000000, val apiId: String = "", val site: String = "")
 data class Order(val id: Long, val uid: String, val title: String, val target: String, val qty: Long,
-                 val price: Long, val status: String, val ts: Long, val userName: String)
+                 val price: Long, val status: String, val ts: Long, val userName: String, val siteOrder: String = "", val site: String = "")
 data class Notif(val id: Long, val title: String, val body: String, val ts: Long, val read: Boolean, val type: String = "sys")
 data class CodeRow(val code: String, val amount: Long, val maxUses: Int, val used: Int)
 data class Ledger(val delta: Long, val note: String, val ts: Long)
 
-class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 2) {
+class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 3) {
     override fun onCreate(d: SQLiteDatabase) {
         d.execSQL("CREATE TABLE users(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT UNIQUE, name TEXT, username TEXT UNIQUE, email TEXT, phone TEXT, pass TEXT, balance INTEGER DEFAULT 0, banned INTEGER DEFAULT 0, admin INTEGER DEFAULT 0, created INTEGER)")
-        d.execSQL("CREATE TABLE services(id INTEGER PRIMARY KEY AUTOINCREMENT, cat TEXT, name TEXT, price INTEGER, kind TEXT, minq INTEGER DEFAULT 1, hidden INTEGER DEFAULT 0)")
-        d.execSQL("CREATE TABLE orders(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, title TEXT, target TEXT, qty INTEGER, price INTEGER, status TEXT, ts INTEGER)")
+        d.execSQL("CREATE TABLE services(id INTEGER PRIMARY KEY AUTOINCREMENT, cat TEXT, name TEXT, price INTEGER, kind TEXT, minq INTEGER DEFAULT 1, hidden INTEGER DEFAULT 0, maxq INTEGER DEFAULT 1000000, api_id TEXT DEFAULT '', site TEXT DEFAULT '')")
+        d.execSQL("CREATE TABLE orders(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, title TEXT, target TEXT, qty INTEGER, price INTEGER, status TEXT, ts INTEGER, site_order TEXT DEFAULT '', site TEXT DEFAULT '')")
         d.execSQL("CREATE TABLE codes(code TEXT PRIMARY KEY, amount INTEGER, maxuses INTEGER, used INTEGER DEFAULT 0)")
         d.execSQL("CREATE TABLE code_uses(code TEXT, uid TEXT)")
         d.execSQL("CREATE TABLE ledger(id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, delta INTEGER, note TEXT, ts INTEGER)")
@@ -39,7 +39,13 @@ class Db(ctx: Context) : SQLiteOpenHelper(ctx, "turbo.db", null, 2) {
         }
         d.insert("users", null, cv)
     }
-    override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) { if (o < 2) d.execSQL("ALTER TABLE notifs ADD COLUMN type TEXT DEFAULT 'sys'") }
+    override fun onUpgrade(d: SQLiteDatabase, o: Int, n: Int) {
+        if (o < 2) d.execSQL("ALTER TABLE notifs ADD COLUMN type TEXT DEFAULT 'sys'")
+        if (o < 3) {
+            d.execSQL("ALTER TABLE services ADD COLUMN maxq INTEGER DEFAULT 1000000"); d.execSQL("ALTER TABLE services ADD COLUMN api_id TEXT DEFAULT ''"); d.execSQL("ALTER TABLE services ADD COLUMN site TEXT DEFAULT ''")
+            d.execSQL("ALTER TABLE orders ADD COLUMN site_order TEXT DEFAULT ''"); d.execSQL("ALTER TABLE orders ADD COLUMN site TEXT DEFAULT ''")
+        }
+    }
 }
 
 object Security {
@@ -159,15 +165,18 @@ object Repo {
 
     fun transfer(from: User, toUsername: String, byId: Boolean, amount: Long): String? {
         if (amount <= 0) return "أدخل مبلغاً صحيحاً"
+        val tmin = getLong("transfer_min", 60000)
+        if (amount < tmin) return "أقل تحويل $tmin ${cur()}"
         val to = (if (byId) userByUid(toUsername.trim()) else userByUsername(toUsername)) ?: return "المستخدم غير موجود"
         if (to.uid == from.uid) return "لا يمكنك التحويل لنفسك"
         if (get("transfer_enabled", "1") != "1") return "التحويل متوقف حالياً"
         if (!pref(to.uid, "allow_in", true)) return "هذا المستخدم أوقف استقبال التحويلات"
         val fresh = userByUid(from.uid) ?: return "خطأ"
-        if (fresh.balance < amount) return "رصيدك غير كافٍ"
+        if (fresh.balance < amount + amount * getLong("transfer_fee", 1) / 100) return "رصيدك غير كافٍ"
         w.beginTransaction()
         try {
-            addBalance(from.uid, -amount, "تحويل إلى @${to.username}")
+            val fee = amount * getLong("transfer_fee", 1) / 100
+            addBalance(from.uid, -(amount + fee), "تحويل إلى @${to.username}")
             addBalance(to.uid, amount, "تحويل من @${from.username}")
             w.setTransactionSuccessful()
         } finally { w.endTransaction() }
@@ -177,12 +186,12 @@ object Repo {
     }
 
     // ---- services & orders
-    private fun svc(c: Cursor) = Service(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), c.getString(4), c.getLong(5), c.getInt(6) == 1)
+    private fun svc(c: Cursor) = Service(c.getLong(0), c.getString(1), c.getString(2), c.getLong(3), c.getString(4), c.getLong(5), c.getInt(6) == 1, c.getLong(7), c.getString(8) ?: "", c.getString(9) ?: "")
     fun services(cat: String, includeHidden: Boolean = false): List<Service> =
-        w.rawQuery("SELECT id,cat,name,price,kind,minq,hidden FROM services WHERE cat=? ${if (includeHidden) "" else "AND hidden=0"} ORDER BY id", arrayOf(cat)).use { c -> buildList { while (c.moveToNext()) add(svc(c)) } }
-    fun allServices(): List<Service> = w.rawQuery("SELECT id,cat,name,price,kind,minq,hidden FROM services ORDER BY cat,id", null).use { c -> buildList { while (c.moveToNext()) add(svc(c)) } }
+        w.rawQuery("SELECT id,cat,name,price,kind,minq,hidden,maxq,api_id,site FROM services WHERE cat=? ${if (includeHidden) "" else "AND hidden=0"} ORDER BY id", arrayOf(cat)).use { c -> buildList { while (c.moveToNext()) add(svc(c)) } }
+    fun allServices(): List<Service> = w.rawQuery("SELECT id,cat,name,price,kind,minq,hidden,maxq,api_id,site FROM services ORDER BY cat,id", null).use { c -> buildList { while (c.moveToNext()) add(svc(c)) } }
     fun saveService(s: Service) {
-        val cv = ContentValues().apply { put("cat", s.cat); put("name", s.name); put("price", s.price); put("kind", s.kind); put("minq", s.minQty); put("hidden", if (s.hidden) 1 else 0) }
+        val cv = ContentValues().apply { put("cat", s.cat); put("name", s.name); put("price", s.price); put("kind", s.kind); put("minq", s.minQty); put("hidden", if (s.hidden) 1 else 0); put("maxq", s.maxQty); put("api_id", s.apiId); put("site", s.site) }
         if (s.id == 0L) w.insert("services", null, cv) else w.update("services", cv, "id=?", arrayOf(s.id.toString()))
     }
     fun deleteService(id: Long) { w.delete("services", "id=?", arrayOf(id.toString())) }
@@ -190,27 +199,39 @@ object Repo {
     fun placeOrder(u: User, s: Service, target: String, qty: Long): String? {
         if (target.isBlank()) return "أدخل الرابط أو الأيدي"
         val q = if (s.kind == "per1000") qty else 1L
-        if (s.kind == "per1000" && q < s.minQty) return "أقل كمية ${s.minQty}"
+        if (s.kind == "per1000" && (q < s.minQty || q > s.maxQty)) return "الكمية بين ${s.minQty} و ${s.maxQty}"
         val cost = if (s.kind == "per1000") (s.price * q + 999) / 1000 else s.price
         val fresh = userByUid(u.uid) ?: return "خطأ"
         if (fresh.balance < cost) return "رصيدك غير كافٍ (المطلوب $cost)"
         w.beginTransaction()
         try {
             addBalance(u.uid, -cost, "طلب: ${s.name}")
-            w.execSQL("INSERT INTO orders(uid,title,target,qty,price,status,ts) VALUES(?,?,?,?,?,?,?)", arrayOf(u.uid, s.name, target.trim(), q, cost, "قيد التنفيذ", System.currentTimeMillis()))
+            w.execSQL("INSERT INTO orders(uid,title,target,qty,price,status,ts,site) VALUES(?,?,?,?,?,?,?,?)", arrayOf(u.uid, s.name, target.trim(), q, cost, "قيد التنفيذ", System.currentTimeMillis(), s.site))
+            lastOrderId = w.rawQuery("SELECT last_insert_rowid()", null).use { it.moveToFirst(); it.getLong(0) }
             w.setTransactionSuccessful()
         } finally { w.endTransaction() }
         return null
     }
-    private fun order(c: Cursor) = Order(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getLong(5), c.getString(6), c.getLong(7), c.getString(8) ?: "")
+    private fun order(c: Cursor) = Order(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getLong(5), c.getString(6), c.getLong(7), c.getString(8) ?: "", c.getString(9) ?: "", c.getString(10) ?: "")
     fun orders(uid: String?): List<Order> = w.rawQuery(
-        "SELECT o.id,o.uid,o.title,o.target,o.qty,o.price,o.status,o.ts,u.name FROM orders o LEFT JOIN users u ON u.uid=o.uid ${if (uid != null) "WHERE o.uid=?" else ""} ORDER BY o.id DESC LIMIT 300",
+        "SELECT o.id,o.uid,o.title,o.target,o.qty,o.price,o.status,o.ts,u.name,o.site_order,o.site FROM orders o LEFT JOIN users u ON u.uid=o.uid ${if (uid != null) "WHERE o.uid=?" else ""} ORDER BY o.id DESC LIMIT 300",
         if (uid != null) arrayOf(uid) else null).use { c -> buildList { while (c.moveToNext()) add(order(c)) } }
-    fun orderById(id: Long): Order? = w.rawQuery("SELECT o.id,o.uid,o.title,o.target,o.qty,o.price,o.status,o.ts,u.name FROM orders o LEFT JOIN users u ON u.uid=o.uid WHERE o.id=?", arrayOf(id.toString())).use { if (it.moveToFirst()) order(it) else null }
+    fun orderById(id: Long): Order? = w.rawQuery("SELECT o.id,o.uid,o.title,o.target,o.qty,o.price,o.status,o.ts,u.name,o.site_order,o.site FROM orders o LEFT JOIN users u ON u.uid=o.uid WHERE o.id=?", arrayOf(id.toString())).use { if (it.moveToFirst()) order(it) else null }
     fun setOrderStatus(o: Order, st: String) {
         w.execSQL("UPDATE orders SET status=? WHERE id=?", arrayOf(st, o.id))
         if (st == "مرفوض" && o.status != "مرفوض") addBalance(o.uid, o.price, "استرجاع طلب #${o.id}")
         pushNotif(o.uid, "تحديث الطلب #${o.id}", "${o.title}: $st", "order")
+    }
+    var lastOrderId = 0L
+    fun setSiteOrder(id: Long, so: String) { w.execSQL("UPDATE orders SET site_order=? WHERE id=?", arrayOf(so, id)) }
+    fun pendingSiteOrders(uid: String?): List<Order> = orders(uid).filter { it.siteOrder.isNotBlank() && it.status != "مكتمل" && it.status != "مرفوض" }
+    fun accountStats(uid: String): LongArray {
+        val rows = ledger(uid)
+        val free = rows.filter { it.delta > 0 && (it.note.startsWith("هدية") || it.note.startsWith("دعوة")) }.sumOf { it.delta }
+        val paid = rows.filter { it.delta > 0 && (it.note.startsWith("كود") || it.note.startsWith("شحن") || it.note.startsWith("إضافة") || it.note.startsWith("تحويل")) }.sumOf { it.delta }
+        val spent = -rows.filter { it.delta < 0 && it.note.startsWith("طلب") }.sumOf { it.delta }
+        val inv = rows.count { it.note.startsWith("دعوة") }.toLong()
+        return longArrayOf(free, paid, spent, inv)
     }
     fun doneCount() = w.rawQuery("SELECT COUNT(*) FROM orders WHERE status='مكتمل'", null).use { it.moveToFirst(); it.getLong(0) }
 
@@ -279,5 +300,8 @@ object Repo {
     fun recentCharges(): List<Triple<String, Long, Long>> = w.rawQuery(
         "SELECT u.name,l.delta,l.ts FROM ledger l LEFT JOIN users u ON u.uid=l.uid WHERE l.delta>0 AND (l.note LIKE 'كود%' OR l.note LIKE 'شحن%' OR l.note LIKE 'إضافة%') ORDER BY l.id DESC LIMIT 100", null)
         .use { c -> buildList { while (c.moveToNext()) add(Triple(c.getString(0) ?: "?", c.getLong(1), c.getLong(2))) } }
+    fun sites(): List<org.json.JSONObject> { val a = org.json.JSONArray(get("sites", "[]")); return (0 until a.length()).map { a.getJSONObject(it) } }
+    fun saveSites(l: List<org.json.JSONObject>) { put("sites", org.json.JSONArray(l).toString()) }
+    fun currentSite(): org.json.JSONObject? = sites().lastOrNull { it.optBoolean("active", true) }
     fun dbFile() = ctx.getDatabasePath("turbo.db")
 }
