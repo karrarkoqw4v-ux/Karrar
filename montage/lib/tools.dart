@@ -111,8 +111,8 @@ const _durOpt = JobOpt('dur', 'المدة (للصور)', _durs, '8');
 Future<Spec> _bw(Ctx c) async => _vf('hue=s=0');
 Future<Spec> _sketch(Ctx c) async => Spec(fc: '[0:v]scale=${c.w}:${c.h},split[a][b];[a]format=gray,negate,gblur=sigma=12[g];[b]format=gray[o];[o][g]blend=all_mode=dodge,eq=contrast=1.25,format=yuv420p[v]');
 Future<Spec> _cartoon(Ctx c) async => Spec(
-    fc: '[0:v]scale=${c.w}:${c.h},split[a][b];[a]edgedetect=low=0.1:high=0.25,negate,format=yuv420p[e];'
-        "[b]lutrgb=r='trunc(val/40)*40+20':g='trunc(val/40)*40+20':b='trunc(val/40)*40+20',eq=saturation=1.5,hqdn3d=4,format=yuv420p[k];[k][e]blend=all_mode=multiply[v]");
+    fc: '[0:v]scale=${c.w}:${c.h},format=yuv420p,split[a][b];[a]edgedetect=low=0.1:high=0.25,negate,format=yuv420p[e];'
+        "[b]eq=saturation=1.5,lutyuv=y='trunc(val/36)*36+18',hqdn3d=4,format=yuv420p[k];[k][e]blend=c0_mode=multiply:c1_mode=normal:c2_mode=normal[v]");
 Future<Spec> _flip(Ctx c) async => _vf(c.o('d') == 'v' ? 'vflip' : (c.o('d') == 'hv' ? 'hflip,vflip' : 'hflip'));
 Future<Spec> _bright(Ctx c) async => _vf('eq=brightness=${c.o('b')}:contrast=${c.o('c')}:saturation=${c.o('s')}');
 Future<Spec> _rot(Ctx c) async {

@@ -6,6 +6,7 @@ import 'package:montage_murtaah/store.dart';
 import 'package:montage_murtaah/screens/auth.dart';
 import 'package:montage_murtaah/screens/custom_page.dart';
 import 'package:montage_murtaah/custom.dart';
+import 'package:montage_murtaah/tools.dart';
 import 'package:montage_murtaah/screens/editor.dart';
 import 'package:montage_murtaah/screens/export_sheet.dart';
 import 'package:montage_murtaah/screens/picker.dart';
@@ -76,6 +77,8 @@ void main() {
     await go(EditorPage(project: p, initialTool: Tool.trim, solo: true), '15_editor_trim_solo', ms: 900);
     await go(EditorPage(project: p, initialTool: Tool.filters, solo: true), '15b_editor_filters_solo', ms: 900);
     await go(const CustomHub(), '21_custom_hub');
+    await go(SectionPage(title: 'جسيمات وأجواء متحركة', jobs: kAllJobs.where((j) => j.group == 'جسيمات وأجواء متحركة').toList()), '21b_section');
+    await go(JobPage(job: kAllJobs.firstWhere((j) => j.id == 'channel')), '21c_job_text');
     await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'sticker')), '22_job_sticker');
     await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'resize')), '23_job_resize');
     await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'music_freq')), '24_job_music');
