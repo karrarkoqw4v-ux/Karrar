@@ -2,7 +2,7 @@ import re, shutil, os, sys
 root = sys.argv[1] if len(sys.argv) > 1 else '.'
 man = os.path.join(root, 'android/app/src/main/AndroidManifest.xml')
 s = open(man, encoding='utf-8').read()
-s = re.sub(r'android:label="[^"]*"', 'android:label="مونتاج مرتاح"', s, count=1)
+s = re.sub(r'android:label="[^"]*"', 'android:label="مونتاجي"', s, count=1)
 perms = '''    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>

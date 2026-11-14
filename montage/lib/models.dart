@@ -15,6 +15,9 @@ class MClip {
   String filter;
   String transition; // الانتقال بين هذا المقطع والذي بعده
   double transitionDur;
+  double adjB; // سطوع -1..1
+  double adjC; // تباين 0.5..1.5
+  double adjS; // تشبع 0..2
   String? thumb;
 
   MClip({
@@ -30,6 +33,9 @@ class MClip {
     this.filter = 'normal',
     this.transition = 'fade',
     this.transitionDur = 0.5,
+    this.adjB = 0,
+    this.adjC = 1,
+    this.adjS = 1,
     this.thumb,
   });
 
@@ -41,7 +47,7 @@ class MClip {
   Map<String, dynamic> toJson() => {
         'id': id, 'path': path, 'type': type.name, 'srcDur': srcDur, 'start': start, 'end': end,
         'imageDur': imageDur, 'speed': speed, 'volume': volume, 'filter': filter,
-        'transition': transition, 'transitionDur': transitionDur, 'thumb': thumb,
+        'transition': transition, 'transitionDur': transitionDur, 'adjB': adjB, 'adjC': adjC, 'adjS': adjS, 'thumb': thumb,
       };
 
   factory MClip.fromJson(Map<String, dynamic> j) => MClip(
@@ -49,6 +55,7 @@ class MClip {
         srcDur: (j['srcDur'] ?? 0).toDouble(), start: (j['start'] ?? 0).toDouble(), end: (j['end'] ?? 0).toDouble(),
         imageDur: (j['imageDur'] ?? 3).toDouble(), speed: (j['speed'] ?? 1).toDouble(), volume: (j['volume'] ?? 1).toDouble(),
         filter: j['filter'] ?? 'normal', transition: j['transition'] ?? 'fade', transitionDur: (j['transitionDur'] ?? 0.5).toDouble(),
+        adjB: (j['adjB'] ?? 0).toDouble(), adjC: (j['adjC'] ?? 1).toDouble(), adjS: (j['adjS'] ?? 1).toDouble(),
         thumb: j['thumb'],
       );
 }
@@ -62,6 +69,7 @@ class OverlayItem {
   String font; // 'Tajawal' أو 'serif' أو 'monospace'
   double size;
   bool bold;
+  bool italic;
   bool box; // خلفية خلف النص
   int position; // 0 أعلى 1 وسط 2 أسفل
   String anim; // none fade slide pop type
@@ -76,6 +84,7 @@ class OverlayItem {
     this.font = 'Tajawal',
     this.size = 72,
     this.bold = true,
+    this.italic = false,
     this.box = false,
     this.position = 2,
     this.anim = 'fade',
@@ -84,13 +93,13 @@ class OverlayItem {
   });
 
   Map<String, dynamic> toJson() => {
-        'id': id, 'sticker': sticker, 'text': text, 'color': color, 'font': font, 'size': size, 'bold': bold,
+        'id': id, 'sticker': sticker, 'text': text, 'color': color, 'font': font, 'size': size, 'bold': bold, 'italic': italic,
         'box': box, 'position': position, 'anim': anim, 'start': start, 'end': end,
       };
 
   factory OverlayItem.fromJson(Map<String, dynamic> j) => OverlayItem(
         id: j['id'], sticker: j['sticker'] ?? false, text: j['text'] ?? '', color: j['color'] ?? 0xFFFFFFFF,
-        font: j['font'] ?? 'Tajawal', size: (j['size'] ?? 72).toDouble(), bold: j['bold'] ?? true, box: j['box'] ?? false,
+        font: j['font'] ?? 'Tajawal', size: (j['size'] ?? 72).toDouble(), bold: j['bold'] ?? true, italic: j['italic'] ?? false, box: j['box'] ?? false,
         position: j['position'] ?? 2, anim: j['anim'] ?? 'fade', start: (j['start'] ?? 0).toDouble(), end: (j['end'] ?? 3).toDouble(),
       );
 }
@@ -106,6 +115,9 @@ class Project {
   String? musicName;
   double musicVolume;
   String? template;
+  String ratio; // 9:16 16:9 1:1 4:5 3:4
+  bool fitBlur; // احتواء مع خلفية ضبابية بدل القص
+  bool photoMode;
 
   Project({
     required this.id,
@@ -118,6 +130,9 @@ class Project {
     this.musicName,
     this.musicVolume = 0.6,
     this.template,
+    this.ratio = '9:16',
+    this.fitBlur = false,
+    this.photoMode = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now(),
         clips = clips ?? [],
@@ -147,14 +162,14 @@ class Project {
   Map<String, dynamic> toJson() => {
         'id': id, 'name': name, 'createdAt': createdAt.toIso8601String(), 'updatedAt': updatedAt.toIso8601String(),
         'clips': clips.map((c) => c.toJson()).toList(), 'overlays': overlays.map((o) => o.toJson()).toList(),
-        'musicPath': musicPath, 'musicName': musicName, 'musicVolume': musicVolume, 'template': template,
+        'musicPath': musicPath, 'musicName': musicName, 'musicVolume': musicVolume, 'template': template, 'ratio': ratio, 'fitBlur': fitBlur, 'photoMode': photoMode,
       };
 
   factory Project.fromJson(Map<String, dynamic> j) => Project(
         id: j['id'], name: j['name'] ?? 'مشروع', createdAt: DateTime.tryParse(j['createdAt'] ?? ''), updatedAt: DateTime.tryParse(j['updatedAt'] ?? ''),
         clips: ((j['clips'] ?? []) as List).map((e) => MClip.fromJson(Map<String, dynamic>.from(e))).toList(),
         overlays: ((j['overlays'] ?? []) as List).map((e) => OverlayItem.fromJson(Map<String, dynamic>.from(e))).toList(),
-        musicPath: j['musicPath'], musicName: j['musicName'], musicVolume: (j['musicVolume'] ?? 0.6).toDouble(), template: j['template'],
+        musicPath: j['musicPath'], musicName: j['musicName'], musicVolume: (j['musicVolume'] ?? 0.6).toDouble(), template: j['template'], ratio: j['ratio'] ?? '9:16', fitBlur: j['fitBlur'] ?? false, photoMode: j['photoMode'] ?? false,
       );
 
   String encode() => jsonEncode(toJson());
@@ -165,7 +180,37 @@ class ExportRec {
   final String name;
   final DateTime at;
   final double duration;
-  ExportRec(this.path, this.name, this.at, this.duration);
-  Map<String, dynamic> toJson() => {'path': path, 'name': name, 'at': at.toIso8601String(), 'dur': duration};
-  factory ExportRec.fromJson(Map<String, dynamic> j) => ExportRec(j['path'], j['name'] ?? '', DateTime.tryParse(j['at'] ?? '') ?? DateTime.now(), (j['dur'] ?? 0).toDouble());
+  final int size;
+  ExportRec(this.path, this.name, this.at, this.duration, {this.size = 0});
+  Map<String, dynamic> toJson() => {'path': path, 'name': name, 'at': at.toIso8601String(), 'dur': duration, 'size': size};
+  factory ExportRec.fromJson(Map<String, dynamic> j) => ExportRec(j['path'], j['name'] ?? '', DateTime.tryParse(j['at'] ?? '') ?? DateTime.now(), (j['dur'] ?? 0).toDouble(), size: j['size'] ?? 0);
+}
+
+/// أبعاد التصدير حسب النسبة والدقة (الضلع الأقصر).
+({int w, int h}) dimsFor(String ratio, int shortSide) {
+  final p = ratio.split(':');
+  final a = int.parse(p[0]).toDouble(), b = int.parse(p[1]).toDouble();
+  int ev(double v) => (v.round() ~/ 2) * 2;
+  if (a <= b) return (w: ev(shortSide.toDouble()), h: ev(shortSide * b / a));
+  return (w: ev(shortSide * a / b), h: ev(shortSide.toDouble()));
+}
+
+double ratioValue(String ratio) {
+  final p = ratio.split(':');
+  return int.parse(p[0]) / int.parse(p[1]);
+}
+
+class ExportOptions {
+  int res; // الضلع الأقصر: 480 720 1080 1440 2160
+  int fps;
+  int quality; // 0 منخفضة 1 موصى بها 2 عالية
+  bool gif;
+  ExportOptions({this.res = 1080, this.fps = 30, this.quality = 1, this.gif = false});
+
+  int estimateBytes(Project p) {
+    final d = dimsFor(p.ratio, res);
+    final bpp = quality == 0 ? 0.045 : (quality == 1 ? 0.07 : 0.11);
+    final bits = d.w * d.h * fps * bpp;
+    return (bits * p.total / 8).round();
+  }
 }

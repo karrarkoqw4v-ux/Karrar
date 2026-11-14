@@ -1,4 +1,4 @@
-name: Build Montage APK (مونتاج مرتاح)
+name: Build Montage APK (مونتاجي)
 
 on:
   workflow_dispatch:
@@ -50,4 +50,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete montage-latest -y --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
-          gh release create montage-latest dist/Montage.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "مونتاج مرتاح (آخر نسخة)" --notes "APK لتطبيق مونتاج مرتاح - يتحدّث مع كل بناء"
+          gh release create montage-latest dist/Montage.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "مونتاجي (آخر نسخة)" --notes "APK لتطبيق مونتاجي - يتحدّث مع كل بناء"

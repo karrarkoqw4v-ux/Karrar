@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/painting.dart';
 import 'filters.dart';
 import 'models.dart';
-import 'store.dart';
+
+/// واجهة تنفيذ FFmpeg (على الجهاز: ffmpeg_kit، وفي الاختبار: ffmpeg النظام).
+abstract class FfRunner {
+  Future<bool> run(List<String> args, {void Function(double seconds)? onTime, void Function(String line)? onLog});
+  Future<bool> hasAudio(String path);
+}
 
 class ExportResult {
   final String? path;
@@ -19,26 +21,28 @@ class ExportResult {
 bool _isRtl(String s) => RegExp(r'[֐-ࣿיִ-﷿ﹰ-﻿]').hasMatch(s);
 String _f(double v) => v.toStringAsFixed(3);
 
+TextStyle overlayStyle(OverlayItem o, double scale) => TextStyle(
+      fontFamily: o.font,
+      fontFamilyFallback: const ['Tajawal', 'Noto Color Emoji', 'sans-serif'],
+      fontSize: o.size * scale,
+      color: Color(o.color),
+      fontWeight: o.bold ? FontWeight.w700 : FontWeight.w400,
+      fontStyle: o.italic ? FontStyle.italic : FontStyle.normal,
+      height: 1.25,
+      shadows: o.box || o.sticker ? null : [Shadow(color: const Color(0xCC000000), blurRadius: 8 * scale, offset: Offset(0, 2 * scale))],
+    );
+
 /// يرسم نصاً/ملصقاً إلى PNG شفاف (حتى يظهر العربي متصلاً صحيحاً داخل الفيديو).
 Future<void> renderOverlayPng(OverlayItem o, String text, double scale, double maxW, String out, {double? fixedW}) async {
-  final rtl = _isRtl(text);
-  final style = TextStyle(
-    fontFamily: o.font == 'Tajawal' ? 'Tajawal' : null,
-    fontFamilyFallback: const ['Tajawal', 'Noto Color Emoji', 'sans-serif'],
-    fontSize: o.size * scale,
-    color: Color(o.color),
-    fontWeight: o.bold ? FontWeight.w800 : FontWeight.w500,
-    height: 1.25,
-    shadows: o.box || o.sticker ? null : [Shadow(color: const Color(0xCC000000), blurRadius: 8 * scale, offset: Offset(0, 2 * scale))],
-  );
+  final rtl = _isRtl(o.text);
+  final style = overlayStyle(o, scale);
   final dir = rtl ? TextDirection.rtl : TextDirection.ltr;
   final full = TextPainter(text: TextSpan(text: o.text, style: style), textDirection: dir, textAlign: TextAlign.center)..layout(maxWidth: maxW);
   final pad = (o.box ? 30 : 16) * scale;
   final w = (fixedW ?? full.width);
   final cw = (w + pad * 2).ceil();
   final ch = (full.height + pad * 2).ceil();
-  final tp = TextPainter(text: TextSpan(text: text, style: style), textDirection: dir, textAlign: fixedW != null ? TextAlign.start : TextAlign.center)
-    ..layout(minWidth: w, maxWidth: w);
+  final tp = TextPainter(text: TextSpan(text: text, style: style), textDirection: dir, textAlign: fixedW != null ? TextAlign.start : TextAlign.center)..layout(minWidth: w, maxWidth: w);
   final rec = ui.PictureRecorder();
   final canvas = Canvas(rec);
   if (o.box && !o.sticker) {
@@ -51,26 +55,14 @@ Future<void> renderOverlayPng(OverlayItem o, String text, double scale, double m
 }
 
 Future<double> measureOverlayWidth(OverlayItem o, double scale, double maxW) async {
-  final rtl = _isRtl(o.text);
-  final tp = TextPainter(
-    text: TextSpan(text: o.text, style: TextStyle(fontFamily: o.font == 'Tajawal' ? 'Tajawal' : null, fontSize: o.size * scale, fontWeight: o.bold ? FontWeight.w800 : FontWeight.w500, height: 1.25)),
-    textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
-  )..layout(maxWidth: maxW);
+  final tp = TextPainter(text: TextSpan(text: o.text, style: overlayStyle(o, scale)), textDirection: _isRtl(o.text) ? TextDirection.rtl : TextDirection.ltr)..layout(maxWidth: maxW);
   return tp.width;
 }
 
 class Exporter {
-  static Future<bool> _hasAudio(String path) async {
-    try {
-      final s = await FFprobeKit.getMediaInformation(path);
-      final info = s.getMediaInformation();
-      if (info == null) return false;
-      for (final st in info.getStreams()) {
-        if (st.getType() == 'audio') return true;
-      }
-    } catch (_) {}
-    return false;
-  }
+  static late FfRunner runner;
+  static late Directory tempDir;
+  static late Directory outDir;
 
   static String _atempo(double speed) {
     final parts = <String>[];
@@ -88,15 +80,18 @@ class Exporter {
   }
 
   /// يبني أوامر FFmpeg ويشغّلها. يرجع مسار الملف النهائي.
-  static Future<ExportResult> run(Project p, {required int quality, required void Function(double) onProgress, void Function(String)? onLog}) async {
+  static Future<ExportResult> run(Project p, {required ExportOptions opt, required void Function(double) onProgress, void Function(String)? onLog}) async {
     if (p.clips.isEmpty) return ExportResult.fail('لا توجد مقاطع');
-    final H = quality >= 1080 ? 1920 : 1280;
-    final W = quality >= 1080 ? 1080 : 720;
-    final scale = W / 1080.0;
-    const fps = 30;
+    final dm = dimsFor(p.ratio, opt.res);
+    final W = dm.w, H = dm.h;
+    final scale = W / (p.ratio == '16:9' ? 1920.0 : 1080.0);
+    final fps = opt.fps;
     final ts = DateTime.now().millisecondsSinceEpoch;
-    final tmp = Directory('${Store.cacheDir.path}/exp_$ts')..createSync(recursive: true);
-    final out = '${Store.exportDir.path}/montage_$ts.mp4';
+    final tmp = Directory('${tempDir.path}/exp_$ts')..createSync(recursive: true);
+    final photo = p.photoMode;
+    final ext = photo ? 'jpg' : (opt.gif ? 'mp4' : 'mp4');
+    final stem = '${outDir.path}/montage_$ts';
+    final out = '$stem.$ext';
     final total = p.total;
 
     final args = <String>['-y', '-hide_banner'];
@@ -108,12 +103,12 @@ class Exporter {
     for (var i = 0; i < p.clips.length; i++) {
       final c = p.clips[i];
       final eff = c.effective;
-      int vi = idx;
+      final vi = idx;
       String aSrc;
       if (c.isVideo) {
         args.addAll(['-ss', _f(c.start), '-t', _f(c.end - c.start), '-i', c.path]);
         idx++;
-        final has = await _hasAudio(c.path);
+        final has = await runner.hasAudio(c.path);
         if (has) {
           aSrc = '$vi:a';
         } else {
@@ -128,16 +123,23 @@ class Exporter {
         aSrc = '$idx:a';
         idx++;
       }
-      final vf = filterById(c.filter).vf;
+      final vf = clipVf(c);
       final sp = c.isVideo && (c.speed - 1.0).abs() > 0.001 ? '(PTS-STARTPTS)/${_f(c.speed)}' : 'PTS-STARTPTS';
-      fc.write('[$vi:v]scale=$W:$H:force_original_aspect_ratio=increase,crop=$W:$H,setsar=1,fps=$fps,format=yuv420p${vf != null ? ',$vf' : ''},setpts=$sp[v$i];');
+      final tail = 'setsar=1,fps=$fps,format=yuv420p${vf != null ? ',$vf' : ''},setpts=$sp[v$i];';
+      if (p.fitBlur) {
+        fc.write('[$vi:v]split[s${i}a][s${i}b];'
+            '[s${i}a]scale=$W:$H:force_original_aspect_ratio=increase,crop=$W:$H,boxblur=24:3[bg$i];'
+            '[s${i}b]scale=$W:$H:force_original_aspect_ratio=decrease[fg$i];'
+            '[bg$i][fg$i]overlay=(W-w)/2:(H-h)/2,$tail');
+      } else {
+        fc.write('[$vi:v]scale=$W:$H:force_original_aspect_ratio=increase,crop=$W:$H,$tail');
+      }
       final tempo = c.isVideo ? _atempo(c.speed) : '';
       fc.write('[$aSrc]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,${tempo}volume=${_f(c.volume)},asetpts=PTS-STARTPTS[a$i];');
       vLab.add('v$i');
       aLab.add('a$i');
     }
 
-    // ربط المقاطع (انتقالات الفيديو + دمج الصوت بنفس التوقيت)
     var curV = vLab[0];
     var curA = aLab[0];
     double acc = p.clips[0].effective;
@@ -152,9 +154,9 @@ class Exporter {
       acc = acc + p.clips[i].effective - td;
     }
 
-    // النصوص والملصقات (كصور PNG شفافة فوق الفيديو)
     var ovN = 0;
-    for (final o in p.overlays) {
+    for (final o0 in p.overlays) {
+      final o = photo ? (OverlayItem.fromJson(o0.toJson())..anim = 'none'..start = 0..end = total) : o0;
       final s = o.start.clamp(0.0, total).toDouble();
       var e = o.end.clamp(0.0, total).toDouble();
       if (e - s < 0.2) e = (s + 0.2).clamp(0.0, total + 0.2).toDouble();
@@ -189,7 +191,7 @@ class Exporter {
         args.addAll(['-loop', '1', '-framerate', '$fps', '-t', _f(e - s + 0.1), '-i', png]);
         final ii = idx++;
         final d = e - s;
-        String chain = 'format=rgba';
+        var chain = 'format=rgba';
         if (o.anim == 'fade') {
           final fd = d / 2 < 0.35 ? d / 2 : 0.35;
           chain += ',fade=t=in:st=0:d=${_f(fd)}:alpha=1,fade=t=out:st=${_f(d - fd)}:d=${_f(fd)}:alpha=1';
@@ -204,9 +206,8 @@ class Exporter {
       ovN++;
     }
 
-    // الموسيقى
     var aOut = curA;
-    if (p.musicPath != null && File(p.musicPath!).existsSync()) {
+    if (!photo && p.musicPath != null && File(p.musicPath!).existsSync()) {
       args.addAll(['-stream_loop', '-1', '-i', p.musicPath!]);
       final mi = idx++;
       fc.write('[$mi:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${_f(p.musicVolume)},atrim=0:${_f(total + 0.5)},asetpts=PTS-STARTPTS[mus];');
@@ -214,62 +215,69 @@ class Exporter {
       aOut = 'amixed';
     }
 
-    String graph = fc.toString();
+    var graph = fc.toString();
     if (graph.endsWith(';')) graph = graph.substring(0, graph.length - 1);
-    // تسمية الخرج النهائي
-    final vOut = curV;
+    if (photo) graph = '$graph;[$aOut]anullsink';
 
     Future<ExportResult> attempt(List<String> codec) async {
-      final full = <String>[
-        ...args,
-        '-filter_complex', graph,
-        '-map', '[$vOut]', '-map', '[$aOut]',
-        ...codec,
-        '-pix_fmt', 'yuv420p', '-r', '$fps',
-        '-c:a', 'aac', '-b:a', '160k',
-        '-movflags', '+faststart',
-        '-t', _f(total),
-        out,
-      ];
-      // إذا كان آخر تسمية من الفلتر هي خرجنا نمرّرها كما هي
-      final completer = Completer<ExportResult>();
+      final List<String> full;
+      if (photo) {
+        full = [...args, '-filter_complex', graph, '-map', '[$curV]', '-frames:v', '1', '-q:v', '2', out];
+      } else {
+        full = [
+          ...args,
+          '-filter_complex', graph,
+          '-map', '[$curV]', '-map', '[$aOut]',
+          ...codec,
+          '-pix_fmt', 'yuv420p', '-r', '$fps',
+          '-c:a', 'aac', '-b:a', '160k',
+          '-movflags', '+faststart',
+          '-t', _f(total),
+          out,
+        ];
+      }
       final log = StringBuffer();
-      await FFmpegKit.executeWithArgumentsAsync(full, (session) async {
-        final rc = await session.getReturnCode();
-        if (ReturnCode.isSuccess(rc)) {
-          completer.complete(ExportResult.ok(out));
-        } else {
-          final tail = log.toString();
-          completer.complete(ExportResult.fail(tail.length > 600 ? tail.substring(tail.length - 600) : tail));
-        }
-      }, (l) {
-        log.writeln(l.getMessage());
-        onLog?.call(l.getMessage());
-      }, (st) {
-        if (total > 0) onProgress(((st.getTime() / 1000.0) / total).clamp(0.0, 0.99));
+      final ok = await runner.run(full, onTime: (sec) {
+        if (total > 0) onProgress((sec / total).clamp(0.0, 0.97) * (opt.gif ? 0.8 : 1.0));
+      }, onLog: (l) {
+        log.writeln(l);
+        onLog?.call(l);
       });
-      return completer.future;
+      if (ok) return ExportResult.ok(out);
+      final tail = log.toString();
+      return ExportResult.fail(tail.length > 700 ? tail.substring(tail.length - 700) : tail);
     }
 
-    var res = await attempt(['-c:v', 'libx264', '-preset', 'veryfast', '-crf', quality >= 1080 ? '21' : '23']);
+    final crf = opt.quality == 0 ? '28' : (opt.quality == 1 ? '23' : '18');
+    var res = await attempt(['-c:v', 'libx264', '-preset', 'veryfast', '-crf', crf]);
     if (res.path == null && (res.error ?? '').contains('libx264')) {
-      res = await attempt(['-c:v', 'h264_mediacodec', '-b:v', quality >= 1080 ? '10M' : '5M']);
+      final mbps = (opt.res >= 1080 ? 10 : 5) * (opt.quality == 0 ? 0.6 : (opt.quality == 1 ? 1 : 1.6));
+      res = await attempt(['-c:v', 'h264_mediacodec', '-b:v', '${mbps.round()}M']);
     }
     try {
       tmp.deleteSync(recursive: true);
     } catch (_) {}
+
+    if (res.path != null && opt.gif && !photo) {
+      final gifOut = '$stem.gif';
+      final ok = await runner.run(['-y', '-hide_banner', '-i', res.path!, '-filter_complex', 'fps=15,scale=480:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse', gifOut], onLog: onLog);
+      try {
+        File(res.path!).deleteSync();
+      } catch (_) {}
+      res = ok ? ExportResult.ok(gifOut) : ExportResult.fail('تعذر إنشاء GIF');
+    }
     if (res.path != null) onProgress(1.0);
     return res;
   }
 
-  static Future<String?> thumb(String videoOrImage, {double at = 0.3, bool isVideo = true}) async {
-    final out = '${Store.cacheDir.path}/th_${videoOrImage.hashCode}_${at.toStringAsFixed(1)}.jpg';
+  /// صورة مصغّرة بالمحرك الحالي
+  static Future<String?> thumb(String src, {double at = 0.3, bool isVideo = true}) async {
+    final out = '${tempDir.path}/th_${src.hashCode}_${at.toStringAsFixed(1)}.jpg';
     if (File(out).existsSync()) return out;
     final a = <String>['-y'];
     if (isVideo) a.addAll(['-ss', _f(at)]);
-    a.addAll(['-i', videoOrImage, '-frames:v', '1', '-vf', 'scale=260:-2', '-q:v', '5', out]);
-    final s = await FFmpegKit.executeWithArguments(a);
-    final rc = await s.getReturnCode();
-    return ReturnCode.isSuccess(rc) && File(out).existsSync() ? out : null;
+    a.addAll(['-i', src, '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '5', out]);
+    final ok = await runner.run(a);
+    return ok && File(out).existsSync() ? out : null;
   }
 }

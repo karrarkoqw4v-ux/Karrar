@@ -16,23 +16,28 @@ class Store {
   static late SharedPreferences sp;
   static late Directory docs;
   static late Directory projDir;
+  static late Directory trashDir;
   static late Directory exportDir;
   static late Directory cacheDir;
 
-  static Future<void> init() async {
+  static Future<void> init({Directory? docsOverride, Directory? cacheOverride}) async {
     sp = await SharedPreferences.getInstance();
-    docs = await getApplicationDocumentsDirectory();
+    docs = docsOverride ?? await getApplicationDocumentsDirectory();
     projDir = Directory('${docs.path}/projects')..createSync(recursive: true);
+    trashDir = Directory('${docs.path}/trash')..createSync(recursive: true);
     exportDir = Directory('${docs.path}/exports')..createSync(recursive: true);
-    cacheDir = Directory('${(await getTemporaryDirectory()).path}/montage')..createSync(recursive: true);
+    cacheDir = cacheOverride ?? Directory('${(await getTemporaryDirectory()).path}/montage');
+    cacheDir.createSync(recursive: true);
   }
 
   // ---- onboarding / auth
   static bool get onboarded => sp.getBool('onboarded') ?? false;
   static Future<void> setOnboarded() => sp.setBool('onboarded', true);
 
-  static String _hash(String s) => sha256.convert(utf8.encode('montage-murtaah:$s')).toString();
+  static String _hash(String s) => sha256.convert(utf8.encode('montagi:$s')).toString();
   static Map<String, dynamic> get _users => jsonDecode(sp.getString('users') ?? '{}') as Map<String, dynamic>;
+  static final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static bool validEmail(String e) => _emailRe.hasMatch(e.trim());
 
   static UserInfo? get user {
     final e = sp.getString('cur_email');
@@ -45,7 +50,7 @@ class Store {
 
   static Future<String?> register(String name, String email, String pass) async {
     final e = email.trim().toLowerCase();
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e)) return 'البريد غير صحيح';
+    if (!validEmail(e)) return 'البريد غير صحيح';
     if (pass.length < 6) return 'كلمة السر 6 أحرف على الأقل';
     final u = _users;
     if (u.containsKey(e)) return 'هذا البريد مسجّل مسبقاً';
@@ -64,22 +69,48 @@ class Store {
     return null;
   }
 
+  /// إعادة تعيين محلية (الحسابات على هذا الجهاز فقط ولا يوجد خادم لإرسال رمز)
+  static Future<String?> resetPassword(String email, String newPass) async {
+    final e = email.trim().toLowerCase();
+    final u = _users;
+    if (!u.containsKey(e)) return 'لا يوجد حساب بهذا البريد على هذا الجهاز';
+    if (newPass.length < 6) return 'كلمة السر 6 أحرف على الأقل';
+    u[e]['pass'] = _hash(newPass);
+    await sp.setString('users', jsonEncode(u));
+    return null;
+  }
+
   static Future<void> guest() => sp.setString('cur_email', 'guest');
   static Future<void> logout() => sp.remove('cur_email');
 
-  // ---- settings
-  static int get quality => sp.getInt('quality') ?? 1080;
-  static Future<void> setQuality(int q) => sp.setInt('quality', q);
+  // ---- إعدادات التصدير الافتراضية
+  static ExportOptions get exportOptions => ExportOptions(res: sp.getInt('x_res') ?? 1080, fps: sp.getInt('x_fps') ?? 30, quality: sp.getInt('x_q') ?? 1);
+  static Future<void> saveExportOptions(ExportOptions o) async {
+    await sp.setInt('x_res', o.res);
+    await sp.setInt('x_fps', o.fps);
+    await sp.setInt('x_q', o.quality);
+  }
 
-  // ---- projects
+  // ---- المشاريع
+  static String nextName() {
+    final now = DateTime.now();
+    final key = '${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    var n = 1;
+    final names = {...projects().map((p) => p.name), ...trashed().map((p) => p.name)};
+    while (names.contains('$key-${n.toString().padLeft(2, '0')}')) {
+      n++;
+    }
+    return '$key-${n.toString().padLeft(2, '0')}';
+  }
+
   static Future<void> saveProject(Project p) async {
     p.updatedAt = DateTime.now();
     await File('${projDir.path}/${p.id}.json').writeAsString(p.encode());
   }
 
-  static List<Project> projects() {
+  static List<Project> _read(Directory d) {
     final out = <Project>[];
-    for (final f in projDir.listSync().whereType<File>()) {
+    for (final f in d.listSync().whereType<File>()) {
       if (!f.path.endsWith('.json')) continue;
       try {
         out.add(Project.fromJson(jsonDecode(f.readAsStringSync()) as Map<String, dynamic>));
@@ -89,12 +120,35 @@ class Store {
     return out;
   }
 
-  static Future<void> deleteProject(String id) async {
+  static List<Project> projects() => _read(projDir);
+  static List<Project> trashed() => _read(trashDir);
+
+  static Future<void> trashProject(String id) async {
     final f = File('${projDir.path}/$id.json');
+    if (await f.exists()) await f.rename('${trashDir.path}/$id.json');
+  }
+
+  static Future<void> restoreProject(String id) async {
+    final f = File('${trashDir.path}/$id.json');
+    if (await f.exists()) await f.rename('${projDir.path}/$id.json');
+  }
+
+  static Future<void> deleteForever(String id) async {
+    final f = File('${trashDir.path}/$id.json');
     if (await f.exists()) await f.delete();
   }
 
-  // ---- exports
+  static int projectSize(Project p) {
+    var s = 0;
+    for (final c in p.clips) {
+      try {
+        s += File(c.path).lengthSync();
+      } catch (_) {}
+    }
+    return s;
+  }
+
+  // ---- المُصدَّرات
   static List<ExportRec> exports() {
     final l = (jsonDecode(sp.getString('exports') ?? '[]') as List).map((e) => ExportRec.fromJson(Map<String, dynamic>.from(e))).toList();
     l.removeWhere((e) => !File(e.path).existsSync());

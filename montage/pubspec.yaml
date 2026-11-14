@@ -1,5 +1,5 @@
 name: montage_murtaah
-description: مونتاج مرتاح - تطبيق مونتاج فيديو وصور مجاني بدون علامة مائية
+description: مونتاجي - تطبيق مونتاج فيديو وصور مجاني بدون علامة مائية
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -19,6 +19,7 @@ dependencies:
   shared_preferences: ^2.2.0
   crypto: ^3.0.3
   gal: ^2.3.0
+  photo_manager: ^3.6.0
   ffmpeg_kit_flutter_new: ^4.6.8
 
 dev_dependencies:
@@ -40,3 +41,220 @@ flutter:
           weight: 700
         - asset: assets/fonts/tajawal_extrabold.ttf
           weight: 800
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/ttf/Cairo-r.ttf
+        - asset: assets/fonts/ttf/Cairo-b.ttf
+          weight: 700
+    - family: Almarai
+      fonts:
+        - asset: assets/fonts/ttf/Almarai-r.ttf
+        - asset: assets/fonts/ttf/Almarai-b.ttf
+          weight: 700
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/ttf/Amiri-r.ttf
+        - asset: assets/fonts/ttf/Amiri-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Amiri-i.ttf
+          style: italic
+    - family: NotoNaskhArabic
+      fonts:
+        - asset: assets/fonts/ttf/NotoNaskhArabic-r.ttf
+        - asset: assets/fonts/ttf/NotoNaskhArabic-b.ttf
+          weight: 700
+    - family: NotoKufiArabic
+      fonts:
+        - asset: assets/fonts/ttf/NotoKufiArabic-r.ttf
+        - asset: assets/fonts/ttf/NotoKufiArabic-b.ttf
+          weight: 700
+    - family: ReemKufi
+      fonts:
+        - asset: assets/fonts/ttf/ReemKufi-r.ttf
+        - asset: assets/fonts/ttf/ReemKufi-b.ttf
+          weight: 700
+    - family: ElMessiri
+      fonts:
+        - asset: assets/fonts/ttf/ElMessiri-r.ttf
+        - asset: assets/fonts/ttf/ElMessiri-b.ttf
+          weight: 700
+    - family: Changa
+      fonts:
+        - asset: assets/fonts/ttf/Changa-r.ttf
+        - asset: assets/fonts/ttf/Changa-b.ttf
+          weight: 700
+    - family: Lalezar
+      fonts:
+        - asset: assets/fonts/ttf/Lalezar-r.ttf
+    - family: Mada
+      fonts:
+        - asset: assets/fonts/ttf/Mada-r.ttf
+        - asset: assets/fonts/ttf/Mada-b.ttf
+          weight: 700
+    - family: ArefRuqaa
+      fonts:
+        - asset: assets/fonts/ttf/ArefRuqaa-r.ttf
+        - asset: assets/fonts/ttf/ArefRuqaa-b.ttf
+          weight: 700
+    - family: Harmattan
+      fonts:
+        - asset: assets/fonts/ttf/Harmattan-r.ttf
+        - asset: assets/fonts/ttf/Harmattan-b.ttf
+          weight: 700
+    - family: ScheherazadeNew
+      fonts:
+        - asset: assets/fonts/ttf/ScheherazadeNew-r.ttf
+        - asset: assets/fonts/ttf/ScheherazadeNew-b.ttf
+          weight: 700
+    - family: Lemonada
+      fonts:
+        - asset: assets/fonts/ttf/Lemonada-r.ttf
+        - asset: assets/fonts/ttf/Lemonada-b.ttf
+          weight: 700
+    - family: MarkaziText
+      fonts:
+        - asset: assets/fonts/ttf/MarkaziText-r.ttf
+        - asset: assets/fonts/ttf/MarkaziText-b.ttf
+          weight: 700
+    - family: Rakkas
+      fonts:
+        - asset: assets/fonts/ttf/Rakkas-r.ttf
+    - family: Katibeh
+      fonts:
+        - asset: assets/fonts/ttf/Katibeh-r.ttf
+    - family: Jomhuria
+      fonts:
+        - asset: assets/fonts/ttf/Jomhuria-r.ttf
+    - family: BalooBhaijaan2
+      fonts:
+        - asset: assets/fonts/ttf/BalooBhaijaan2-r.ttf
+        - asset: assets/fonts/ttf/BalooBhaijaan2-b.ttf
+          weight: 700
+    - family: Mirza
+      fonts:
+        - asset: assets/fonts/ttf/Mirza-r.ttf
+        - asset: assets/fonts/ttf/Mirza-b.ttf
+          weight: 700
+    - family: Lateef
+      fonts:
+        - asset: assets/fonts/ttf/Lateef-r.ttf
+        - asset: assets/fonts/ttf/Lateef-b.ttf
+          weight: 700
+    - family: Blaka
+      fonts:
+        - asset: assets/fonts/ttf/Blaka-r.ttf
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/ttf/IBMPlexSansArabic-r.ttf
+        - asset: assets/fonts/ttf/IBMPlexSansArabic-b.ttf
+          weight: 700
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/ttf/Vazirmatn-r.ttf
+        - asset: assets/fonts/ttf/Vazirmatn-b.ttf
+          weight: 700
+    - family: ReadexPro
+      fonts:
+        - asset: assets/fonts/ttf/ReadexPro-r.ttf
+        - asset: assets/fonts/ttf/ReadexPro-b.ttf
+          weight: 700
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/ttf/Inter-r.ttf
+        - asset: assets/fonts/ttf/Inter-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Inter-i.ttf
+          style: italic
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/ttf/Poppins-r.ttf
+        - asset: assets/fonts/ttf/Poppins-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Poppins-i.ttf
+          style: italic
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/ttf/Montserrat-r.ttf
+        - asset: assets/fonts/ttf/Montserrat-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Montserrat-i.ttf
+          style: italic
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/ttf/PlayfairDisplay-r.ttf
+        - asset: assets/fonts/ttf/PlayfairDisplay-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/PlayfairDisplay-i.ttf
+          style: italic
+    - family: Lobster
+      fonts:
+        - asset: assets/fonts/ttf/Lobster-r.ttf
+    - family: Pacifico
+      fonts:
+        - asset: assets/fonts/ttf/Pacifico-r.ttf
+    - family: BebasNeue
+      fonts:
+        - asset: assets/fonts/ttf/BebasNeue-r.ttf
+    - family: Oswald
+      fonts:
+        - asset: assets/fonts/ttf/Oswald-r.ttf
+        - asset: assets/fonts/ttf/Oswald-b.ttf
+          weight: 700
+    - family: DancingScript
+      fonts:
+        - asset: assets/fonts/ttf/DancingScript-r.ttf
+        - asset: assets/fonts/ttf/DancingScript-b.ttf
+          weight: 700
+    - family: Anton
+      fonts:
+        - asset: assets/fonts/ttf/Anton-r.ttf
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/ttf/Caveat-r.ttf
+        - asset: assets/fonts/ttf/Caveat-b.ttf
+          weight: 700
+    - family: PermanentMarker
+      fonts:
+        - asset: assets/fonts/ttf/PermanentMarker-r.ttf
+    - family: RobotoMono
+      fonts:
+        - asset: assets/fonts/ttf/RobotoMono-r.ttf
+        - asset: assets/fonts/ttf/RobotoMono-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/RobotoMono-i.ttf
+          style: italic
+    - family: AbrilFatface
+      fonts:
+        - asset: assets/fonts/ttf/AbrilFatface-r.ttf
+    - family: Righteous
+      fonts:
+        - asset: assets/fonts/ttf/Righteous-r.ttf
+    - family: Satisfy
+      fonts:
+        - asset: assets/fonts/ttf/Satisfy-r.ttf
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/ttf/Orbitron-r.ttf
+        - asset: assets/fonts/ttf/Orbitron-b.ttf
+          weight: 700
+    - family: Raleway
+      fonts:
+        - asset: assets/fonts/ttf/Raleway-r.ttf
+        - asset: assets/fonts/ttf/Raleway-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Raleway-i.ttf
+          style: italic
+    - family: Merriweather
+      fonts:
+        - asset: assets/fonts/ttf/Merriweather-r.ttf
+        - asset: assets/fonts/ttf/Merriweather-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Merriweather-i.ttf
+          style: italic
+    - family: Lato
+      fonts:
+        - asset: assets/fonts/ttf/Lato-r.ttf
+        - asset: assets/fonts/ttf/Lato-b.ttf
+          weight: 700
+        - asset: assets/fonts/ttf/Lato-i.ttf
+          style: italic

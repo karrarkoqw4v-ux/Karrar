@@ -1,56 +1,60 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import 'account_tab.dart';
-import 'drafts_tab.dart';
 import 'home_tab.dart';
+import 'library_tab.dart';
+import 'profile_tab.dart';
 import 'templates_tab.dart';
 
 class Shell extends StatefulWidget {
-  const Shell({super.key});
+  final int initial;
+  const Shell({super.key, this.initial = 0});
   @override
   State<Shell> createState() => _ShellState();
 }
 
 class _ShellState extends State<Shell> {
-  int _i = 0;
-  int _rev = 0; // لإعادة تحميل القوائم بعد الرجوع من المحرر
+  late int _i = widget.initial;
+  int _rev = 0;
   void refresh() => setState(() => _rev++);
+  void goTab(int i) => setState(() => _i = i);
 
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      HomeTab(key: ValueKey('h$_rev'), onChanged: refresh, goDrafts: () => setState(() => _i = 2)),
-      TemplatesTab(key: ValueKey('t$_rev'), onChanged: refresh),
-      DraftsTab(key: ValueKey('d$_rev'), onChanged: refresh),
-      AccountTab(key: ValueKey('a$_rev'), onChanged: refresh),
+      HomeTab(key: ValueKey('h$_rev'), onChanged: refresh, goLibrary: () => goTab(2)),
+      TemplatesTab(key: const ValueKey('t'), onChanged: refresh),
+      LibraryTab(key: ValueKey('l$_rev'), onChanged: refresh),
+      ProfileTab(key: ValueKey('p$_rev'), onChanged: refresh),
     ];
     const items = [
-      (Icons.movie_edit, 'المونتاج'),
-      (Icons.dashboard_customize_rounded, 'القوالب'),
-      (Icons.folder_special_rounded, 'المحفوظات'),
-      (Icons.person_rounded, 'الحساب'),
+      (Icons.content_cut_outlined, Icons.content_cut_rounded, 'تعديل'),
+      (Icons.view_carousel_outlined, Icons.view_carousel_rounded, 'القوالب'),
+      (Icons.folder_outlined, Icons.folder_rounded, 'مكتبة'),
+      (Icons.person_outline_rounded, Icons.person_rounded, 'أنا'),
     ];
     return Scaffold(
       body: IndexedStack(index: _i, children: tabs),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(color: C.surface, border: Border(top: BorderSide(color: C.line))),
+        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFEDEEF1)))),
         child: SafeArea(
+          top: false,
           child: SizedBox(
-            height: 66,
+            height: 68,
             child: Row(children: [
               for (var k = 0; k < items.length; k++)
                 Expanded(
-                  child: InkWell(
+                  child: Tap(
+                    scale: 0.82,
                     onTap: () => setState(() => _i = k),
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-                        decoration: BoxDecoration(gradient: _i == k ? C.grad : null, borderRadius: BorderRadius.circular(14)),
-                        child: Icon(items[k].$1, color: _i == k ? Colors.white : C.sub, size: 24),
+                      AnimatedScale(
+                        scale: _i == k ? 1.12 : 1.0,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.elasticOut,
+                        child: Icon(_i == k ? items[k].$2 : items[k].$1, size: 31, color: _i == k ? K.ink : const Color(0xFF9AA0AA)),
                       ),
                       const SizedBox(height: 3),
-                      Text(items[k].$2, style: TextStyle(fontSize: 11, fontWeight: _i == k ? FontWeight.w800 : FontWeight.w500, color: _i == k ? C.text : C.sub)),
+                      Text(items[k].$3, style: tx(12, w: _i == k ? FontWeight.w800 : FontWeight.w700, color: _i == k ? K.ink : const Color(0xFF9AA0AA))),
                     ]),
                   ),
                 ),

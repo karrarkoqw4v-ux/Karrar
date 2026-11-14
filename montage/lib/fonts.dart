@@ -1,0 +1,56 @@
+class FontInfo {
+  final String family;
+  final String label;
+  final bool arabic;
+  final bool hasItalic;
+  const FontInfo(this.family, this.label, this.arabic, this.hasItalic);
+}
+
+const List<FontInfo> kFonts = [
+  FontInfo('Tajawal', 'تجوال', true, false),
+  FontInfo('Cairo', 'القاهرة', true, false),
+  FontInfo('Almarai', 'المراعي', true, false),
+  FontInfo('Amiri', 'أميري', true, true),
+  FontInfo('NotoNaskhArabic', 'نسخ', true, false),
+  FontInfo('NotoKufiArabic', 'كوفي', true, false),
+  FontInfo('ReemKufi', 'ريم كوفي', true, false),
+  FontInfo('ElMessiri', 'المسيري', true, false),
+  FontInfo('Changa', 'تشانغا', true, false),
+  FontInfo('Lalezar', 'لالزار', true, false),
+  FontInfo('Mada', 'مدى', true, false),
+  FontInfo('ArefRuqaa', 'عارف رقعة', true, false),
+  FontInfo('Harmattan', 'هرمتان', true, false),
+  FontInfo('ScheherazadeNew', 'شهرزاد', true, false),
+  FontInfo('Lemonada', 'ليمونادا', true, false),
+  FontInfo('MarkaziText', 'مركزي', true, false),
+  FontInfo('Rakkas', 'رقاص', true, false),
+  FontInfo('Katibeh', 'كاتبة', true, false),
+  FontInfo('Jomhuria', 'جمهورية', true, false),
+  FontInfo('BalooBhaijaan2', 'بالو', true, false),
+  FontInfo('Mirza', 'ميرزا', true, false),
+  FontInfo('Lateef', 'لطيف', true, false),
+  FontInfo('Blaka', 'بلاكا', true, false),
+  FontInfo('IBMPlexSansArabic', 'بليكس', true, false),
+  FontInfo('Vazirmatn', 'وزير', true, false),
+  FontInfo('ReadexPro', 'ريديكس', true, false),
+  FontInfo('Inter', 'Inter', false, true),
+  FontInfo('Poppins', 'Poppins', false, true),
+  FontInfo('Montserrat', 'Montserrat', false, true),
+  FontInfo('PlayfairDisplay', 'Playfair Display', false, true),
+  FontInfo('Lobster', 'Lobster', false, false),
+  FontInfo('Pacifico', 'Pacifico', false, false),
+  FontInfo('BebasNeue', 'Bebas Neue', false, false),
+  FontInfo('Oswald', 'Oswald', false, false),
+  FontInfo('DancingScript', 'Dancing Script', false, false),
+  FontInfo('Anton', 'Anton', false, false),
+  FontInfo('Caveat', 'Caveat', false, false),
+  FontInfo('PermanentMarker', 'Permanent Marker', false, false),
+  FontInfo('RobotoMono', 'Roboto Mono', false, true),
+  FontInfo('AbrilFatface', 'Abril Fatface', false, false),
+  FontInfo('Righteous', 'Righteous', false, false),
+  FontInfo('Satisfy', 'Satisfy', false, false),
+  FontInfo('Orbitron', 'Orbitron', false, false),
+  FontInfo('Raleway', 'Raleway', false, true),
+  FontInfo('Merriweather', 'Merriweather', false, true),
+  FontInfo('Lato', 'Lato', false, true),
+];

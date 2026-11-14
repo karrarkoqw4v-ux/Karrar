@@ -79,3 +79,30 @@ TransitionDef transitionById(String id) => kTransitions.firstWhere((t) => t.id =
 
 String filterNameOf(String id) => filterById(id).name;
 String transitionNameOf(String id) => transitionById(id).name;
+
+// ===== ضبط المقطع (سطوع / تباين / تشبع) =====
+List<double> _identity() => const [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0];
+
+/// مصفوفة المعاينة: الفلتر ثم الضبط
+List<double>? clipMatrix(dynamic c) {
+  final f = filterById(c.filter as String).matrix;
+  final b = c.adjB as double, ct = c.adjC as double, s = c.adjS as double;
+  if (f == null && b == 0 && ct == 1 && s == 1) return null;
+  var m = f ?? _identity();
+  if (s != 1) m = _mul(_sat(s), m);
+  if (ct != 1) m = _mul(_con(ct), m);
+  if (b != 0) m = _mul(_lin(1, 1, 1, b * 0.5), m);
+  return m;
+}
+
+/// تعبير FFmpeg للفلتر + الضبط
+String? clipVf(dynamic c) {
+  final parts = <String>[];
+  final f = filterById(c.filter as String).vf;
+  if (f != null) parts.add(f);
+  final b = c.adjB as double, ct = c.adjC as double, s = c.adjS as double;
+  if (b != 0 || ct != 1 || s != 1) {
+    parts.add('eq=brightness=${(b * 0.5).toStringAsFixed(3)}:contrast=${ct.toStringAsFixed(3)}:saturation=${s.toStringAsFixed(3)}');
+  }
+  return parts.isEmpty ? null : parts.join(',');
+}
