@@ -471,7 +471,7 @@ final List<JobDef> kNewTools = [
   }, opts: [_palOpt(), _durOpt]),
   _t('bg_grad', sBg, 'إضافة خلفية متدرجة', In.both, (c) async {
     final pal = c.o('pal').split(',');
-    return Spec(fc: 'gradients=s=${c.w}x${c.h}:r=30:d=${_tf(c.dur)}:speed=0:nb_colors=2:c0=${pal[0]}:c1=${pal[1]}[bg];[0:v]scale=trunc(${c.w}*0.84/2)*2:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2:shortest=1[v]');
+    return Spec(fc: 'gradients=s=${c.w}x${c.h}:r=30:d=${_tf(c.dur)}:speed=0.00001:nb_colors=2:c0=${pal[0]}:c1=${pal[1]}[bg];[0:v]scale=trunc(${c.w}*0.84/2)*2:-2[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2:shortest=1[v]');
   }, opts: [_palOpt()]),
   _t('bg_pat', sBg, 'إضافة خلفية بنمط (خطوط، نقاط)', In.both, (c) async {
     final l = await c.layer(c.o('pat'), c1: _hex(c.o('c1')), c2: _hex(c.o('c2')));
