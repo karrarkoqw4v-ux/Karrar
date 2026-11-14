@@ -101,3 +101,36 @@ jobs:
           git add -f android-native/shots-out
           git commit -m "Native screenshots" || echo none
           git pull --rebase -X theirs origin ${{ github.ref_name }} && git push
+
+  shots-jvm:
+    runs-on: ubuntu-latest
+    needs: apk
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ github.ref_name }}' }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.10.2' }
+      - name: Render real screens on the JVM (Robolectric)
+        working-directory: android-native
+        timeout-minutes: 25
+        continue-on-error: true
+        run: gradle --no-daemon testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+      - name: Collect
+        if: always()
+        run: |
+          mkdir -p shots-jvm-out
+          cp android-native/app/build/shots-jvm/*.png shots-jvm-out/ || true
+          cp -r android-native/app/build/reports/tests shots-jvm-out/test-report || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: turbo-shots-jvm, path: shots-jvm-out }
+      - name: Commit screenshots
+        if: always()
+        run: |
+          git config user.name "github-actions"; git config user.email "actions@users.noreply.github.com"
+          mkdir -p android-native/shots-jvm && cp shots-jvm-out/*.png android-native/shots-jvm/ || true
+          git add -f android-native/shots-jvm
+          git commit -m "JVM screenshots" || echo none
+          git pull --rebase -X theirs origin ${{ github.ref_name }} && git push
