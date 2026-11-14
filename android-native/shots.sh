@@ -3,9 +3,13 @@ timeout 120 adb install -r $APK
 timeout 20 adb shell pm grant com.turbo.rashq android.permission.POST_NOTIFICATIONS || true
 mkdir -p shots-out
 timeout 20 adb logcat -c || true
+timeout 20 adb shell svc power stayon true || true
+timeout 20 adb shell input keyevent KEYCODE_WAKEUP || true
+timeout 20 adb shell wm dismiss-keyguard || true
 shot() {
   timeout 20 adb shell am force-stop com.turbo.rashq
   timeout 20 adb shell am start -n com.turbo.rashq/.MainActivity --es shot_login "$2" --es shot_route "$1"
+  timeout 20 adb shell input keyevent KEYCODE_WAKEUP
   sleep 12
   timeout 40 adb exec-out screencap -p > "shots-out/$3.png"
   # diagnostics after every shot
