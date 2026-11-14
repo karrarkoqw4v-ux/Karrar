@@ -64,7 +64,7 @@ fun AuthScreen() {
     Page("Turbo Rashq", onBack = if (mode == "choose") null else ({ mode = "choose"; err = "" })) {
         Spacer(Modifier.height(8.dp))
         Box(Modifier.align(Alignment.CenterHorizontally).size(96.dp).clip(RoundedCornerShape(28.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF2563EB), Color(0xFF06B6D4)))), contentAlignment = Alignment.Center) { PremiumEmoji("1f680", 56.dp) }
+            .background(Brush.linearGradient(listOf(Color(0xFF2563EB), Color(0xFF06B6D4)))), contentAlignment = Alignment.Center) { PremiumEmoji("5247134066322447995", 56.dp) }
         T("تيربو رشق", 26, FontWeight.ExtraBold, modifier = Modifier.align(Alignment.CenterHorizontally))
         T("خدمات الرشق وشحن الألعاب في مكان واحد", 13, color = C.sub, modifier = Modifier.align(Alignment.CenterHorizontally))
         when (mode) {
@@ -96,7 +96,7 @@ fun HomeScreen() {
     }) {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Color(0xFF2563EB), Color(0xFF0EA5E9)))).padding(16.dp)) {
             T("أهلاً ${u.name}", 14, color = Color.White.copy(alpha = .85f))
-            T("${u.balance} نقطة", 28, FontWeight.ExtraBold, Color.White)
+            T("${u.balance} نقطة", 24, FontWeight.ExtraBold, Color.White)
             T("ID: ${u.uid}  •  @${u.username}", 12, color = Color.White.copy(alpha = .8f))
         }
         ButtonRows("main") { doRoute(it) }

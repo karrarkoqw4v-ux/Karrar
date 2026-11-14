@@ -231,5 +231,13 @@ object Repo {
     fun emojiSave(id: String, path: String, kind: String, set: String) { w.execSQL("INSERT OR REPLACE INTO emoji(id,path,kind,setname) VALUES(?,?,?,?)", arrayOf(id, path, kind, set)) }
     fun emojiAll(): List<Triple<String, String, String>> = w.rawQuery("SELECT id,path,kind FROM emoji ORDER BY rowid DESC", null).use { c -> buildList { while (c.moveToNext()) add(Triple(c.getString(0), c.getString(1), c.getString(2))) } }
 
+    fun seedShots() {
+        if (allServices().isNotEmpty()) return
+        saveService(Service(0, "تيك توك", "متابعين تيك توك", 2500, "per1000", 100, false))
+        saveService(Service(0, "تيك توك", "لايكات تيك توك", 600, "per1000", 50, false))
+        saveService(Service(0, "شدات ببجي موبايل", "60 شدة", 1200, "fixed", 1, false))
+        saveService(Service(0, "شدات ببجي موبايل", "325 شدة", 6000, "fixed", 1, false))
+        val me = userByUsername("weswod"); if (me != null && me.balance == 0L) addBalance(me.uid, 32, "شاشة اختبار")
+    }
     fun dbFile() = ctx.getDatabasePath("turbo.db")
 }

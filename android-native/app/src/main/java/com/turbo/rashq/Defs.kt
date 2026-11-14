@@ -67,6 +67,27 @@ object Defs {
         b("btn_acc_collect", "تجميع النقاط", "account", "success", "1f381", "menu:points"),
         b("btn_acc_transfer", "تحويل النقاط", "account", "primary", "1f504", "menu:transfer"),
     )
+
+    val tgid = mapOf(
+        "btn_rashq" to "5247134066322447995", "btn_games" to "5359617799515823946", "btn_tamweel" to "5845740017896394081",
+        "btn_recharge" to "5866369239740320716", "btn_points" to "6251394082661207378", "btn_orders" to "5935832686416366431",
+        "btn_track" to "5861877498517654958", "btn_account" to "4956418939920843885", "btn_transfer" to "5249053508681883137",
+        "btn_code" to "5310253176287414073", "btn_channels" to "4967518033061872209", "btn_terms" to "5028746137645876535",
+        "btn_channel" to "5249148968625002018", "btn_smart_support" to "6006107551198874621", "btn_stats" to "5028746137645876535",
+        "btn_plat_free" to "5330237710655306682", "btn_plat_tiktok" to "5319160079465857105", "btn_plat_instagram" to "5327982530702359565",
+        "btn_plat_facebook" to "5334681713316479679", "btn_plat_youtube" to "5323261730283863478", "btn_plat_kwai" to "5330237710655306682",
+        "btn_plat_telegram" to "5325726234057915652", "btn_plat_threads" to "5334998226636390258", "btn_plat_whatsapp" to "5334592721594105691",
+        "btn_plat_premium" to "5251386049585768540", "btn_plat_tg_inter" to "5301072507598550489",
+        "btn_game_pubg" to "5204252919565657978", "btn_game_stars" to "5438496463044752972", "btn_game_netflix" to "5377766321264014423",
+        "btn_game_ff" to "5474143948572223102", "btn_game_tg_num" to "5855092747270098407", "btn_game_premium" to "5877530150345641603",
+        "btn_game_verify" to "5251386049585768540", "btn_game_asiacell" to "5814330694427479992", "btn_game_ludo" to "5260277413572517653",
+        "btn_game_zain" to "5222334839256010001", "btn_game_ludo_gold" to "5199552030615558774",
+        "btn_subscribe" to "5197304993920616826", "btn_daily" to "5251227707026470504", "btn_wheel" to "5850323366476519158",
+        "btn_weekly" to "5472030678633684592", "btn_referral" to "5472091817493154825",
+        "btn_recharge_asiacell" to "5814330694427479992", "btn_recharge_stars" to "5251741539733890957", "btn_recharge_support" to "5237697567906617034",
+        "btn_transfer_username" to "5936017305585586269", "btn_transfer_id" to "5823706865732684874",
+        "btn_acc_orders" to "6037106207074815414", "btn_acc_recharge" to "5935832686416366431", "btn_acc_collect" to "5958768713720140845", "btn_acc_transfer" to "5346049641345461322",
+    )
     val byKey = all.associateBy { it.key }
     fun ofCat(c: String) = all.filter { it.cat == c }
 
@@ -97,7 +118,7 @@ object Defs {
 
     fun name(k: String): String { val d = byKey[k]!!; return Repo.get("bn_$k", d.name) }
     fun style(k: String): String { val d = byKey[k]!!; return Repo.get("bs_$k", d.style) }
-    fun emoji(k: String): String { val d = byKey[k]!!; return Repo.get("be_$k", d.emoji) }
+    fun emoji(k: String): String { val d = byKey[k]!!; return Repo.get("be_$k", tgid[k] ?: d.emoji) }
 
     /** op: up/down/left/right/join/split */
     fun move(c: String, key: String, op: String) {

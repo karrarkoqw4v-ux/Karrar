@@ -52,8 +52,9 @@ val Tajawal = FontFamily(Font(R.font.tajawal_regular, FontWeight.Normal), Font(R
     Font(R.font.tajawal_bold, FontWeight.Bold), Font(R.font.tajawal_extrabold, FontWeight.ExtraBold))
 
 lateinit var Img: ImageLoader
+object Bundled { val set: Set<String> by lazy { Repo.ctx.assets.list("tge")?.toSet() ?: emptySet() } }
 fun toast(m: String) = Toast.makeText(Repo.ctx, m, Toast.LENGTH_SHORT).show()
-fun buildLoader(c: android.content.Context) = ImageLoader.Builder(c).components { add(SvgDecoder.Factory()); add(GifDecoder.Factory()) }.build()
+fun buildLoader(c: android.content.Context) = ImageLoader.Builder(c).components { add(SvgDecoder.Factory()); if (android.os.Build.VERSION.SDK_INT >= 28) add(coil.decode.ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory()) }.build()
 
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
@@ -79,6 +80,11 @@ fun PremiumEmoji(spec: String, size: Dp = 26.dp) {
     }
     val row = remember(spec) { Repo.emojiPath(spec) }
     when {
+        "$spec.json" in Bundled.set -> {
+            val comp by rememberLottieComposition(LottieCompositionSpec.Asset("tge/$spec.json"))
+            LottieAnimation(comp, Modifier.size(size), iterations = LottieConstants.IterateForever)
+        }
+        "$spec.webp" in Bundled.set -> AsyncImage("file:///android_asset/tge/$spec.webp", null, modifier = Modifier.size(size), imageLoader = Img)
         row == null -> Box(Modifier.size(size))
         row.second == "tgs" -> {
             val json = remember(row.first) { runCatching { GZIPInputStream(File(row.first).inputStream()).readBytes().decodeToString() }.getOrDefault("{}") }
@@ -94,15 +100,16 @@ fun styleColors(s: String): Pair<Color, Color> = when (s) {
     else -> C.plain to C.plain2
 }
 
-/** Big Telegram-style inline button. Fixed height, never shifts. */
+/** Telegram-style inline button. Fixed height, compact text that always fits. */
 @Composable
 fun TgButton(text: String, style: String, emoji: String?, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val (a, b) = styleColors(style)
-    Box(modifier.height(58.dp).clip(RoundedCornerShape(16.dp)).background(Brush.verticalGradient(listOf(a, b))).clickable(onClick = onClick).padding(horizontal = 10.dp),
+    val fs = when { text.length <= 11 -> 13; text.length <= 17 -> 12; else -> 11 }
+    Box(modifier.height(48.dp).clip(RoundedCornerShape(12.dp)).background(Brush.verticalGradient(listOf(a, b))).clickable(onClick = onClick).padding(horizontal = 8.dp),
         contentAlignment = Alignment.Center) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            if (emoji != null) { PremiumEmoji(emoji, 24.dp); Spacer(Modifier.width(8.dp)) }
-            T(text, 14, FontWeight.Bold, Color.White, align = TextAlign.Center, maxLines = 2)
+            if (emoji != null) { PremiumEmoji(emoji, 22.dp); Spacer(Modifier.width(6.dp)) }
+            T(text, fs, FontWeight.Bold, Color.White, align = TextAlign.Center, maxLines = 2)
         }
     }
 }
@@ -126,7 +133,7 @@ fun ButtonRows(cat: String, onRoute: (String) -> Unit) {
 
 @Composable
 fun Page(title: String, onBack: (() -> Unit)? = Nav::back, scroll: Boolean = true, actions: @Composable RowScope.() -> Unit = {}, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().background(C.bg).statusBarsPadding().navigationBarsPadding().imePadding()) {
+    Column(Modifier.fillMaxSize().background(C.bg).statusBarsPadding().imePadding()) {
         Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = C.text) } else Spacer(Modifier.width(12.dp))
             T(title, 18, FontWeight.ExtraBold, modifier = Modifier.weight(1f), maxLines = 1)
