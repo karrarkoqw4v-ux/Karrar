@@ -23,7 +23,8 @@ const _pps = 56.0; // بكسل لكل ثانية في الخط الزمني
 class EditorPage extends StatefulWidget {
   final Project project;
   final Tool? initialTool;
-  const EditorPage({super.key, required this.project, this.initialTool});
+  final bool solo; // وضع الأداة الواحدة: تظهر أدوات هذه الأداة فقط
+  const EditorPage({super.key, required this.project, this.initialTool, this.solo = false});
   @override
   State<EditorPage> createState() => _EditorPageState();
 }
@@ -935,8 +936,32 @@ class _EditorPageState extends State<EditorPage> {
     return Container(width: double.infinity, padding: const EdgeInsets.fromLTRB(16, 10, 16, 6), decoration: const BoxDecoration(color: K.d1, border: Border(top: BorderSide(color: K.d2))), child: body);
   }
 
+  Set<String>? _soloLabels() {
+    if (!widget.solo) return null;
+    switch (widget.initialTool) {
+      case Tool.trim:
+        return {'قص', 'تقسيم', 'تكرار', 'حذف', 'تعديل'};
+      case Tool.speed:
+        return {'سرعة', 'تعديل'};
+      case Tool.filters:
+        return {'الفلاتر', 'ضبط'};
+      case Tool.transitions:
+        return {'الانتقالات'};
+      case Tool.text:
+        return {'النص'};
+      case Tool.stickers:
+        return {'ملصقات'};
+      case Tool.music:
+      case Tool.volume:
+        return {'الصوت'};
+      default:
+        return null;
+    }
+  }
+
   Widget _toolbar() {
-    Widget item(IconData i, String t, VoidCallback f, {bool on = false, Color? col}) => Tap(
+    final solo = _soloLabels();
+    Widget item(IconData i, String t, VoidCallback f, {bool on = false, Color? col}) => solo != null && !solo.contains(t) ? const SizedBox.shrink() : Tap(
           scale: 0.8,
           onTap: f,
           child: SizedBox(

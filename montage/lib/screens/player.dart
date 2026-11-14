@@ -14,7 +14,7 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   VideoPlayerController? _c;
   bool _ready = false;
-  bool get isImage => widget.path.endsWith('.jpg') || widget.path.endsWith('.png') || widget.path.endsWith('.gif');
+  bool get isImage => widget.path.endsWith('.jpg') || widget.path.endsWith('.png') || widget.path.endsWith('.gif') || widget.path.endsWith('.webp');
 
   @override
   void initState() {

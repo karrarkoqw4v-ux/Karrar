@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models.dart';
 import '../store.dart';
 import '../theme.dart';
+import 'custom_page.dart';
 import 'editor.dart';
 import 'picker.dart';
 
@@ -16,14 +17,13 @@ Future<void> startProject(BuildContext context, List<MClip> clips, {bool photo =
   final p = Project(id: '${DateTime.now().millisecondsSinceEpoch}', name: Store.nextName(), clips: clips, photoMode: photo);
   await Store.saveProject(p);
   if (!context.mounted) return;
-  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditorPage(project: p, initialTool: tool)));
+  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditorPage(project: p, initialTool: tool, solo: tool != null)));
   after?.call();
 }
 
 class HomeTab extends StatelessWidget {
   final VoidCallback onChanged;
-  final VoidCallback goLibrary;
-  const HomeTab({super.key, required this.onChanged, required this.goLibrary});
+  const HomeTab({super.key, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -41,16 +41,7 @@ class HomeTab extends StatelessWidget {
     ];
     return SafeArea(
       child: ListView(padding: EdgeInsets.zero, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
-          child: Row(children: [
-            Tap(onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SearchProjectsPage())), child: Container(width: 46, height: 46, decoration: const BoxDecoration(color: K.fill, shape: BoxShape.circle), child: const Icon(Icons.search_rounded, size: 27))),
-            const Spacer(),
-            const LogoWord(size: 26),
-            const SizedBox(width: 8),
-            const AppLogo(size: 36),
-          ]),
-        ),
+        const Padding(padding: EdgeInsets.fromLTRB(18, 14, 18, 6), child: Center(child: ColorWord('مونتاجي', size: 30))),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -67,8 +58,29 @@ class HomeTab extends StatelessWidget {
           ]),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 22, 18, 8),
-          child: Row(children: [Text('مشاريعك', style: tx(18, w: FontWeight.w800)), const Spacer(), Tap(onTap: goLibrary, child: Text('عرض الكل', style: tx(14, color: K.accentDark)))]),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+          child: Tap(
+            scale: 0.97,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CustomHub())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(color: K.ink, borderRadius: BorderRadius.circular(18)),
+              child: Row(children: [
+                const Icon(Icons.auto_awesome_mosaic_rounded, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('المونتاج المخصص', style: tx(16, color: Colors.white, w: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text('خلفيات • موسيقى • جودة 4K • ملصقات', style: tx(11, color: const Color(0xFFBFC4CC), w: FontWeight.w500)),
+                ])),
+                const Icon(Icons.chevron_left_rounded, color: Colors.white),
+              ]),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+          child: Row(children: [Text('مشاريعك', style: tx(16, w: FontWeight.w800)), const Spacer()]),
         ),
         SizedBox(
           height: 118,
@@ -111,9 +123,9 @@ class HomeTab extends StatelessWidget {
                     }
                   },
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(t.$1, size: 38, color: K.ink),
-                    const SizedBox(height: 10),
-                    Text(t.$2, style: tx(14), textAlign: TextAlign.center),
+                    Icon(t.$1, size: 30, color: K.ink),
+                    const SizedBox(height: 8),
+                    Text(t.$2, style: tx(13), textAlign: TextAlign.center),
                   ]),
                 ),
             ],
@@ -172,44 +184,6 @@ class _RecentThumb extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         Text(p.name, style: tx(12, color: K.sub)),
-      ]),
-    );
-  }
-}
-
-class SearchProjectsPage extends StatefulWidget {
-  const SearchProjectsPage({super.key});
-  @override
-  State<SearchProjectsPage> createState() => _SearchProjectsPageState();
-}
-
-class _SearchProjectsPageState extends State<SearchProjectsPage> {
-  String q = '';
-  @override
-  Widget build(BuildContext context) {
-    final list = Store.projects().where((p) => q.isEmpty || p.name.contains(q)).toList();
-    return Scaffold(
-      appBar: AppBar(title: Text('بحث في المشاريع', style: tx(18, w: FontWeight.w800))),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Container(
-            decoration: BoxDecoration(color: K.fill, borderRadius: BorderRadius.circular(14)),
-            child: TextField(autofocus: true, onChanged: (v) => setState(() => q = v), style: tx(16), decoration: InputDecoration(hintText: 'اكتب اسم المشروع', hintStyle: tx(16, w: FontWeight.w500, color: K.sub), prefixIcon: const Icon(Icons.search_rounded), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 14))),
-          ),
-        ),
-        Expanded(
-          child: list.isEmpty
-              ? Center(child: Text('لا نتائج', style: tx(15, color: K.sub)))
-              : ListView(children: [
-                  for (final p in list)
-                    ListTile(
-                      title: Text(p.name, style: tx(17, w: FontWeight.w800)),
-                      subtitle: Text('${fmtDur(p.total)} • ${p.clips.length} مقاطع', style: tx(13, color: K.sub)),
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditorPage(project: p))),
-                    ),
-                ]),
-        ),
       ]),
     );
   }

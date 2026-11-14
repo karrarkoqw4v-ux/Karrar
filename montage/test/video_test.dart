@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:montage_murtaah/media.dart';
 import 'package:montage_murtaah/screens/welcome.dart';
-import 'package:montage_murtaah/store.dart';
 import 'harness.dart';
 
 void main() {

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 import 'home_tab.dart';
-import 'library_tab.dart';
 import 'profile_tab.dart';
-import 'templates_tab.dart';
 
 class Shell extends StatefulWidget {
   final int initial;
@@ -21,15 +19,11 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      HomeTab(key: ValueKey('h$_rev'), onChanged: refresh, goLibrary: () => goTab(2)),
-      TemplatesTab(key: const ValueKey('t'), onChanged: refresh),
-      LibraryTab(key: ValueKey('l$_rev'), onChanged: refresh),
+      HomeTab(key: ValueKey('h$_rev'), onChanged: refresh),
       ProfileTab(key: ValueKey('p$_rev'), onChanged: refresh),
     ];
     const items = [
       (Icons.content_cut_outlined, Icons.content_cut_rounded, 'تعديل'),
-      (Icons.view_carousel_outlined, Icons.view_carousel_rounded, 'القوالب'),
-      (Icons.folder_outlined, Icons.folder_rounded, 'مكتبة'),
       (Icons.person_outline_rounded, Icons.person_rounded, 'أنا'),
     ];
     return Scaffold(

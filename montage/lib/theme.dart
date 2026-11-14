@@ -172,3 +172,16 @@ class PillButton extends StatelessWidget {
     );
   }
 }
+
+/// اسم بتدرّج أصفر ← أخضر ← أحمر
+class ColorWord extends StatelessWidget {
+  final String text;
+  final double size;
+  const ColorWord(this.text, {super.key, this.size = 30});
+  @override
+  Widget build(BuildContext context) => ShaderMask(
+        blendMode: BlendMode.srcIn,
+        shaderCallback: (r) => const LinearGradient(colors: [Color(0xFFFFC107), Color(0xFF2EB85C), Color(0xFFE53935)], stops: [0.0, 0.5, 1.0]).createShader(r),
+        child: Text(text, style: TextStyle(fontFamily: 'Tajawal', fontWeight: FontWeight.w800, fontSize: size, color: Colors.white, height: 1.2)),
+      );
+}

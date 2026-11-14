@@ -4,6 +4,8 @@ import 'package:montage_murtaah/media.dart';
 import 'package:montage_murtaah/models.dart';
 import 'package:montage_murtaah/store.dart';
 import 'package:montage_murtaah/screens/auth.dart';
+import 'package:montage_murtaah/screens/custom_page.dart';
+import 'package:montage_murtaah/custom.dart';
 import 'package:montage_murtaah/screens/editor.dart';
 import 'package:montage_murtaah/screens/export_sheet.dart';
 import 'package:montage_murtaah/screens/picker.dart';
@@ -65,15 +67,18 @@ void main() {
     await t.runAsync(() => Store.saveProject(p2));
 
     await go(const Shell(), '07_home');
-    await go(const Shell(initial: 1), '08_templates', ms: 1500);
-    await go(const Shell(initial: 2), '09_library');
-    await go(const Shell(initial: 3), '10_profile');
+    await go(const Shell(initial: 1), '10_profile');
     await go(const MediaPickerPage(), '11_picker', ms: 900);
 
     await go(EditorPage(project: p), '12_editor', ms: 900);
     await go(EditorPage(project: p, initialTool: Tool.filters), '13_editor_filters', ms: 900);
     await go(EditorPage(project: p, initialTool: Tool.transitions), '14_editor_transitions', ms: 900);
-    await go(EditorPage(project: p, initialTool: Tool.trim), '15_editor_trim', ms: 900);
+    await go(EditorPage(project: p, initialTool: Tool.trim, solo: true), '15_editor_trim_solo', ms: 900);
+    await go(EditorPage(project: p, initialTool: Tool.filters, solo: true), '15b_editor_filters_solo', ms: 900);
+    await go(const CustomHub(), '21_custom_hub');
+    await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'sticker')), '22_job_sticker');
+    await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'resize')), '23_job_resize');
+    await go(JobPage(job: kJobs.firstWhere((j) => j.id == 'music_freq')), '24_job_music');
     await go(EditorPage(project: p, initialTool: Tool.adjust), '16_editor_adjust', ms: 900);
 
     // محرر النصوص (قائمة الخطوط)
