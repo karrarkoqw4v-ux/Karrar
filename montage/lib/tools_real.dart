@@ -98,7 +98,7 @@ final List<JobDef> kRealTools = [
   // ===== حركة وتثبيت وترميم =====
   JobDef('r_smooth60', sReal, 'حركة أنعم 60 إطاراً', 'حتى 20 ثانية', Icons.auto_awesome_rounded, PickKind.video, const [], inp: In.video, build: (c) async => const Spec(
       vf: "scale=-2:'min(1080,ih)',minterpolate=fps=60:mi_mode=mci:mc_mode=aobmc:vsbmc=1", pre: ['-t', '20'])),
-  _rt('r_deshake', 'تثبيت واقعي خفيف', (s) => 'deshake=rx=${_p(s, [16, 24, 32]).round()}:ry=${_p(s, [16, 24, 32]).round()}', showRes: false),
+  _rt('r_deshake', 'تثبيت واقعي خفيف', (s) => 'deshake=rx=${_p(s, [16, 32, 48]).round()}:ry=${_p(s, [16, 32, 48]).round()}', showRes: false),
   JobDef('r_stab_sharp', sReal, 'تثبيت قوي مع توضيح', '', Icons.auto_awesome_rounded, PickKind.video, const [], inp: In.video, build: (c) async {
     final trf = '${c.tmp}/s.trf';
     final ok = await c.run.run(['-y', '-hide_banner', '-i', c.src, '-vf', 'vidstabdetect=shakiness=6:accuracy=9:result=$trf', '-f', 'null', '-']);
