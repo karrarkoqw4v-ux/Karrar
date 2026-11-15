@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:montage_murtaah/custom.dart';
 import 'package:montage_murtaah/toolrun.dart';
 import 'package:montage_murtaah/tools.dart';
+import 'package:montage_murtaah/tools_real.dart';
 import 'harness.dart';
 
 void main() {
@@ -41,11 +42,12 @@ void main() {
           rep.writeAsStringSync('OK ${j.id}/$tag ${sw.elapsed.inSeconds}s\n', mode: FileMode.append);
         }
       }
-      for (final j in kNewTools) {
+      for (final j in (Platform.environment['REAL'] == '1' ? kRealTools : kNewTools)) {
         idx++;
         if (only != null && !only.contains(j.id)) continue;
         if (shard != null && idx % shards != shard) continue;
         final p = {for (final o in j.opts) o.key: o.def};
+        if (Platform.environment['RES'] != null && p.containsKey('res')) p['res'] = Platform.environment['RES']!;
         String? extra;
         if (j.extra == Extra.audio) extra = files['music'];
         if (j.extra == Extra.image || j.extra == Extra.imageOpt) extra = files['p2'];

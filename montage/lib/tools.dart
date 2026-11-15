@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'custom.dart';
 import 'media.dart';
 import 'toolrun.dart';
+import 'tools_real.dart';
 
 const sBasic = 'أساسيات الفيديو';
 const sFx = 'تأثيرات الفيديو';
@@ -19,10 +20,12 @@ const sImg = 'الصور';
 
 /// ترتيب الأقسام وأيقوناتها
 const kSectionOrder = [
+  sReal,
   'الخلفية', 'الموسيقى', 'الجودة', 'الحجم', 'ملصقات',
   sBasic, sFx, sLook, sPart, sOvl, sBg, sAudio, sConv, sGif, sSoc, sImg,
 ];
 const kSectionIcons = <String, IconData>{
+  sReal: Icons.auto_awesome_rounded,
   'الخلفية': Icons.format_color_fill_rounded,
   'الموسيقى': Icons.graphic_eq_rounded,
   'الجودة': Icons.hd_rounded,
@@ -60,7 +63,7 @@ const _durs = [('5', '5 ث'), ('8', '8 ث'), ('12', '12 ث')];
 
 (int, int) _fr(String f) => f == '1:1' ? (1080, 1080) : (f == '16:9' ? (1920, 1080) : (1080, 1920));
 
-String _short(String t) => "scale=w='if(gt(iw,ih),-2,$t)':h='if(gt(iw,ih),$t,-2)':flags=lanczos";
+String shortScale(String t) => "scale=w='if(gt(iw,ih),-2,$t)':h='if(gt(iw,ih),$t,-2)':flags=lanczos";
 
 String _fitBlur(int W, int H, {int blur = 28}) =>
     '[0:v]split[a][b];[a]scale=$W:$H:force_original_aspect_ratio=increase,crop=$W:$H,boxblur=$blur:2[bg];[b]scale=$W:$H:force_original_aspect_ratio=decrease:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2';
@@ -221,7 +224,7 @@ final List<JobDef> kNewTools = [
     return Spec(vf: 'trim=start_frame=$a:end_frame=$b,setpts=PTS-STARTPTS', noAudio: true);
   }, opts: [_txt('a', 'الإطار الأول', '0'), _txt('b', 'الإطار الأخير', '90')]),
   _t('fps', sBasic, 'تغيير معدل الإطارات (FPS)', In.video, (c) async => _vf('fps=${c.o('n')}'), opts: [_c('n', 'FPS', [('15', '15'), ('24', '24'), ('30', '30'), ('60', '60')], '30')]),
-  _t('res', sBasic, 'تغيير الدقة', In.both, (c) async => _vf(_short(c.o('t'))), opts: [_c('t', 'الدقة', [('480', '480'), ('720', '720'), ('1080', '1080'), ('1440', '2K'), ('2160', '4K')], '1080')]),
+  _t('res', sBasic, 'تغيير الدقة', In.both, (c) async => _vf(shortScale(c.o('t'))), opts: [_c('t', 'الدقة', [('480', '480'), ('720', '720'), ('1080', '1080'), ('1440', '2K'), ('2160', '4K')], '1080')]),
   _t('zoom', sBasic, 'تكبير وتقريب (زوم)', In.both, (c) async => _vf("scale=${c.w}:${c.h},crop='iw/${c.o('z')}':'ih/${c.o('z')}',scale=${c.w}:${c.h}:flags=lanczos"),
       opts: [_c('z', 'التقريب', [('1.25', '1.25×'), ('1.5', '1.5×'), ('2', '2×'), ('3', '3×')], '1.5')]),
   _t('cammove', sBasic, 'حركة الكاميرا (زوم تدريجي)', In.video, (c) async {
@@ -807,7 +810,7 @@ JobOpt _palOpt() => const JobOpt('pal', 'الألوان', [
 
 /// كل الأدوات بترتيب الأقسام
 List<JobDef> get kAllJobs {
-  final all = [...kJobs, ...kNewTools];
+  final all = [...kJobs, ...kNewTools, ...kRealTools];
   final out = <JobDef>[];
   for (final sec in kSectionOrder) {
     out.addAll(all.where((j) => j.group == sec));
