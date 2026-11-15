@@ -37,7 +37,7 @@ final List<JobDef> kRealTools = [
   _rt('r_edges', 'تحديد الحواف الدقيق', (s) => 'cas=${_p(s, [.35, .6, .85])}'),
   _rt('r_fine', 'إبراز التفاصيل الدقيقة', (s) => 'unsharp=3:3:${_p(s, [.8, 1.3, 2.0])}:3:3:0.0'),
   _rt('r_texture', 'إبراز الملمس', (s) => 'unsharp=9:9:${_p(s, [.5, .8, 1.1])}:9:9:0.0'),
-  _rt('r_clarity', 'وضوح عالٍ (Clarity)', (s) => 'unsharp=15:15:${_p(s, [.35, .55, .8])}:15:15:0.0,eq=contrast=1.04'),
+  _rt('r_clarity', 'وضوح عالٍ (Clarity)', (s) => 'unsharp=13:13:${_p(s, [.35, .55, .8])}:13:13:0.0,eq=contrast=1.04'),
   _rt('r_cine_sharp', 'حدة سينمائية ناعمة', (s) => 'unsharp=7:7:${_p(s, [.4, .6, .9])}:7:7:0.0'),
   _rt('r_skin', 'تنعيم البشرة الواقعي', (s) => 'smartblur=lr=2:ls=${_p(s, [.4, .6, .9])}:lt=20,unsharp=3:3:0.3:3:3:0.0'),
 
@@ -73,11 +73,11 @@ final List<JobDef> kRealTools = [
   _rt('r_tame', 'تهدئة التشبع المفرط', (s) => 'eq=saturation=${_p(s, [.92, .85, .75])}'),
 
   // ===== HDR وإضاءة =====
-  _rt('r_hdr', 'تأثير HDR واقعي', (s) => 'unsharp=15:15:${_p(s, [.4, .6, .9])}:15:15:0.0,$_sCurve,eq=saturation=${_p(s, [1.1, 1.2, 1.3])},vibrance=intensity=.3'),
-  _rt('r_hdr_soft', 'HDR خفيف', (s) => 'unsharp=15:15:${_p(s, [.25, .4, .55])}:15:15:0.0,eq=saturation=1.1:contrast=1.03'),
+  _rt('r_hdr', 'تأثير HDR واقعي', (s) => 'unsharp=13:13:${_p(s, [.4, .6, .9])}:13:13:0.0,$_sCurve,eq=saturation=${_p(s, [1.1, 1.2, 1.3])},vibrance=intensity=.3'),
+  _rt('r_hdr_soft', 'HDR خفيف', (s) => 'unsharp=13:13:${_p(s, [.25, .4, .55])}:13:13:0.0,eq=saturation=1.1:contrast=1.03'),
   _rt('r_shadow_detail', 'تفاصيل الظلال والعتمة', (s) => "curves=all='0/0 0.2/${_p(s, [.26, .3, .35])} 0.5/0.55 1/1',unsharp=7:7:0.5:7:7:0.0"),
   _rt('r_vig', 'تعتيم الأطراف الناعم', (s) => 'vignette=PI/${_p(s, [7, 5.5, 4])}'),
-  _rt('r_light3d', 'إضاءة ثلاثية الأبعاد (عمق)', (s) => 'vignette=PI/5,unsharp=15:15:${_p(s, [.4, .6, .8])}:15:15:0.0,eq=contrast=1.05'),
+  _rt('r_light3d', 'إضاءة ثلاثية الأبعاد (عمق)', (s) => 'vignette=PI/5,unsharp=13:13:${_p(s, [.4, .6, .8])}:13:13:0.0,eq=contrast=1.05'),
   _rt('r_dehaze', 'إزالة الضباب من المشهد', (s) => "eq=contrast=${_p(s, [1.1, 1.18, 1.28])}:brightness=-0.03:saturation=1.15,curves=all='0/0 0.2/0.13 1/1',unsharp=9:9:0.4:9:9:0.0"),
   _rt('r_haze_light', 'إزالة ضباب خفيف', (s) => "eq=contrast=${_p(s, [1.05, 1.1, 1.15])}:saturation=1.08,curves=all='0/0 0.2/0.16 1/1'"),
 
