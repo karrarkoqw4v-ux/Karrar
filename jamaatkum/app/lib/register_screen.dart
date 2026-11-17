@@ -34,12 +34,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final c = await ImageCropper().cropImage(
       sourcePath: x.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      cropStyle: CropStyle.circle, // إطار دائري، والناتج مربع 1:1
       maxWidth: 512,
       maxHeight: 512,
       compressQuality: 85,
       uiSettings: [
-        AndroidUiSettings(toolbarTitle: 'تحديد الصورة', toolbarColor: bgDark, toolbarWidgetColor: Colors.white, activeControlsWidgetColor: brand, lockAspectRatio: true, hideBottomControls: true, cropFrameColor: Colors.white, cropGridColor: Colors.transparent, showCropGrid: false),
+        AndroidUiSettings(toolbarTitle: 'تحديد الصورة', toolbarColor: bgDark, toolbarWidgetColor: Colors.white, activeControlsWidgetColor: brand, lockAspectRatio: true, hideBottomControls: true, cropFrameColor: Colors.white, cropGridColor: Colors.transparent, showCropGrid: false, cropStyle: CropStyle.circle), // إطار دائري، والناتج مربع 1:1
       ],
     );
     if (c != null) setState(() => _avatar = File(c.path));
