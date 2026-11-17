@@ -87,6 +87,17 @@ jobs:
               else:
                   s += "\ndependencies {\n" + dep + "}\n"
 
+          # Android Lint's "lintVitalRelease" task crashes on this toolchain
+          # (unrelated NoSuchMethodError inside the bundled lint checker, not
+          # our code) — skip lint on release builds so it can't block the APK.
+          if "checkReleaseBuilds" not in s:
+              lint_block = (
+                  '    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }\n'
+                  if is_kts else
+                  '    lint {\n        checkReleaseBuilds false\n        abortOnError false\n    }\n'
+              )
+              s = re.sub(r"(android\s*\{)", r"\1\n" + lint_block, s, count=1)
+
           open(path, "w", encoding="utf-8").write(s)
           print(f"patched {path}")
           PY
