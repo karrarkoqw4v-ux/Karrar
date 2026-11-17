@@ -50,6 +50,48 @@ jobs:
           PY
           cat android/app/src/main/AndroidManifest.xml
 
+      - name: Enable core library desugaring (required by flutter_local_notifications)
+        working-directory: jamaatkum/app
+        run: |
+          python3 - <<'PY'
+          import re
+
+          kts = "android/app/build.gradle.kts"
+          groovy = "android/app/build.gradle"
+          path = kts if __import__("os").path.exists(kts) else groovy
+          s = open(path, encoding="utf-8").read()
+          is_kts = path.endswith(".kts")
+
+          if "isCoreLibraryDesugaringEnabled" not in s and "coreLibraryDesugaringEnabled" not in s:
+              if is_kts:
+                  s = re.sub(
+                      r"(compileOptions\s*\{)",
+                      r"\1\n        isCoreLibraryDesugaringEnabled = true",
+                      s, count=1,
+                  )
+              else:
+                  s = re.sub(
+                      r"(compileOptions\s*\{)",
+                      r"\1\n        coreLibraryDesugaringEnabled true",
+                      s, count=1,
+                  )
+
+          if "desugar_jdk_libs" not in s:
+              dep = (
+                  '    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n'
+                  if is_kts else
+                  '    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"\n'
+              )
+              if "dependencies {" in s:
+                  s = s.replace("dependencies {", "dependencies {\n" + dep, 1)
+              else:
+                  s += "\ndependencies {\n" + dep + "}\n"
+
+          open(path, "w", encoding="utf-8").write(s)
+          print(f"patched {path}")
+          PY
+          cat android/app/build.gradle.kts 2>/dev/null || cat android/app/build.gradle
+
       - name: Build release APK
         working-directory: jamaatkum/app
         run: |
