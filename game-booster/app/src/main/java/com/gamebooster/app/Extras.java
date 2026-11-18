@@ -9,7 +9,6 @@ import android.view.Display;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,17 +20,18 @@ import java.util.TreeSet;
 final class Extras {
     private Extras() {}
     static boolean hudOn, crossOn; static int tint;           // tint: 0 إيقاف، 1 دافئ، 2 بارد، 3 حيوي
-    private static View hud, cross, tintV; private static TextView hudText;
+    private static View cross, tintV; private static InfoBar hud; private static String hudPkg; private static int hudTick;
     private static final Handler H = new Handler(Looper.getMainLooper());
     private static final Runnable HUD_TICK = new Runnable() {
         @Override public void run() {
-            if (!hudOn || hudText == null) return;
-            Context c = hudText.getContext();
-            long tot = Booster.totalMem(c), free = Booster.freeMem(c);
-            final String base = String.format(Locale.US, "RAM %d%%   %d°C   %d%%", Math.round(100f * (1 - (float) free / tot)), Math.round(Booster.batteryTemp(c)), Booster.batteryPct(c));
-            hudText.setText(base);
-            if (ShizukuHelper.granted()) ShizukuHelper.run(() -> { final float u = ShizukuHelper.cpuUsage(), g = ShizukuHelper.gpuBusy();
-                H.post(() -> { if (hudText != null && hudOn) hudText.setText(base + (u >= 0 ? "\nCPU " + Math.round(u) + "%" : "") + (g >= 0 ? "   GPU " + Math.round(g) + "%" : "")); }); });
+            if (!hudOn || hud == null) return;
+            final Context c = hud.getContext(); final boolean sz = ShizukuHelper.granted(); final int n = hudTick++;
+            ShizukuHelper.run(() -> {
+                if (sz && (hudPkg == null || n % 6 == 0)) { String t = ShizukuHelper.topPackage(); if (t != null && !t.equals(c.getPackageName())) hudPkg = t; }
+                final float f = sz ? ShizukuHelper.fps(hudPkg) : -1;
+                final String net = Metrics.net(), hrs = Metrics.hours(c), clk = Metrics.clock(); final int bat = Booster.batteryPct(c);
+                H.post(() -> { if (hud != null && hudOn) hud.set(clk, f >= 0 ? Math.round(f) + "FPS" : "--FPS", net, bat + "%", hrs); });
+            });
             H.postDelayed(this, 1000);
         }
     };
@@ -43,12 +43,26 @@ final class Extras {
         p.gravity = gravity; p.x = x; p.y = y; return p;
     }
 
+    /** «وضع المعرفة»: شريط المعلومات فوق اللعبة (قابل للسحب، ويحفظ مكانه). */
     static void toggleHud(Context c) {
         c = c.getApplicationContext();
-        if (hudOn) { hudOn = false; try { wm(c).removeView(hud); } catch (Exception ignored) {} hud = null; hudText = null; return; }
-        TextView t = new TextView(c); t.setTextColor(Color.WHITE); t.setTextSize(13); t.setTypeface(Typeface.MONOSPACE, Typeface.BOLD); t.setPadding(18, 10, 18, 10);
-        t.setBackground(UiUtil.round(Color.argb(170, 0, 0, 0), 20, Color.rgb(200, 40, 30), 2)); hud = t; hudText = t; hudOn = true;
-        wm(c).addView(t, lp(-2, -2, Gravity.TOP | Gravity.START, 220, 20)); H.post(HUD_TICK);
+        if (hudOn) { hudOn = false; try { wm(c).removeView(hud); } catch (Exception ignored) {} hud = null; return; }
+        final InfoBar bar = new InfoBar(c); hud = bar; hudOn = true; hudPkg = null; hudTick = 0;
+        final WindowManager w = wm(c); final android.content.SharedPreferences pr = Booster.prefs(c);
+        final WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-2, -2, type(), WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+        lp.gravity = Gravity.TOP | Gravity.START; lp.x = pr.getInt("hudX", (int) (c.getResources().getDisplayMetrics().widthPixels * .3f)); lp.y = pr.getInt("hudY", (int) (c.getResources().getDisplayMetrics().heightPixels * .08f));
+        bar.setOnTouchListener(new View.OnTouchListener() {
+            float sx, sy; int ox, oy;
+            @Override public boolean onTouch(View v, android.view.MotionEvent e) {
+                switch (e.getAction()) {
+                    case android.view.MotionEvent.ACTION_DOWN: sx = e.getRawX(); sy = e.getRawY(); ox = lp.x; oy = lp.y; return true;
+                    case android.view.MotionEvent.ACTION_MOVE: lp.x = ox + (int) (e.getRawX() - sx); lp.y = oy + (int) (e.getRawY() - sy); try { w.updateViewLayout(bar, lp); } catch (Exception ignored) {} return true;
+                    case android.view.MotionEvent.ACTION_UP: pr.edit().putInt("hudX", lp.x).putInt("hudY", lp.y).apply(); return true;
+                }
+                return false;
+            }
+        });
+        w.addView(bar, lp); H.post(HUD_TICK);
     }
     static void toggleCross(Context c) {
         c = c.getApplicationContext();
@@ -75,7 +89,7 @@ final class Extras {
     static void clear(Context c) {
         c = c.getApplicationContext(); hudOn = false; crossOn = false; tint = 0;
         for (View v : new View[]{hud, cross, tintV}) try { if (v != null) wm(c).removeView(v); } catch (Exception ignored) {}
-        hud = cross = tintV = null; hudText = null;
+        hud = null; cross = tintV = null;
     }
 
     // ---- معدّل التحديث ----

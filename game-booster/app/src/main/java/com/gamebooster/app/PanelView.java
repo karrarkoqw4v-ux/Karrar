@@ -37,8 +37,8 @@ public class PanelView extends View {
     private String downKey; private float downY, downScroll; private boolean dragged;
     private List<Drawable> appIcons = new ArrayList<>(); private List<String> appPkgs = new ArrayList<>();
 
-    private static final String[][] LEFT = {{"data", "لوحة البيانات"}, {"cross", "مؤشر مركز الشاشة"}, {"color", "لون الشاشة"}, {"magn", "أداة تكبير الشاشة"}, {"fix", "أداء ثابت"}, {"touch", "لمس أسرع"}};
-    private static final String[] LSHORT = {"البيانات", "المؤشر", "اللون", "التكبير", "أداء", "لمس"};
+    private static final String[][] LEFT = {{"data", "وضع المعرفة"}, {"cross", "مؤشر مركز الشاشة"}, {"color", "لون الشاشة"}, {"magn", "أداة تكبير الشاشة"}, {"fix", "أداء ثابت"}, {"touch", "لمس أسرع"}};
+    private static final String[] LSHORT = {"المعرفة", "المؤشر", "اللون", "التكبير", "أداء", "لمس"};
     private static final String[][] RIGHT = {{"shot", "لقطة"}, {"rotate", "تدوير"}, {"bellx", "الإشعارات"}, {"auto", "إضاءة"}, {"hz", "معدل"}, {"wifi", "واي فاي"}, {"rocket", "معزز"}, {"moon", "عدم الإزعاج"}, {"broom", "المهملات"}};
 
     public PanelView(Context c, Closer closer) {
