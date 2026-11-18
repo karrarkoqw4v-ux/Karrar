@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.*;
+import android.graphics.Canvas;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -40,11 +41,11 @@ public class LauncherActivity extends Activity {
         @Override public void run() {
             clock.setText(new SimpleDateFormat("hh:mm", Locale.getDefault()).format(new Date()));
             long tot = Booster.totalMem(LauncherActivity.this), free = Booster.freeMem(LauncherActivity.this); float used = 100f * (1 - (float) free / tot), temp = Booster.batteryTemp(LauncherActivity.this);
-            setChip(cRam, "🧠 " + Math.round(used) + "%", used > 85); setChip(cTemp, "🌡 " + Math.round(temp) + "°", temp >= 42);
-            setChip(cBat, (Booster.isCharging(LauncherActivity.this) ? "⚡ " : "🔋 ") + Booster.batteryPct(LauncherActivity.this) + "%", false);
-            boolean sz = ShizukuHelper.granted(); setChip(cSz, sz ? "● Shizuku" : "○ Shizuku", !sz);
-            if (sz) ShizukuHelper.run(() -> { final float u = ShizukuHelper.cpuUsage(); h.post(() -> setChip(cCpu, u >= 0 ? "⚙ " + Math.round(u) + "%" : "⚙ —", u > 90)); });
-            else { float g = Booster.cpuGHz(); setChip(cCpu, g > 0 ? "⚙ " + String.format(Locale.US, "%.1fG", g) : "⚙ —", false); }
+            setChip(cRam, Math.round(used) + "%", used > 85); setChip(cTemp, Math.round(temp) + "°", temp >= 42);
+            setChip(cBat, Booster.batteryPct(LauncherActivity.this) + "%", false); chipIcon(cBat, Booster.isCharging(LauncherActivity.this) ? "bolt" : "batt");
+            boolean sz = ShizukuHelper.granted(); setChip(cSz, "Shizuku", !sz); chipIcon(cSz, sz ? "check" : "x");
+            if (sz) ShizukuHelper.run(() -> { final float u = ShizukuHelper.cpuUsage(); h.post(() -> setChip(cCpu, u >= 0 ? Math.round(u) + "%" : "--", u > 90)); });
+            else { float g = Booster.cpuGHz(); setChip(cCpu, g > 0 ? String.format(Locale.US, "%.1fG", g) : "--", false); }
             h.postDelayed(this, 2000);
         }
     };
@@ -53,6 +54,12 @@ public class LauncherActivity extends Activity {
         t.setText(s); t.setTextColor(warn ? Color.rgb(255, 110, 100) : Color.WHITE);
         t.setBackground(UiUtil.round(warn ? Color.argb(60, 255, 80, 60) : Color.argb(50, 255, 255, 255), UiUtil.dp(t, 14), warn ? Color.rgb(255, 90, 70) : 0, warn ? 2 : 0));
     }
+    /** نص + أيقونة خطية على يساره (بدل الإيموجي). */
+    private static android.graphics.drawable.Drawable iconDrawable(Context c, String key, int color) {
+        final int sz = (int) UiUtil.px(c, 14); final Bitmap b = Bitmap.createBitmap(sz * 2, sz * 2, Bitmap.Config.ARGB_8888); Canvas cv = new Canvas(b); Icons.draw(cv, key, sz, sz, sz * 2f, color, new Paint(Paint.ANTI_ALIAS_FLAG));
+        android.graphics.drawable.BitmapDrawable d = new android.graphics.drawable.BitmapDrawable(c.getResources(), b); d.setBounds(0, 0, sz, sz); return d;
+    }
+    private void chipIcon(TextView t, String key) { t.setCompoundDrawables(iconDrawable(this, key, Color.WHITE), null, null, null); t.setCompoundDrawablePadding(UiUtil.dp(t, 5)); }
 
     // ---------- الخلفية ----------
     static final int[][] BG_COLS = {{255, 140, 20}, {0, 220, 220}, {255, 50, 30}, {60, 120, 255}};
@@ -181,10 +188,10 @@ public class LauncherActivity extends Activity {
         SpannableString title = new SpannableString("مسرّع الألعاب"); title.setSpan(new ForegroundColorSpan(UiUtil.ACC), 5, title.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         TextView tt = UiUtil.text(this, "", 22, Color.WHITE, true); tt.setText(title); top.addView(tt);
         clock = UiUtil.text(this, "", 16, Color.WHITE, true); clock.setPadding(UiUtil.dp(root, 22), 0, UiUtil.dp(root, 14), 0); top.addView(clock);
-        cRam = chip(); cCpu = chip(); cTemp = chip(); cBat = chip(); cSz = chip();
+        cRam = chip(); cCpu = chip(); cTemp = chip(); cBat = chip(); cSz = chip(); chipIcon(cRam, "ram"); chipIcon(cCpu, "cpu"); chipIcon(cTemp, "therm");
         for (TextView c : new TextView[]{cRam, cCpu, cTemp, cBat, cSz}) { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(c, 30)); lp.setMargins(UiUtil.dp(c, 4), 0, UiUtil.dp(c, 4), 0); top.addView(c, lp); }
         top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
-        top.addView(circle("✖", v -> finishAffinity())); top.addView(circle("🛠", v -> startActivity(new Intent(this, HubActivity.class)))); top.addView(circle("⚙", v -> startActivity(new Intent(this, SettingsActivity.class))));
+        top.addView(circle("x", v -> finishAffinity())); top.addView(circle("wrench", v -> startActivity(new Intent(this, HubActivity.class)))); top.addView(circle("gear", v -> startActivity(new Intent(this, SettingsActivity.class))));
         col.addView(top, new LinearLayout.LayoutParams(-1, UiUtil.dp(root, 50)));
 
         // ===== الوسط =====
@@ -216,7 +223,7 @@ public class LauncherActivity extends Activity {
 
         // ===== الشريط السفلي =====
         FrameLayout bottom = new FrameLayout(this);
-        TextView plus = UiUtil.text(this, "+", 28, Color.WHITE, true); plus.setGravity(Gravity.CENTER); plus.setBackground(UiUtil.round(UiUtil.CARD, UiUtil.dp(root, 10), 0, 0));
+        View plus = UiUtil.icon(this, "plus", Color.WHITE); plus.setPadding(UiUtil.dp(plus, 12), UiUtil.dp(plus, 8), UiUtil.dp(plus, 12), UiUtil.dp(plus, 8)); plus.setBackground(UiUtil.round(UiUtil.CARD, UiUtil.dp(root, 10), 0, 0));
         plus.setOnClickListener(v -> startActivity(new Intent(this, AppsActivity.class))); UiUtil.pressable(plus);
         bottom.addView(plus, new FrameLayout.LayoutParams(UiUtil.dp(root, 54), UiUtil.dp(root, 44), Gravity.START | Gravity.CENTER_VERTICAL));
         LinearLayout tabs = new LinearLayout(this);
@@ -229,8 +236,8 @@ public class LauncherActivity extends Activity {
     }
 
     private TextView chip() { TextView t = UiUtil.text(this, "", 12, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setPadding(UiUtil.dp(t, 10), 0, UiUtil.dp(t, 10), 0); return t; }
-    private TextView circle(String s, View.OnClickListener l) {
-        TextView t = UiUtil.text(this, s, 18, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setBackground(UiUtil.round(Color.argb(160, 30, 32, 48), UiUtil.dp(t, 22), 0, 0)); t.setOnClickListener(l); UiUtil.pressable(t);
+    private View circle(String key, View.OnClickListener l) {
+        View t = UiUtil.icon(this, key, Color.WHITE); t.setPadding(UiUtil.dp(t, 10), UiUtil.dp(t, 10), UiUtil.dp(t, 10), UiUtil.dp(t, 10)); t.setBackground(UiUtil.round(Color.argb(160, 30, 32, 48), UiUtil.dp(t, 22), 0, 0)); t.setOnClickListener(l); UiUtil.pressable(t);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(t, 44), UiUtil.dp(t, 44)); lp.setMargins(UiUtil.dp(t, 8), 0, 0, 0); t.setLayoutParams(lp); return t;
     }
     private TextView tab(String s, boolean active) {
@@ -274,17 +281,17 @@ public class LauncherActivity extends Activity {
             name.setText(r.loadLabel(pm)); if (!pkg.equals(shownPkg)) { shownPkg = pkg; Bitmap ib = toBitmap(r.loadIcon(pm)); int ac = accentOf(ib); stage.set(ib, ac); bgView.setGame(ib, ac); }
             boolean sz = ShizukuHelper.granted();
             info.setText(sz ? "Shizuku فعّال — التسريع الكامل متاح" : "Shizuku غير مفعّل — تسريع محدود");
-            chips.addView(optChip("🚀 أداء", pkg, "perf", Booster.flag(this, "gameModePerf", true), sz));
-            chips.addView(optChip("🔕 كتم", pkg, "dnd", Booster.flag(this, "dndOnStart", true), true));
-            chips.addView(optChip("🧹 تنظيف", pkg, "clean", Booster.flag(this, "cleanBefore", true), true));
+            chips.addView(optChip("أداء", "rocket", pkg, "perf", Booster.flag(this, "gameModePerf", true), sz));
+            chips.addView(optChip("كتم", "moon", pkg, "dnd", Booster.flag(this, "dndOnStart", true), true));
+            chips.addView(optChip("تنظيف", "broom", pkg, "clean", Booster.flag(this, "cleanBefore", true), true));
         } else { name.setText("مسرّع الألعاب"); info.setText("أضف لعبة من زر +"); }
     }
 
     /** شريحة خيار لكل لعبة: تبديل بحركة ولون */
-    private TextView optChip(String label, final String pkg, final String key, boolean def, final boolean enabled) {
+    private TextView optChip(String label, final String iconKey, final String pkg, final String key, boolean def, final boolean enabled) {
         final TextView t = UiUtil.text(this, "", 13, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setPadding(UiUtil.dp(t, 12), 0, UiUtil.dp(t, 12), 0);
         final boolean[] on = {Booster.gameFlag(this, pkg, key, def) && enabled};
-        final Runnable paint = () -> { t.setText(label + (on[0] ? "  ✔" : "")); t.setTextColor(enabled ? Color.WHITE : Color.rgb(120, 126, 150)); t.setBackground(UiUtil.round(on[0] ? Color.argb(80, 255, 165, 31) : Color.argb(40, 255, 255, 255), UiUtil.dp(t, 14), on[0] ? UiUtil.ACC : 0, on[0] ? 2 : 0)); };
+        final Runnable paint = () -> { t.setText(label); t.setCompoundDrawables(iconDrawable(this, on[0] ? "check" : iconKey, Color.WHITE), null, null, null); t.setCompoundDrawablePadding(UiUtil.dp(t, 5)); t.setTextColor(enabled ? Color.WHITE : Color.rgb(120, 126, 150)); t.setBackground(UiUtil.round(on[0] ? Color.argb(80, 255, 165, 31) : Color.argb(40, 255, 255, 255), UiUtil.dp(t, 14), on[0] ? UiUtil.ACC : 0, on[0] ? 2 : 0)); };
         paint.run();
         t.setOnClickListener(v -> {
             if (!enabled) { toast("يحتاج تفعيل Shizuku"); return; }

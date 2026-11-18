@@ -48,7 +48,7 @@ public class PanelView extends View {
         PackageManager pm = c.getPackageManager(); List<ResolveInfo> g = Booster.games(c);
         for (int i = 0; i < Math.min(4, g.size()); i++) { appIcons.add(g.get(i).loadIcon(pm)); appPkgs.add(g.get(i).activityInfo.packageName); }
         refreshStates(); tick();
-        ShizukuHelper.run(() -> { final String pk = ShizukuHelper.topPackage(); h.post(() -> { if (pk != null && !pk.equals(ctx.getPackageName())) gamePkg = pk; refreshStates(); }); });
+        ShizukuHelper.run(() -> { final String pk = Booster.topPackage(ctx); h.post(() -> { if (pk != null && !pk.equals(ctx.getPackageName())) gamePkg = pk; refreshStates(); }); });
     }
 
     // ===== الحالات الحقيقية =====

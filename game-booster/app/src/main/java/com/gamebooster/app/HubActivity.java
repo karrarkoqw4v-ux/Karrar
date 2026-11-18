@@ -24,14 +24,14 @@ public class HubActivity extends Activity {
 
     // ---------- عنصر الأداة ----------
     static class Tile extends LinearLayout {
-        final TextView icon, label, state;
+        final View icon; final TextView label, state;
         Tile(Context c, String ic, String lb) {
             super(c);
             setOrientation(VERTICAL); setGravity(Gravity.CENTER);
-            icon = UiUtil.text(c, ic, 26, Color.WHITE, false); icon.setGravity(Gravity.CENTER);
+            icon = UiUtil.icon(c, ic, Color.WHITE);
             label = UiUtil.text(c, lb, 12, Color.WHITE, true); label.setGravity(Gravity.CENTER);
             state = UiUtil.text(c, "", 10, Color.rgb(160, 168, 195), false); state.setGravity(Gravity.CENTER);
-            addView(icon); addView(label); addView(state);
+            addView(icon, new LayoutParams(UiUtil.dp(this, 26), UiUtil.dp(this, 26))); addView(label); addView(state);
             setPadding(8, 10, 8, 10);
             set(false, null);
         }
@@ -71,7 +71,7 @@ public class HubActivity extends Activity {
         // يسار: العدّادات
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL); left.setGravity(Gravity.CENTER);
-        left.addView(UiUtil.text(this, "⚡ مسرّع الألعاب", 18, Color.WHITE, true));
+        left.addView(UiUtil.text(this, "مسرّع الألعاب", 18, Color.WHITE, true));
         LinearLayout gs = new LinearLayout(this);
         gRam = new Gauge(this); gTemp = new Gauge(this);
         gs.addView(gRam, new LinearLayout.LayoutParams(0, -1, 1)); gs.addView(gTemp, new LinearLayout.LayoutParams(0, -1, 1));
@@ -84,13 +84,13 @@ public class HubActivity extends Activity {
         LinearLayout mid = new LinearLayout(this);
         mid.setOrientation(LinearLayout.VERTICAL); mid.setGravity(Gravity.CENTER); mid.setPadding(16, 0, 16, 0);
         Button boost = new Button(this);
-        boost.setText("⚡ تسريع الآن"); boost.setTextSize(20); boost.setTypeface(Typeface.DEFAULT_BOLD); boost.setTextColor(Color.rgb(42, 18, 0));
+        boost.setText("تسريع الآن"); boost.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, UiUtil.px(this, 20)); boost.setTypeface(Typeface.DEFAULT_BOLD); boost.setTextColor(Color.rgb(42, 18, 0));
         boost.setBackground(UiUtil.round(UiUtil.ACC, UiUtil.dp(mid, 36), Color.WHITE, 3));
         boost.setOnClickListener(v -> { status.setText(Booster.boostAll(this, null)); refreshTiles(); updateGauges(); });
         mid.addView(boost, new LinearLayout.LayoutParams(-1, UiUtil.dp(mid, 70)));
         status = UiUtil.text(this, "اضغط للتسريع الكامل", 12, Color.rgb(190, 200, 230), false); status.setGravity(Gravity.CENTER); status.setPadding(0, 12, 0, 12);
         mid.addView(status);
-        mid.addView(UiUtil.text(this, "🔊 مستوى الصوت", 13, Color.WHITE, true));
+        mid.addView(UiUtil.text(this, "مستوى الصوت", 13, Color.WHITE, true));
         vol = new SeekBar(this); vol.setMax(100);
         vol.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar s, int v, boolean user) { if (user) Booster.setMediaVolumePct(HubActivity.this, v); }
@@ -103,15 +103,15 @@ public class HubActivity extends Activity {
         // يمين: الأدوات
         GridLayout grid = new GridLayout(this);
         final int hubCols = Booster.num(this, "hubCols", 3); grid.setColumnCount(hubCols);
-        Tile tBoost = new Tile(this, "🧹", "تنظيف الخلفية");
-        tDnd = new Tile(this, "🔕", "كتم الإشعارات والمكالمات");
-        tSound = new Tile(this, "🔊", "وضع صوت الألعاب");
-        tBright = new Tile(this, "☀️", "سطوع أعلى");
-        tBubble = new Tile(this, "🫧", "الفقاعة العائمة");
-        Tile tGames = new Tile(this, "🎮", "مكتبة الألعاب");
-        Tile tNet = new Tile(this, "📶", "الإنترنت");
-        Tile tPerm = new Tile(this, "🔐", "الصلاحيات");
-        Tile tExit = new Tile(this, "⏻", "خروج");
+        Tile tBoost = new Tile(this, "broom", "تنظيف الخلفية");
+        tDnd = new Tile(this, "moon", "كتم الإشعارات والمكالمات");
+        tSound = new Tile(this, "spk", "وضع صوت الألعاب");
+        tBright = new Tile(this, "sun", "سطوع أعلى");
+        tBubble = new Tile(this, "layers", "الفقاعة العائمة");
+        Tile tGames = new Tile(this, "pad", "مكتبة الألعاب");
+        Tile tNet = new Tile(this, "wifi", "الإنترنت");
+        Tile tPerm = new Tile(this, "shield", "الصلاحيات");
+        Tile tExit = new Tile(this, "power", "خروج");
         Tile[] all = {tGames, tBoost, tDnd, tSound, tBright, tBubble, tNet, tPerm, tExit};
         for (Tile t : all) {
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED, 1f), GridLayout.spec(GridLayout.UNDEFINED, 1f));
@@ -170,7 +170,7 @@ public class HubActivity extends Activity {
         float ghz = Booster.cpuGHz();
         if (ghz > 0) gTemp.set(Math.min(1f, ghz / 3.5f), String.format(java.util.Locale.US, "%.1f", ghz), "GHz", UiUtil.OK);
         else gTemp.set(Math.min(1f, temp / 50f), Math.round(temp) + "°", "الحرارة", temp >= 42 ? UiUtil.WARN : UiUtil.OK);
-        batt.setText("🔋 " + Booster.batteryPct(this) + "%   ·   متاح " + free / (1024 * 1024) + " MB" + (temp >= 42 ? "\n⚠️ الجهاز ساخن" : ""));
+        batt.setText("البطارية " + Booster.batteryPct(this) + "%   ·   متاح " + free / (1024 * 1024) + " MB" + (temp >= 42 ? "\nالجهاز ساخن" : ""));
     }
 
     @Override protected void onResume() { super.onResume(); UiUtil.immersive(this); refreshTiles(); refreshVol(); h.post(tick); }

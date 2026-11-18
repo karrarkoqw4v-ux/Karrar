@@ -34,7 +34,7 @@ final class Metrics {
         BatteryManager bm = (BatteryManager) c.getSystemService(Context.BATTERY_SERVICE);
         if (Booster.isCharging(c)) {
             if (Build.VERSION.SDK_INT >= 28) { long ms = bm.computeChargeTimeRemaining(); if (ms > 0) return String.format(Locale.US, "%.1fh", ms / 3600000f); }
-            return "⚡";
+            return "شحن";
         }
         long cur = Math.abs(bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)), cnt = bm.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
         if (cur <= 0 || cnt <= 0 || cnt == Long.MIN_VALUE) return "--h";

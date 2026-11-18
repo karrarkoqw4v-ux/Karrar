@@ -11,7 +11,7 @@ public class InfoBar extends View {
     private final String[] txt = {"--:--", "--FPS", "-- KB/S", "--%", "--h"};
     private float d;
 
-    public InfoBar(Context c) { super(c); d = c.getResources().getDisplayMetrics().density; }
+    public InfoBar(Context c) { super(c); d = c.getResources().getDisplayMetrics().density * UiUtil.scale(c); }
     void set(String clock, String fps, String net, String batt, String hours) { txt[0] = clock; txt[1] = fps; txt[2] = net; txt[3] = batt; txt[4] = hours; requestLayout(); invalidate(); }
 
     private float textW(String s) { p.setTextSize(12 * d); p.setTypeface(Typeface.DEFAULT_BOLD); return p.measureText(s); }

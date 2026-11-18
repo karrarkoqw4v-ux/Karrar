@@ -27,7 +27,7 @@ final class Extras {
             if (!hudOn || hud == null) return;
             final Context c = hud.getContext(); final boolean sz = ShizukuHelper.granted(); final int n = hudTick++;
             ShizukuHelper.run(() -> {
-                if (sz && (hudPkg == null || n % 6 == 0)) { String t = ShizukuHelper.topPackage(); if (t != null && !t.equals(c.getPackageName())) hudPkg = t; }
+                if (hudPkg == null || n % 6 == 0) { String t = Booster.topPackage(c); if (t != null && !t.equals(c.getPackageName())) hudPkg = t; }
                 final float f = sz ? ShizukuHelper.fps(hudPkg) : -1;
                 final String net = Metrics.net(), hrs = Metrics.hours(c), clk = Metrics.clock(); final int bat = Booster.batteryPct(c);
                 H.post(() -> { if (hud != null && hudOn) hud.set(clk, f >= 0 ? Math.round(f) + "FPS" : "--FPS", net, bat + "%", hrs); });

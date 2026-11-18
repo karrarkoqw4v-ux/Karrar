@@ -13,7 +13,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.TextView;
 
 /** خدمة اللوحة فوق التطبيقات: لسان جانبي (اسحبه للداخل) أو فقاعة حرّة، وكلاهما يفتح لوحة اللعبة. */
 public class OverlayService extends Service {
@@ -56,9 +55,8 @@ public class OverlayService extends Service {
         if (Booster.num(this, "bubbleStyle", 1) == 1) {
             handleL = addHandle(true); handleR = addHandle(false);
         } else {
-            TextView b = new TextView(this); b.setText("⚡"); b.setTextSize(24); b.setGravity(Gravity.CENTER); b.setTextColor(Color.rgb(42, 18, 0)); b.setBackground(UiUtil.round(UiUtil.ACC, 200, Color.WHITE, 3));
-            int sz = UiUtil.dp(b, 52); b.setWidth(sz); b.setHeight(sz); bubble = b;
-            bp = new WindowManager.LayoutParams(-2, -2, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+            View b = UiUtil.icon(this, "bolt", Color.rgb(42, 18, 0)); b.setBackground(UiUtil.round(UiUtil.ACC, 200, Color.WHITE, 3)); b.setPadding(UiUtil.dp(b, 12), UiUtil.dp(b, 12), UiUtil.dp(b, 12), UiUtil.dp(b, 12)); bubble = b;
+            bp = new WindowManager.LayoutParams(UiUtil.dp(b, 52), UiUtil.dp(b, 52), type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
             bp.gravity = Gravity.TOP | Gravity.START; bp.x = 0; bp.y = 200;
             b.setOnTouchListener(new View.OnTouchListener() {
                 float sx, sy; int ox, oy; boolean moved;
@@ -98,7 +96,6 @@ public class OverlayService extends Service {
         hideTriggers();
         panel = new PanelView(this, () -> { closePanel(); showTriggers(); });
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-1, -1, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_FULLSCREEN, PixelFormat.TRANSLUCENT);
-        if (Build.VERSION.SDK_INT >= 28) lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         wm.addView(panel, lp);
     }
     private void closePanel() { try { if (panel != null) wm.removeView(panel); } catch (Exception ignored) {} panel = null; }
