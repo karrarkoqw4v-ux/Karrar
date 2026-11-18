@@ -4,3 +4,5 @@ downloads/
 __pycache__/
 .venv/
 cookies.txt
+*.db-shm
+*.db-wal
