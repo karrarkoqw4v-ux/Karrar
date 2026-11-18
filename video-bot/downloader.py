@@ -75,6 +75,8 @@ class DownloadFailed(Exception):
 
 
 def _friendly(err: str) -> str:
+    import logging
+    logging.getLogger("downloader").warning("yt-dlp error: %s", err[:400])
     e = err.lower()
     if any(k in e for k in ("private", "login", "log in", "sign in", "cookies")) or ("bot" in e and "confirm" in e):
         return "🔒 هذا المحتوى خاص أو يتطلب تسجيل دخول، ولا يمكن تحميله."
@@ -84,6 +86,8 @@ def _friendly(err: str) -> str:
         return "⚠️ هذا الرابط لا يحتوي فيديو قابلاً للتحميل."
     if "geo" in e or "country" in e:
         return "🌍 المحتوى غير متاح في منطقة الخادم."
+    if any(k in e for k in ("tunnel connection", "proxyerror", "getaddrinfo", "timed out", "connection refused", "network is unreachable", "unable to download webpage")):
+        return "🌐 الخادم لا يستطيع الاتصال بهذه المنصة حالياً (شبكة الخادم تحجبها). شغّل البوت على خادم بإنترنت مفتوح."
     if "429" in e or "rate" in e:
         return "⏳ ضغط كبير حالياً، حاول بعد قليل."
     return "⚠️ تعذّر التحميل من هذا الرابط. تأكد منه وحاول مرة أخرى."
