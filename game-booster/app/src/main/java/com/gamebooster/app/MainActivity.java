@@ -33,13 +33,15 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
         prefs = getSharedPreferences("games", MODE_PRIVATE);
         dnd = prefs.getBoolean("__dnd", true);
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(BG);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(16), dp(36), dp(16), dp(24));
+        root.setPadding(dp(48), dp(20), dp(48), dp(20));
         sv.addView(root);
         setContentView(sv);
 
