@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import time
 
 from aiohttp import web
@@ -100,14 +101,66 @@ async def chk(cb: CallbackQuery, bot: Bot):
     await cb.message.answer(config.WELCOME)
 
 
+# ---------------- البحث بالآيدي ----------------
+ID_RE = re.compile(r"^\s*(\d{5,15})\s*$")
+UN_RE = re.compile(r"^\s*(?:@|https?://t\.me/)([A-Za-z][A-Za-z0-9_]{4,31})/?\s*$")
+
+
+def _e(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+async def profile_reply(bot: Bot, msg: Message, uid: int | None = None, username: str | None = None):
+    """يرسل زراً يفتح حساب الشخص مباشرة (بالآيدي أو المعرّف)"""
+    name = bio = None
+    ref = uid
+    try:
+        ch = await bot.get_chat(uid if uid else f"@{username}")
+        uid = ch.id
+        username = ch.username or username
+        name = " ".join(x for x in (ch.first_name, ch.last_name) if x) or ch.title
+        bio = ch.bio
+    except (TelegramBadRequest, TelegramForbiddenError):
+        pass
+    lines = ["👤 <b>الحساب</b>"]
+    if name:
+        lines.append(f"📛 <b>الاسم:</b> {_e(name)}")
+    if uid:
+        lines.append(f"🆔 <b>الآيدي:</b> <code>{uid}</code>")
+    if username:
+        lines.append(f"🔗 <b>المعرّف:</b> @{username}")
+    if bio:
+        lines.append(f"📝 <b>النبذة:</b> {_e(bio)[:200]}")
+    rows = []
+    if username:
+        rows.append([InlineKeyboardButton(text="👤 فتح الحساب", url=f"https://t.me/{username}")])
+    elif uid:
+        rows.append([InlineKeyboardButton(text="👤 فتح الحساب", url=f"tg://user?id={uid}")])
+    if not name and not username:
+        lines.append("\nℹ️ إن لم يفتح الحساب عند الضغط فصاحبه لم يتفاعل مع البوت أو يخفي حسابه.")
+    await msg.answer("\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=rows) if rows else None)
+
+
+@router.message(Command("id"))
+async def my_id(msg: Message):
+    await msg.answer(f"🆔 آيديك: <code>{msg.from_user.id}</code>")
+
+
 # ---------------- التحميل ----------------
 @router.message(F.text & ~F.text.startswith("/"))
 async def on_text(msg: Message, bot: Bot):
     u = msg.from_user
     await db.add_user(u.id, u.full_name, u.username)
+    mid = ID_RE.match(msg.text)
+    mun = UN_RE.match(msg.text)
+    if mid or mun:
+        if not await gate(bot, msg):
+            return
+        await profile_reply(bot, msg, uid=int(mid.group(1)) if mid else None, username=mun.group(1) if mun else None)
+        return
     url = dl.find_url(msg.text)
     if not url:
-        await msg.answer("📎 أرسل رابط الفيديو من اليوتيوب أو انستكرام أو تيكتوك أو فيسبوك أو تويتر أو سناب شات أو ساوند كلاود.")
+        await msg.answer("📎 أرسل الآيدي ( المعرّف ) لفتح حساب الشخص، أو رابط فيديو من اليوتيوب أو انستكرام أو تيكتوك أو فيسبوك أو تويتر أو سناب شات أو ساوند كلاود.")
         return
     if not await gate(bot, msg):
         return
@@ -288,6 +341,11 @@ async def main():
     dp.include_router(router)
     me = await bot.get_me()
     log.info("البوت يعمل: @%s", me.username)
+    try:
+        if (await bot.get_my_name()).name != config.BOT_NAME:
+            await bot.set_my_name(config.BOT_NAME)
+    except Exception:  # noqa: BLE001
+        log.warning('تعذر تغيير اسم البوت')
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, handle_as_tasks=True, allowed_updates=["message", "callback_query"])
 
