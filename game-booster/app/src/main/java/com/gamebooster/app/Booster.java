@@ -48,6 +48,31 @@ final class Booster {
     static boolean hasPostNotifications(Context c) {
         return Build.VERSION.SDK_INT < 33 || c.checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
     }
+    static boolean hasBatteryExempt(Context c) { return ((android.os.PowerManager) c.getSystemService(Context.POWER_SERVICE)).isIgnoringBatteryOptimizations(c.getPackageName()); }
+    static Intent batteryIntent(Context c) { return new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + c.getPackageName())); }
+    static boolean hasUsage(Context c) {
+        android.app.AppOpsManager a = (android.app.AppOpsManager) c.getSystemService(Context.APP_OPS_SERVICE);
+        int m = Build.VERSION.SDK_INT >= 29 ? a.unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), c.getPackageName()) : a.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), c.getPackageName());
+        return m == android.app.AppOpsManager.MODE_ALLOWED;
+    }
+    static Intent usageIntent() { return new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS); }
+    static boolean hasSecure(Context c) { return c.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") == PackageManager.PERMISSION_GRANTED; }
+    /** يمنح كل الصلاحيات الممكنة تلقائياً عبر Shizuku (استدعِه من خيط خلفي). */
+    static String grantAllViaShizuku(Context c) {
+        String k = c.getPackageName();
+        return ShizukuHelper.sh("pm grant " + k + " android.permission.POST_NOTIFICATIONS; pm grant " + k + " android.permission.WRITE_SECURE_SETTINGS; appops set " + k + " SYSTEM_ALERT_WINDOW allow; appops set " + k + " WRITE_SETTINGS allow; appops set " + k + " GET_USAGE_STATS allow; cmd notification allow_dnd " + k + "; cmd deviceidle whitelist +" + k);
+    }
+    /** الحزمة الظاهرة الآن (اللعبة المفتوحة): عبر Shizuku، وإلا عبر «بيانات الاستخدام». استدعِه من خيط خلفي. */
+    static String topPackage(Context c) {
+        if (ShizukuHelper.granted()) { String t = ShizukuHelper.topPackage(); if (t != null) return t; }
+        if (hasUsage(c)) {
+            android.app.usage.UsageStatsManager u = (android.app.usage.UsageStatsManager) c.getSystemService(Context.USAGE_STATS_SERVICE); long now = System.currentTimeMillis();
+            android.app.usage.UsageEvents ev = u.queryEvents(now - 20000, now); android.app.usage.UsageEvents.Event e = new android.app.usage.UsageEvents.Event(); String last = null;
+            while (ev.hasNextEvent()) { ev.getNextEvent(e); if (e.getEventType() == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) last = e.getPackageName(); }
+            return last;
+        }
+        return null;
+    }
     static Intent dndSettings() { return new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS); }
     static Intent overlaySettings(Context c) { return new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + c.getPackageName())); }
     static Intent writeSettings(Context c) { return new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + c.getPackageName())); }
@@ -64,6 +89,13 @@ final class Booster {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         nm.setInterruptionFilter(on ? (flag(c, "blockCalls", true) ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_PRIORITY) : NotificationManager.INTERRUPTION_FILTER_ALL);
         return true;
+    }
+
+    /** مرشح المقاطعات الحالي (ALL=1, PRIORITY=2, NONE=3, ALARMS=4). */
+    static int filter(Context c) { return ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).getCurrentInterruptionFilter(); }
+    static boolean setFilter(Context c, int f) {
+        if (!hasDnd(c)) return false;
+        ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).setInterruptionFilter(f); return true;
     }
 
     // ---------- إغلاق تطبيقات الخلفية ----------

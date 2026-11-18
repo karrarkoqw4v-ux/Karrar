@@ -119,5 +119,33 @@ final class ShizukuHelper {
         String o = sh("cat /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage 2>/dev/null");
         try { return Float.parseFloat(o.replace("%", "").trim()); } catch (Exception e) { return -1; }
     }
+    private static String fpsLayer, fpsLayerPkg;
+    /** FPS حقيقي للعبة المفتوحة من SurfaceFlinger (آخر ثانية). يرجع -1 إن تعذّر. */
+    static float fps(String pkg) {
+        if (pkg == null) return -1;
+        try {
+            if (fpsLayer == null || !pkg.equals(fpsLayerPkg)) {
+                String list = sh("dumpsys SurfaceFlinger --list");
+                String best = null;
+                for (String l : list.split("\n")) {
+                    l = l.trim(); if (!l.contains(pkg) || l.startsWith("Background for") || l.startsWith("Bounds for") || l.startsWith("Task=")) continue;
+                    if (l.contains("SurfaceView")) { best = l; if (l.contains("BLAST")) break; } else if (best == null) best = l;
+                }
+                fpsLayer = best; fpsLayerPkg = pkg;
+            }
+            if (fpsLayer == null) return -1;
+            String out = sh("dumpsys SurfaceFlinger --latency '" + fpsLayer.replace("'", "") + "'");
+            String[] lines = out.split("\n"); java.util.ArrayList<Long> ts = new java.util.ArrayList<>();
+            for (int i = 1; i < lines.length; i++) {
+                String[] t = lines[i].trim().split("\\s+"); if (t.length < 3) continue;
+                try { long v = Long.parseLong(t[1]); if (v > 0 && v < Long.MAX_VALUE / 2) ts.add(v); } catch (Exception ignored) {}
+            }
+            if (ts.size() < 3) { fpsLayer = null; return -1; }
+            java.util.Collections.sort(ts); long last = ts.get(ts.size() - 1), first = last; int n = 0;
+            for (int i = ts.size() - 1; i >= 0; i--) { if (last - ts.get(i) > 1_000_000_000L) break; first = ts.get(i); n++; }
+            if (n < 2 || last == first) return 0;
+            return (n - 1) * 1_000_000_000f / (last - first);
+        } catch (Exception e) { return -1; }
+    }
     static String whoami() { return sh("id"); }
 }

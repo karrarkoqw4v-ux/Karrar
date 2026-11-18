@@ -1,7 +1,9 @@
 package com.gamebooster.app;
 
 import android.app.Activity;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.View;
@@ -15,13 +17,28 @@ final class UiUtil {
         a.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
     }
-    static int dp(View v, int x) { return (int) (x * v.getResources().getDisplayMetrics().density); }
+    private static float sc = -1;
+    /** معامل تكيّف المقاسات مع حجم الجهاز (هاتف صغير ← 0.72، تابلت ← حتى 1.5). */
+    static float scale(android.content.Context c) {
+        if (sc < 0) { android.util.DisplayMetrics m = c.getResources().getDisplayMetrics(); float a = Math.min(m.widthPixels, m.heightPixels) / m.density, b = Math.max(m.widthPixels, m.heightPixels) / m.density; sc = Math.max(.72f, Math.min(1.5f, Math.min(a / 360f, b / 760f))); }
+        return sc;
+    }
+    static int dp(View v, int x) { return (int) (x * v.getResources().getDisplayMetrics().density * scale(v.getContext())); }
+    static float px(android.content.Context c, float dp) { return dp * c.getResources().getDisplayMetrics().density * scale(c); }
+
+    /** أيقونة خطية من مجموعة Icons كعنصر واجهة. */
+    static class IconView extends View {
+        final String key; int color; final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        IconView(android.content.Context c, String key, int color) { super(c); this.key = key; this.color = color; }
+        @Override protected void onDraw(Canvas cv) { float s = Math.min(getWidth(), getHeight()); Icons.draw(cv, key, getWidth() / 2f, getHeight() / 2f, s * .86f, color, p); }
+    }
+    static IconView icon(android.content.Context c, String key, int color) { return new IconView(c, key, color); }
     static GradientDrawable round(int color, int radiusPx, int strokeColor, int strokePx) {
         GradientDrawable g = new GradientDrawable(); g.setColor(color); g.setCornerRadius(radiusPx);
         if (strokePx > 0) g.setStroke(strokePx, strokeColor); return g;
     }
     static TextView text(android.content.Context c, String s, int sp, int color, boolean bold) {
-        TextView t = new TextView(c); t.setText(s); t.setTextSize(sp); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT_BOLD); return t;
+        TextView t = new TextView(c); t.setText(s); t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, px(c, sp) * Math.min(1.15f, c.getResources().getConfiguration().fontScale)); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT_BOLD); return t;
     }
 
     /** حركة ضغط ناعمة: يصغر قليلاً عند اللمس ثم يعود (لا تمنع النقر). */

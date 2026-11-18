@@ -1,8 +1,10 @@
 name: Build Game Booster APK
 on:
   push:
-    paths: ['game-booster/**']
+    paths: ['game-booster/**', '.github/workflows/game-booster-apk.yml']
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,9 +14,22 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.7' }
-      - working-directory: game-booster
+      - name: Build release APK
+        working-directory: game-booster
         run: gradle assembleRelease --no-daemon
+      - name: Collect APK
+        run: cp game-booster/app/build/outputs/apk/release/app-release.apk GameBooster.apk
       - uses: actions/upload-artifact@v4
         with:
           name: GameBooster-apk
-          path: game-booster/app/build/outputs/apk/release/app-release.apk
+          path: GameBooster.apk
+      - name: Publish downloadable release (main only)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete booster-latest --yes --cleanup-tag || true
+          gh release create booster-latest GameBooster.apk \
+            --target "${{ github.sha }}" \
+            --title "مسرّع الألعاب — أحدث نسخة" \
+            --notes "ملف APK جاهز للتثبيت (أندرويد 7.0 فما فوق). فعّل «التثبيت من مصادر غير معروفة» ثم ثبّته. Commit: ${{ github.sha }}"

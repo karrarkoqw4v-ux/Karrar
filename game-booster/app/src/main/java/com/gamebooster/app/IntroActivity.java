@@ -24,7 +24,7 @@ public class IntroActivity extends Activity {
     private void proceed() {
         if (going) return;
         going = true;
-        boolean allGood = Booster.hasDnd(this) && Booster.hasOverlay(this) && Booster.hasPostNotifications(this);
+        boolean allGood = Booster.hasDnd(this) && Booster.hasOverlay(this) && Booster.hasPostNotifications(this) && Booster.hasWriteSettings(this) && Booster.hasBatteryExempt(this) && Booster.hasUsage(this);
         startActivity(new Intent(this, allGood ? LauncherActivity.class : PermissionsActivity.class));
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
@@ -271,7 +271,7 @@ public class IntroActivity extends Activity {
             // الشارات
             float bk = seg(t, HIT + 1.6f, HIT + 2.2f);
             if (bk > 0) {
-                String[] names = {"⚡ أداء أعلى", "🧠 رام أنظف", "🔥 حرارة أقل"}; float[] xs = {W * .2f, W * .5f, W * .8f};
+                String[] names = {"وضع الأداء", "تنظيف الذاكرة", "بدون مقاطعات"}; float[] xs = {W * .2f, W * .5f, W * .8f};
                 for (int i = 0; i < 3; i++) {
                     rf.set(xs[i] - 110, H * .9f - 20, xs[i] + 110, H * .9f + 20);
                     p.setStyle(Paint.Style.FILL); p.setColor(Color.argb(A(.16f * eo(bk)), 255, 165, 31)); c.drawRoundRect(rf, 20, 20, p);

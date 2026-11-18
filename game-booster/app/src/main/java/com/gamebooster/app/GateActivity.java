@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.*;
 
 import rikka.shizuku.Shizuku;
@@ -29,7 +30,7 @@ public class GateActivity extends Activity {
         root.setBackgroundColor(UiUtil.BG); root.setGravity(Gravity.CENTER_VERTICAL);
         root.setPadding(UiUtil.dp(root, 40), UiUtil.dp(root, 16), UiUtil.dp(root, 40), UiUtil.dp(root, 16));
         LinearLayout left = new LinearLayout(this); left.setOrientation(LinearLayout.VERTICAL); left.setGravity(Gravity.CENTER);
-        TextView ic = UiUtil.text(this, "🛡️", 64, Color.WHITE, false); ic.setGravity(Gravity.CENTER); left.addView(ic);
+        View ic = UiUtil.icon(this, "shield", UiUtil.OK); left.addView(ic, new LinearLayout.LayoutParams(UiUtil.dp(left, 84), UiUtil.dp(left, 84)));
         TextView t = UiUtil.text(this, "تفعيل Shizuku", 26, Color.WHITE, true); t.setGravity(Gravity.CENTER); left.addView(t);
         TextView d = UiUtil.text(this, "يحتاجه المسرّع لتنفيذ التسريع الحقيقي: وضع الأداء للعبة، تنظيف الكاش، الإغلاق القسري، لقطة الشاشة وقراءة استهلاك المعالج.", 13, Color.rgb(170, 178, 205), false);
         d.setGravity(Gravity.CENTER); d.setPadding(0, UiUtil.dp(d, 10), 0, 0); left.addView(d);
