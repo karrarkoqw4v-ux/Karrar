@@ -41,6 +41,7 @@ public class GateActivity extends Activity {
         skip.setOnClickListener(v -> { skipped = true; next(); });
         right.addView(skip);
         root.addView(right, new LinearLayout.LayoutParams(0, -2, 6));
+        UiUtil.applySafeInsets(root);
         setContentView(root);
         try { Shizuku.addBinderReceivedListenerSticky(recvL); Shizuku.addBinderDeadListener(deadL); Shizuku.addRequestPermissionResultListener(permL); } catch (Throwable ignored) {}
     }

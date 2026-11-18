@@ -16,6 +16,30 @@ final class UiUtil {
     static void immersive(Activity a) {
         a.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            android.view.WindowManager.LayoutParams lp = a.getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            a.getWindow().setAttributes(lp);
+        }
+    }
+
+    /** يضيف إلى حواف الجذر مساحة كافية لتفادي الحواف المستديرة والنوتش وشريط الحالة، على كل الأجهزة. */
+    static void applySafeInsets(final View root) {
+        final int l0 = root.getPaddingLeft(), t0 = root.getPaddingTop(), r0 = root.getPaddingRight(), b0 = root.getPaddingBottom();
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            int left = insets.getSystemWindowInsetLeft(), top = insets.getSystemWindowInsetTop(), right = insets.getSystemWindowInsetRight(), bottom = insets.getSystemWindowInsetBottom();
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                android.view.DisplayCutout cutout = insets.getDisplayCutout();
+                if (cutout != null) {
+                    left = Math.max(left, cutout.getSafeInsetLeft()); top = Math.max(top, cutout.getSafeInsetTop());
+                    right = Math.max(right, cutout.getSafeInsetRight()); bottom = Math.max(bottom, cutout.getSafeInsetBottom());
+                }
+            }
+            int extra = (int) px(v.getContext(), 10);
+            v.setPadding(l0 + left + extra, t0 + top, r0 + right + extra, b0 + bottom);
+            return insets;
+        });
+        root.requestApplyInsets();
     }
     private static float sc = -1;
     /** معامل تكيّف المقاسات مع حجم الجهاز (هاتف صغير ← 0.72، تابلت ← حتى 1.5). */

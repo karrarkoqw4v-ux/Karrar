@@ -177,19 +177,45 @@ public class PanelView extends View {
         hits.add(new Object[]{new RectF(x, y, x + w, y + hh + labelS * 1.6f), key});
     }
 
+    private float cachedTopInset = -1;
+    /** مسافة آمنة أعلى الشاشة (شريط الحالة أو الحافة المستديرة/النوتش) حتى لا تُقصّ أزرار اللوحة. */
+    private float safeTop() {
+        if (cachedTopInset >= 0) return cachedTopInset;
+        float inset = 0;
+        try {
+            int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+            if (id > 0) inset = getResources().getDimensionPixelSize(id);
+        } catch (Exception ignored) {}
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 28) {
+                android.view.WindowInsets wi = getRootWindowInsets();
+                if (wi != null) {
+                    android.view.DisplayCutout cut = wi.getDisplayCutout();
+                    if (cut != null) inset = Math.max(inset, cut.getSafeInsetTop());
+                }
+            }
+        } catch (Exception ignored) {}
+        cachedTopInset = inset + 4 * U;
+        return cachedTopInset;
+    }
+
     // ===== الرسم الرئيسي =====
     @Override protected void onDraw(Canvas c) {
         long now = SystemClock.uptimeMillis(); W = getWidth(); H = getHeight(); U = H / 365f; hits.clear();
         float k = openK(now), out = closeT > 0 ? cl((now - closeT) / 240f) : 0, slide = Math.max(0, k) * (1 - out), spin = (now - t0) / 1000f, shimmer = ((now - t0) / 1600f) % 1f;
         float scrim = Math.min(cl((now - t0) / 300f), 1 - out); c.drawColor(Color.argb((int) (120 * scrim), 0, 0, 0));
         dCpuNum += (cpuNum - dCpuNum) * .12f; dCpuFrac += (cpuFrac - dCpuFrac) * .12f; dRamFrac += (ramFrac - dRamFrac) * .12f;
-        float panelW = 300 * U;
+        float panelW = 300 * U, topInset = safeTop();
         for (int side = 0; side < 2; side++) {
             boolean left = side == 0; float off = (left ? -1 : 1) * panelW * (1 - slide);
             c.save(); c.translate(off, 0);
             panelFill(c, left);
             c.save(); c.clipPath(panelPath);
+            int hitStart = hits.size();
+            c.save(); c.translate(0, topInset);
             if (left) drawLeft(c, now, slide); else drawRight(c, now, slide);
+            c.restore();
+            for (int hi = hitStart; hi < hits.size(); hi++) ((RectF) hits.get(hi)[0]).offset(0, topInset);
             c.restore();
             band(c, left, shimmer, slide);
             c.restore();
@@ -280,7 +306,7 @@ public class PanelView extends View {
             case "segL": if (!listMode) { listMode = true; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break; case "segG": if (listMode) { listMode = false; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break;
             case "data": Extras.toggleHud(ctx); break; case "cross": Extras.toggleCross(ctx); break; case "color": Extras.cycleTint(ctx); break;
             case "magn": if (needSz()) { final boolean v = !on("magn"); Booster.prefs(ctx).edit().putBoolean("magnLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.settingsPut("secure", "accessibility_display_magnification_enabled", v ? "1" : "0")); toast(v ? "التكبير: اضغط ثلاثاً على الشاشة" : "التكبير متوقف"); } break;
-            case "fix": if (needSz()) { final boolean v = !on("fix"); toast(v ? "جارٍ تفعيل أداء ثابت..." : "جارٍ الإرجاع..."); final String pk = gamePkg; ShizukuHelper.run(() -> { final String o; if (v) o = Booster.ultraOn(ctx, pk); else { Booster.ultraOff(ctx); o = "أداء ثابت: متوقف"; } h.post(() -> { toast(o); refreshStates(); }); }); } break;
+            case "fix": if (needSz()) { final boolean v = !on("fix"); toast(v ? "جاري تفعيل وضع النهائي 😈" : "جارٍ الإرجاع..."); final String pk = gamePkg; ShizukuHelper.run(() -> { final String o; if (v) o = Booster.ultraOn(ctx, pk); else { Booster.ultraOff(ctx); o = "أداء ثابت: متوقف"; } h.post(() -> { toast(o); refreshStates(); }); }); } break;
             case "touch": if (needSz()) { final boolean v = !on("touch"); Booster.prefs(ctx).edit().putBoolean("touchLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.touchBoost(v)); toast(v ? "اللمس أسرع" : "اللمس عادي"); } break;
             case "shot": if (needSz()) { ShizukuHelper.run(() -> { final String f = ShizukuHelper.screenshot(); h.post(() -> toast(f != null ? "حُفظت اللقطة: " + f : "تعذّر أخذ اللقطة")); }); } break;
             case "rotate": { boolean v = !on("rotate"); if (Booster.setRotationLock(ctx, v)) Booster.prefs(ctx).edit().putBoolean("rotLockOn", v).apply(); else toast("امنح صلاحية تعديل الإعدادات"); break; }

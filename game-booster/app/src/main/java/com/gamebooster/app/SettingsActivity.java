@@ -30,6 +30,7 @@ public class SettingsActivity extends Activity {
         body.addView(sv, new LinearLayout.LayoutParams(0, -1, 2.2f));
         content = new FrameLayout(this); body.addView(content, new LinearLayout.LayoutParams(0, -1, 7.8f));
         root.addView(body, new LinearLayout.LayoutParams(-1, 0, 1));
+        UiUtil.applySafeInsets(root);
         setContentView(root);
         show(page);
     }

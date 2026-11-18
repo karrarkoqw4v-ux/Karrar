@@ -234,6 +234,7 @@ public class LauncherActivity extends Activity {
         tabs.addView(home, new LinearLayout.LayoutParams(UiUtil.dp(root, 200), UiUtil.dp(root, 44))); tabs.addView(tools, new LinearLayout.LayoutParams(UiUtil.dp(root, 200), UiUtil.dp(root, 44)));
         bottom.addView(tabs, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
         col.addView(bottom, new LinearLayout.LayoutParams(-1, UiUtil.dp(root, 48)));
+        UiUtil.applySafeInsets(col);
         setContentView(root);
     }
 

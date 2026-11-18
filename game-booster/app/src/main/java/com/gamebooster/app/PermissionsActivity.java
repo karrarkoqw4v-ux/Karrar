@@ -59,6 +59,7 @@ public class PermissionsActivity extends Activity {
         go.setBackground(UiUtil.round(UiUtil.ACC, UiUtil.dp(root, 22), 0, 0)); UiUtil.pressable(go);
         go.setOnClickListener(v -> { startActivity(new Intent(this, LauncherActivity.class)); finish(); });
         root.addView(go, new LinearLayout.LayoutParams(UiUtil.dp(root, 220), UiUtil.dp(root, 46)));
+        UiUtil.applySafeInsets(root);
         setContentView(root);
     }
 

@@ -120,6 +120,7 @@ public class HubActivity extends Activity {
         }
         ScrollView sv = new ScrollView(this); sv.addView(grid);
         root.addView(sv, new LinearLayout.LayoutParams(0, -1, 4.6f));
+        UiUtil.applySafeInsets(root);
         setContentView(root);
 
         tBoost.setOnClickListener(v -> { status.setText("✔ تحرّر ~" + Booster.killBackground(this, null) + " MB"); updateGauges(); });
