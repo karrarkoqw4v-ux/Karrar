@@ -80,8 +80,10 @@ final class Extras {
         cross = v; crossOn = true; wm(c).addView(v, lp(120, 120, Gravity.CENTER, 0, 0));
     }
     /** مرشّح فوق اللعبة بتدرّج لوني واقعي (ليس تلويناً مسطّحاً) + تظليل خفيف على الأطراف. يدوّر بين 5 أوضاع. @return الفهرس الجديد */
-    static int cycleTint(Context c) {
-        c = c.getApplicationContext(); tint = (tint + 1) % TINT_NAMES.length;
+    static int cycleTint(Context c) { return setTint(c, (tint + 1) % TINT_NAMES.length); }
+    /** يضبط لون الشاشة مباشرة على فهرس معيّن (0..TINT_NAMES.length-1). لا يُستدعى إلا من خيط الواجهة (ينشئ View). @return الفهرس المطبَّق */
+    static int setTint(Context c, int idx) {
+        c = c.getApplicationContext(); tint = Math.max(0, Math.min(TINT_NAMES.length - 1, idx));
         try { if (tintV != null) wm(c).removeView(tintV); } catch (Exception ignored) {} tintV = null;
         if (tint == 0) return tint;
         final int preset = tint;

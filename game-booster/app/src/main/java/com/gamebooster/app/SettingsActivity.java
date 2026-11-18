@@ -13,7 +13,8 @@ import android.widget.*;
 /** صفحة الإعدادات: قائمة جانبية + محتوى. كل خيار هنا يغيّر سلوكاً حقيقياً في التطبيق. */
 public class SettingsActivity extends Activity {
     private static final int REQ_IMG = 11;
-    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "زر اللوحة", "لوحة الأدوات", "خيارات أخرى", "الأداء المتقدم", "عن التطبيق"};
+    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "زر اللوحة", "لوحة الأدوات", "خيارات أخرى", "الأداء المتقدم",
+            "#الجلسة", "الكرافت والرسومات", "الفريمات والحرارة", "أوامر التنفيذ", "عن التطبيق"};
     private FrameLayout content;
     private LinearLayout side;
     private int page = 0;
@@ -69,7 +70,10 @@ public class SettingsActivity extends Activity {
             case 7: pageHub(col); break;
             case 8: pageOther(col); break;
             case 9: pageShizuku(col); break;
-            case 10: pageAbout(col); break;
+            case 11: pageGraphics(col); break;
+            case 12: pageFrames(col); break;
+            case 13: pageCommands(col); break;
+            case 14: pageAbout(col); break;
         }
         return o[0];
     }
@@ -216,7 +220,108 @@ public class SettingsActivity extends Activity {
         flagRow(c, "إظهار اللوحة تلقائياً عند بدء اللعبة", "يفتح لسان اللوحة على حافة الشاشة فوق اللعبة", "autoPanel", true);
     }
 
-    // ===== 10: عن التطبيق =====
+    // ===== أدوات الجلسة المشتركة =====
+    /** صفّ لعبة الجلسة الافتراضية: تُستخدم كسياق (pkg) عند تنفيذ أوامر تحتاج اسم لعبة، قبل أن تبدأ لعباً فعلياً. */
+    private void gamePickerRow(LinearLayout c) {
+        String cur = Booster.sessionDefaultGame(this);
+        android.content.pm.PackageManager pm = getPackageManager();
+        String curName = "لم تُختر بعد";
+        if (cur != null) try { curName = pm.getApplicationLabel(pm.getApplicationInfo(cur, 0)).toString(); } catch (Exception ignored) {}
+        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(UiUtil.dp(row, 18), UiUtil.dp(row, 10), UiUtil.dp(row, 18), UiUtil.dp(row, 4));
+        LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(UiUtil.text(this, "لعبة هذه الجلسة", 16, Color.WHITE, true));
+        final TextView sub = UiUtil.text(this, curName, 12, SettingsUi.MUTED, false); col.addView(sub);
+        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView b = SettingsUi.choice(this, "اختيار", true);
+        b.setOnClickListener(v -> {
+            java.util.List<android.content.pm.ResolveInfo> games = Booster.games(this);
+            if (games.isEmpty()) { Toast.makeText(this, "أضف لعبة أولاً من زر + بالقائمة الرئيسية", Toast.LENGTH_SHORT).show(); return; }
+            String[] names = new String[games.size()]; for (int i = 0; i < names.length; i++) names[i] = games.get(i).loadLabel(pm).toString();
+            new android.app.AlertDialog.Builder(this).setTitle("اختر لعبة الجلسة").setItems(names, (d, w) -> {
+                String pkg = games.get(w).activityInfo.packageName; Booster.setSessionDefaultGame(this, pkg); sub.setText(names[w]);
+            }).setNegativeButton("إلغاء", null).show();
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(b, 110), UiUtil.dp(b, 38)); row.addView(b, lp);
+        c.addView(row);
+        TextView note = UiUtil.text(this, "تُستخدم هذه اللعبة عند تنفيذ أوامر تحتاج اسم لعبة من هذه الصفحة، قبل أن تضغط «بدء اللعب» فعلياً.", 11, SettingsUi.MUTED, false);
+        note.setPadding(UiUtil.dp(note, 18), 0, UiUtil.dp(note, 18), UiUtil.dp(note, 8)); c.addView(note);
+    }
+
+    /** صفّ أمر حقيقي من ExecCommands.ALL: مفتاح للأوامر الدائمة وزر للأوامر اللحظية؛ كلاهما يُنفَّذ عبر Shizuku فعلاً. */
+    private void execRow(final LinearLayout c, final String id) {
+        ExecCommands.Cmd cmd = null; for (ExecCommands.Cmd x : ExecCommands.ALL) if (x.id.equals(id)) { cmd = x; break; }
+        if (cmd == null) return; final ExecCommands.Cmd fc = cmd;
+        if (fc.action) {
+            LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_VERTICAL); row.setPadding(UiUtil.dp(row, 18), UiUtil.dp(row, 9), UiUtil.dp(row, 18), UiUtil.dp(row, 9));
+            LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
+            col.addView(UiUtil.text(this, fc.title, 15, Color.WHITE, true)); col.addView(UiUtil.text(this, fc.desc, 11, SettingsUi.MUTED, false));
+            row.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+            TextView b = SettingsUi.choice(this, "تنفيذ", true);
+            b.setOnClickListener(v -> { if (!ShizukuHelper.granted()) { Toast.makeText(this, "يحتاج تفعيل Shizuku", Toast.LENGTH_SHORT).show(); return; }
+                final String pkg = Booster.sessionDefaultGame(this);
+                ShizukuHelper.run(() -> { final String o = Booster.runExecCmd(this, fc, pkg, true); runOnUiThread(() -> Toast.makeText(this, fc.title + ": " + (o.isEmpty() ? "تم" : o), Toast.LENGTH_SHORT).show()); }); });
+            row.addView(b, new LinearLayout.LayoutParams(UiUtil.dp(b, 90), UiUtil.dp(b, 36)));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2); lp.setMargins(0, UiUtil.dp(row, 4), 0, 0); c.addView(row, lp);
+        } else {
+            boolean on = Booster.execCmdOn(this, id);
+            c.addView(SettingsUi.toggleRow(this, fc.title, fc.desc, on, v -> {
+                if (!ShizukuHelper.granted()) { Toast.makeText(this, "يحتاج تفعيل Shizuku", Toast.LENGTH_SHORT).show(); return; }
+                final String pkg = Booster.sessionDefaultGame(this);
+                ShizukuHelper.run(() -> { final String o = Booster.runExecCmd(this, fc, pkg, v); runOnUiThread(() -> Toast.makeText(this, fc.title + ": " + (v ? (o.isEmpty() ? "تم" : o) : "أُرجع"), Toast.LENGTH_SHORT).show()); });
+            }));
+        }
+    }
+
+    // ===== 11: الكرافت والرسومات =====
+    private void pageGraphics(LinearLayout c) {
+        gamePickerRow(c);
+        TextView note = UiUtil.text(this, "مرشّحات لون شفافة فوق الشاشة فعلاً (وليست معايرة لعتاد الشاشة). لا نقدر نرفع دقّة رسم اللعبة أو نفرض HDR عليها من خارجها — هذا داخل محرّك اللعبة نفسها ولا تصل إليه أي أداة نظام.", 12, Color.rgb(255, 190, 120), false);
+        note.setPadding(UiUtil.dp(note, 18), UiUtil.dp(note, 10), UiUtil.dp(note, 18), UiUtil.dp(note, 6)); c.addView(note);
+        TextView title = UiUtil.text(this, "لون الشاشة فوق اللعبة", 16, Color.WHITE, true); title.setPadding(UiUtil.dp(title, 18), UiUtil.dp(title, 10), 0, UiUtil.dp(title, 4)); c.addView(title);
+        LinearLayout row = new LinearLayout(this); row.setPadding(UiUtil.dp(row, 14), 0, UiUtil.dp(row, 14), UiUtil.dp(row, 10));
+        for (int i = 0; i < Extras.TINT_NAMES.length; i++) {
+            TextView b = SettingsUi.choice(this, Extras.TINT_NAMES[i], Extras.tint == i);
+            final int idx = i; b.setOnClickListener(v -> { if (!Booster.hasOverlay(this)) { Toast.makeText(this, "يحتاج صلاحية الظهور فوق التطبيقات", Toast.LENGTH_SHORT).show(); return; } Extras.setTint(this, idx); show(page); });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(b, 40)); lp.setMargins(UiUtil.dp(b, 4), 0, UiUtil.dp(b, 4), 0); row.addView(b, lp);
+        }
+        c.addView(row);
+        execRow(c, "maxBrightness");
+        execRow(c, "darkMode");
+        execRow(c, "headsUpOff");
+    }
+
+    // ===== 12: الفريمات والحرارة =====
+    private void pageFrames(LinearLayout c) {
+        gamePickerRow(c);
+        TextView title = UiUtil.text(this, "معدّل التحديث المستهدف", 18, Color.WHITE, true); title.setGravity(Gravity.CENTER); title.setPadding(0, UiUtil.dp(title, 10), 0, UiUtil.dp(title, 8)); c.addView(title);
+        int max = Booster.maxHz(this);
+        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER);
+        String[] labels = {"أقصى ما يدعمه جهازك (" + max + "Hz)", "ثابت 120 (أو أقصى الجهاز إن كان أقل)", "متوازن 90 (حرارة أقل)"};
+        for (int i = 0; i < 3; i++) {
+            final int idx = i; TextView b = SettingsUi.choice(this, labels[i], Booster.hzMode(this) == i);
+            b.setOnClickListener(v -> { Booster.setHzMode(this, idx); show(page); });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(b, 230), UiUtil.dp(b, 54)); lp.setMargins(UiUtil.dp(b, 6), 0, UiUtil.dp(b, 6), 0); row.addView(b, lp);
+        }
+        c.addView(row);
+        TextView n = UiUtil.text(this, "يُطبَّق هذا الاختيار كل مرة تفعّل فيها «أداء ثابت» أو «وضع النهائي». لا يتجاوز أبداً أقصى ما تدعمه شاشتك فعلياً.", 12, SettingsUi.MUTED, false);
+        n.setGravity(Gravity.CENTER); n.setPadding(UiUtil.dp(n, 18), UiUtil.dp(n, 10), UiUtil.dp(n, 18), UiUtil.dp(n, 10)); c.addView(n);
+        execRow(c, "fixedPerf"); execRow(c, "gameMode"); execRow(c, "adaptiveSaver"); execRow(c, "lowPower"); execRow(c, "hzMax");
+        execRow(c, "animScale"); execRow(c, "touchFast"); execRow(c, "standbyActive"); execRow(c, "setInactiveFalse"); execRow(c, "dozeWhitelist"); execRow(c, "stayOn");
+        execRow(c, "thermalReset"); execRow(c, "killAll"); execRow(c, "trimCaches"); execRow(c, "dozeExit"); execRow(c, "forceStopOthers"); execRow(c, "fstrimNow");
+    }
+
+    // ===== 13: أوامر التنفيذ (لوحة كاملة) =====
+    private void pageCommands(LinearLayout c) {
+        gamePickerRow(c);
+        TextView n = UiUtil.text(this, ExecCommands.ALL.size() + " أمراً حقيقياً يُنفَّذ عبر Shizuku. المفاتيح تبقى حتى تُلغيها؛ الأزرار تُنفَّذ مرة واحدة.", 12, SettingsUi.MUTED, false);
+        n.setPadding(UiUtil.dp(n, 18), UiUtil.dp(n, 6), UiUtil.dp(n, 18), UiUtil.dp(n, 8)); c.addView(n);
+        for (int cat = 0; cat < ExecCommands.CAT_NAMES.length; cat++) {
+            TextView h = UiUtil.text(this, ExecCommands.CAT_NAMES[cat], 16, UiUtil.ACC, true); h.setPadding(UiUtil.dp(h, 18), UiUtil.dp(h, 10), 0, UiUtil.dp(h, 2)); c.addView(h);
+            for (ExecCommands.Cmd cmd : ExecCommands.ALL) if (cmd.cat == cat) execRow(c, cmd.id);
+        }
+    }
+
+    // ===== 14: عن التطبيق =====
     private void pageAbout(LinearLayout c) {
         String ver = "1.0.0"; try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
         c.addView(info("الإصدار", ver));

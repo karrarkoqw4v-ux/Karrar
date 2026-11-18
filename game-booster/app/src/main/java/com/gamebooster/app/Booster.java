@@ -285,6 +285,29 @@ final class Booster {
             {"global", "tcp_default_init_rwnd"}, {"global", "mobile_data_always_on"}, {"secure", "long_press_timeout"}, {"secure", "multi_press_timeout"}};
     /** أعلى معدّل تحديث تدعمه الشاشة فعلاً (لا يتجاوز عتاد الجهاز). */
     static int maxHz(Context c) { java.util.List<Integer> l = Extras.hzList(c); return l.get(l.size() - 1); }
+    /** وضع اختيار معدّل التحديث: 0 = الأقصى الذي يدعمه جهازك، 1 = 120 ثابت (أو أقصى الجهاز إن كان أقل)، 2 = متوازن 90 (أو أقصى الجهاز إن كان أقل). */
+    static int hzMode(Context c) { return num(c, "hzMode", 0); }
+    static void setHzMode(Context c, int m) { setNum(c, "hzMode", m); }
+    static int hzTarget(Context c) {
+        int max = maxHz(c), mode = hzMode(c);
+        if (mode == 1) return Math.min(120, max);
+        if (mode == 2) return Math.min(90, max);
+        return max;
+    }
+    /** ينفّذ أمراً من لوحة «أوامر التنفيذ» (تشغيل أو إرجاع)، مستبدلاً HZMAX بمعدّل التحديث المستهدف الفعلي. يُستدعى من خيط خلفي. */
+    static String runExecCmd(Context c, ExecCommands.Cmd cmd, String pkg, boolean on) {
+        java.util.function.Function<String, String> fn = on ? cmd.on : cmd.off;
+        if (fn == null) return "";
+        String sh = fn.apply(pkg); if (sh == null) return "";
+        sh = sh.replace("HZMAX", String.valueOf(hzTarget(c)));
+        String out = ShizukuHelper.sh(sh);
+        prefs(c).edit().putBoolean("ec:" + cmd.id, on).apply();
+        return out;
+    }
+    static boolean execCmdOn(Context c, String id) { return prefs(c).getBoolean("ec:" + id, false); }
+    /** الألعاب التي تُضاف إليها «جلسة» من الإعدادات مباشرة (قبل الدخول من القائمة الرئيسية). */
+    static String sessionDefaultGame(Context c) { return prefs(c).getString("sessionDefaultPkg", null); }
+    static void setSessionDefaultGame(Context c, String pkg) { prefs(c).edit().putString("sessionDefaultPkg", pkg).apply(); }
     /** يفعّل «أداء ثابت». يُستدعى من خيط خلفي. @return ملخص بما نُفّذ والزمن بالمللي ثانية */
     static String ultraOn(Context c, String pkg) {
         if (!ShizukuHelper.granted()) return "يحتاج Shizuku";
@@ -292,7 +315,7 @@ final class Booster {
         SharedPreferences.Editor ed = prefs(c).edit();
         if (!prefs(c).getBoolean("ultraOn", false)) for (String[] k : ULTRA_KEYS) ed.putString("up:" + k[1], ShizukuHelper.sh("settings get " + k[0] + " " + k[1]));
         ed.putBoolean("ultraOn", true).apply();
-        int hz = maxHz(c);
+        int hz = hzTarget(c);
         StringBuilder skip = new StringBuilder(c.getPackageName()); if (pkg != null) skip.append("|").append(pkg);
         for (android.content.pm.ApplicationInfo ai : c.getPackageManager().getInstalledApplications(0)) if (isProtected(c, ai.packageName)) skip.append("|").append(ai.packageName);
         String script = "cmd power set-fixed-performance-mode-enabled true;"
@@ -334,7 +357,7 @@ final class Booster {
             int lower = l.get(Math.max(0, l.size() / 2 - (l.size() % 2 == 0 ? 1 : 0)));
             ShizukuHelper.sh("settings put system min_refresh_rate " + lower + "; settings put system peak_refresh_rate " + lower); prefs(c).edit().putBoolean("thermalCut", true).apply();
         } else if (cut && t <= 41f) {
-            int hz = maxHz(c); ShizukuHelper.sh("settings put system min_refresh_rate " + hz + "; settings put system peak_refresh_rate " + hz); prefs(c).edit().putBoolean("thermalCut", false).apply();
+            int hz = hzTarget(c); ShizukuHelper.sh("settings put system min_refresh_rate " + hz + "; settings put system peak_refresh_rate " + hz); prefs(c).edit().putBoolean("thermalCut", false).apply();
         }
     }
 
