@@ -50,7 +50,7 @@ public class IntroActivity extends Activity {
 
         @Override protected void onDraw(Canvas c) {
             int w = getWidth(), h = getHeight();
-            float cx = w / 2f, cy = h * 0.42f, u = Math.min(w, h) / 100f;
+            float cx = w / 2f, cy = h * 0.36f, u = Math.min(w, h) / 100f;
             // خلفية
             p.setShader(new RadialGradient(cx, cy, Math.max(w, h) * 0.7f, new int[]{Color.rgb(40, 6, 14), Color.rgb(8, 8, 16), Color.BLACK},
                     new float[]{0, 0.5f, 1}, Shader.TileMode.CLAMP));
@@ -80,7 +80,7 @@ public class IntroActivity extends Activity {
             if (logo > 0) {
                 c.save();
                 c.translate(cx, cy);
-                float s = u * 0.55f * (0.4f + 0.6f * logo) * (1 + 0.04f * (float) Math.sin(t * 40));
+                float s = u * 0.42f * (0.4f + 0.6f * logo) * (1 + 0.04f * (float) Math.sin(t * 40));
                 c.scale(s, s);
                 bolt.reset();
                 bolt.moveTo(8, -50); bolt.lineTo(-26, 6); bolt.lineTo(-3, 6); bolt.lineTo(-12, 50);
@@ -112,16 +112,16 @@ public class IntroActivity extends Activity {
             p.setTextSize(u * 11);
             p.setColor(Color.argb((int) (255 * tx), 255, 255, 255));
             p.setShadowLayer(u * 2, 0, 0, Color.argb((int) (255 * tx), 255, 30, 60));
-            c.drawText("مسرّع الألعاب", cx, h * 0.72f + (1 - tx) * u * 8, p);
+            c.drawText("مسرّع الألعاب", cx, h * 0.8f + (1 - tx) * u * 8, p);
             p.setShadowLayer(0, 0, 0, 0);
             p.setTextSize(u * 4.2f); p.setLetterSpacing(0.5f);
             p.setColor(Color.argb((int) (200 * tx), 255, 90, 110));
-            c.drawText("GAME BOOSTER", cx, h * 0.72f + u * 7 + (1 - tx) * u * 8, p);
+            c.drawText("GAME BOOSTER", cx, h * 0.8f + u * 7 + (1 - tx) * u * 8, p);
             p.setLetterSpacing(0);
 
             // شريط التحميل
             float bar = seg(t, 0.55f, 0.95f);
-            float bw = w * 0.5f, bx = cx - bw / 2, by = h * 0.9f;
+            float bw = w * 0.5f, bx = cx - bw / 2, by = h * 0.93f;
             p.setStyle(Paint.Style.FILL);
             p.setColor(Color.argb(60, 255, 255, 255));
             c.drawRoundRect(bx, by, bx + bw, by + u * 1.2f, u, u, p);
