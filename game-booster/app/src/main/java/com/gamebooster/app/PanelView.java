@@ -151,11 +151,25 @@ public class PanelView extends View {
         hits.add(new Object[]{new RectF(x, y, x + w, y + hh + 16 * U), key});
     }
 
-    private void stripes(Canvas c, float x, float y0, float v, String icon, String key) {
-        int n = 14; float sh = 6.5f * U, w = 55 * U; p.setStyle(Paint.Style.FILL);
+    private void stripes(Canvas c, float x, float y0, float v, String icon, String key, String stepUpKey, String stepDownKey) {
+        int n = 14; float sh = 6.5f * U, w = 55 * U;
+        // زر + أعلى الشريط
+        float cxp = x + w / 2, capR = 11 * U;
+        p.setStyle(Paint.Style.FILL); p.setColor(Color.argb(230, 46, 48, 62)); c.drawCircle(cxp, y0 - 18 * U, capR, p);
+        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2 * U); p.setColor(Color.argb(160, 255, 255, 255));
+        c.drawLine(cxp - 5 * U, y0 - 18 * U, cxp + 5 * U, y0 - 18 * U, p); c.drawLine(cxp, y0 - 23 * U, cxp, y0 - 13 * U, p);
+        hits.add(new Object[]{new RectF(cxp - capR, y0 - 18 * U - capR, cxp + capR, y0 - 18 * U + capR), stepUpKey});
+        p.setStyle(Paint.Style.FILL);
         for (int i = 0; i < n; i++) { boolean fill = (1 - i / (float) n) <= v + .001f; float yy = y0 + i * sh; p.setColor(fill ? Color.argb(250, 245, 245, 245) : Color.argb(110, 150, 150, 150)); c.drawRect(x, yy, x + w, yy + sh - 1.8f * U, p); }
-        Icons.draw(c, icon, x + 5 * U, y0 + n * sh + 14 * U, 13 * U, Color.WHITE, p);
+        Icons.draw(c, icon, x + 5 * U, y0 + n * sh + 13 * U, 12 * U, Color.WHITE, p);
+        p.setStyle(Paint.Style.FILL); p.setTextAlign(Paint.Align.LEFT); p.setTypeface(Typeface.DEFAULT_BOLD); p.setTextSize(9 * U); p.setColor(Color.WHITE);
+        c.drawText(Math.round(v * 100) + "%", x + 20 * U, y0 + n * sh + 16 * U, p);
         hits.add(new Object[]{new RectF(x - 6 * U, y0 - 6 * U, x + w + 6 * U, y0 + n * sh + 4 * U), key});
+        // زر − أسفل الشريط
+        float cyn = y0 + n * sh + 23 * U;
+        p.setStyle(Paint.Style.FILL); p.setColor(Color.argb(230, 46, 48, 62)); c.drawCircle(cxp, cyn, capR, p);
+        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2 * U); p.setColor(Color.argb(160, 255, 255, 255)); c.drawLine(cxp - 5 * U, cyn, cxp + 5 * U, cyn, p);
+        hits.add(new Object[]{new RectF(cxp - capR, cyn - capR, cxp + capR, cyn + capR), stepDownKey});
     }
 
     private void tile(Canvas c, String key, String label, float x, float y, float w, float hh, float iconS, float labelS, boolean kebab, long now, float delay) {
@@ -239,7 +253,7 @@ public class PanelView extends View {
         float gcx = 182 * U; bigNumber(c, gcx, 82 * U, cpuIsGhz ? String.format(Locale.US, "%.2f", dCpuNum) : String.valueOf(Math.round(dCpuNum)), cpuIsGhz ? "GHz" : "%");
         disk(c, gcx, 128 * U, 62 * U, 24 * U, (now - t0) / 1000f, dCpuFrac, "CPU");
         hexChip(c, gcx, 180 * U, on("perf") ? "وضع التسريع" : "الوضع العادي", "chipPerf");
-        stripes(c, 145 * U, 238 * U, briV, "sun", "barBri");
+        stripes(c, 145 * U, 238 * U, briV, "sun", "barBri", "stepBriUp", "stepBriDown");
         // قائمة الأدوات (قابلة للتمرير)
         c.save(); c.clipRect(0, 98 * U, 130 * U, H);
         float y0 = 104 * U - scroll;
@@ -259,7 +273,7 @@ public class PanelView extends View {
         float gcx = W - 191 * U; bigNumber(c, gcx, 82 * U, String.valueOf(Math.round(dRamFrac * 100)) + "%", "");
         disk(c, gcx, 128 * U, 62 * U, 24 * U, (now - t0) / 1000f + .5f, dRamFrac, "RAM");
         hexChip(c, gcx, 180 * U, on("autoClean") ? "تنظيف تلقائي" : "الوضع العادي", "chipClean");
-        stripes(c, W - 200 * U, 238 * U, volV, "spk", "barVol");
+        stripes(c, W - 200 * U, 238 * U, volV, "spk", "barVol", "stepVolUp", "stepVolDown");
         for (int i = 0; i < RIGHT.length; i++) {
             float x = W - (i % 2 == 0 ? 104 : 47) * U, y = (49 + (i / 2) * 57) * U; if (i % 2 == 0) x = W - 104 * U; else x = W - 47 * U;
             tile(c, RIGHT[i][0], RIGHT[i][1], x, y, 38 * U, 38 * U, 21 * U, 9.5f * U, false, now, i * .05f);
@@ -289,11 +303,14 @@ public class PanelView extends View {
     private String hit(float x, float y) { for (int i = hits.size() - 1; i >= 0; i--) { Object[] o = hits.get(i); if (((RectF) o[0]).contains(x, y)) return (String) o[1]; } return null; }
     private void bar(String k, float y) {
         float y0 = 238 * U, hgt = 14 * 6.5f * U, v = cl(1 - (y - y0) / hgt);
-        if (k.equals("barBri")) { briV = v; final int val = Math.round(v * 255);
-            if (Booster.hasWriteSettings(ctx)) { try { Settings.System.putInt(ctx.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE, 0); Settings.System.putInt(ctx.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, val); } catch (Exception ignored) {} }
-            else if (ShizukuHelper.granted()) ShizukuHelper.run(() -> { ShizukuHelper.settingsPut("system", "screen_brightness_mode", "0"); ShizukuHelper.settingsPut("system", "screen_brightness", String.valueOf(val)); }); }
-        else { volV = v; Booster.setMediaVolumePct(ctx, Math.round(v * 100)); }
+        if (k.equals("barBri")) setBri(v); else setVol(v);
     }
+    private void setBri(float v) {
+        briV = v; final int val = Math.round(v * 255);
+        if (Booster.hasWriteSettings(ctx)) { try { Settings.System.putInt(ctx.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE, 0); Settings.System.putInt(ctx.getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, val); } catch (Exception ignored) {} }
+        else if (ShizukuHelper.granted()) ShizukuHelper.run(() -> { ShizukuHelper.settingsPut("system", "screen_brightness_mode", "0"); ShizukuHelper.settingsPut("system", "screen_brightness", String.valueOf(val)); });
+    }
+    private void setVol(float v) { volV = v; Booster.setMediaVolumePct(ctx, Math.round(v * 100)); }
     private void toast(String s) { Toast.makeText(ctx, s, Toast.LENGTH_SHORT).show(); }
     private boolean needSz() { if (ShizukuHelper.granted()) return true; toast("يحتاج تفعيل Shizuku"); return false; }
 
@@ -304,7 +321,7 @@ public class PanelView extends View {
             case "top0": go(LauncherActivity.class); break; case "top1": go(SettingsActivity.class); break; case "top2": go(HubActivity.class); break;
             case "top3": dismiss(); ctx.stopService(new Intent(ctx, OverlayService.class)); break;
             case "segL": if (!listMode) { listMode = true; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break; case "segG": if (listMode) { listMode = false; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break;
-            case "data": Extras.toggleHud(ctx); break; case "cross": Extras.toggleCross(ctx); break; case "color": Extras.cycleTint(ctx); break;
+            case "data": Extras.toggleHud(ctx); break; case "cross": Extras.toggleCross(ctx); break;
             case "magn": if (needSz()) { final boolean v = !on("magn"); Booster.prefs(ctx).edit().putBoolean("magnLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.settingsPut("secure", "accessibility_display_magnification_enabled", v ? "1" : "0")); toast(v ? "التكبير: اضغط ثلاثاً على الشاشة" : "التكبير متوقف"); } break;
             case "fix": if (needSz()) { final boolean v = !on("fix"); toast(v ? "جاري تفعيل وضع النهائي 😈" : "جارٍ الإرجاع..."); final String pk = gamePkg; ShizukuHelper.run(() -> { final String o; if (v) o = Booster.ultraOn(ctx, pk); else { Booster.ultraOff(ctx); o = "أداء ثابت: متوقف"; } h.post(() -> { toast(o); refreshStates(); }); }); } break;
             case "touch": if (needSz()) { final boolean v = !on("touch"); Booster.prefs(ctx).edit().putBoolean("touchLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.touchBoost(v)); toast(v ? "اللمس أسرع" : "اللمس عادي"); } break;
@@ -319,6 +336,11 @@ public class PanelView extends View {
             case "broom": if (needSz()) ShizukuHelper.run(() -> { final String o = ShizukuHelper.trimCaches(); h.post(() -> toast("تنظيف الكاش: " + o)); }); else toast("تنظيف عادي: ~" + Booster.killBackground(ctx, gamePkg) + " MB"); break;
             case "chipPerf": if (needSz() && gamePkg != null) { final boolean v = !on("perf"); Booster.setGameFlag(ctx, gamePkg, "perfLive", v); final String pk = gamePkg; ShizukuHelper.run(() -> { final String o = ShizukuHelper.gameMode(pk, v ? "performance" : "standard"); h.post(() -> toast(v ? "وضع التسريع: " + o : "الوضع العادي")); }); } else if (gamePkg == null && ShizukuHelper.granted()) toast("لم أتعرف على اللعبة المفتوحة"); break;
             case "chipClean": { boolean v = !on("autoClean"); Booster.prefs(ctx).edit().putBoolean("autoClean", v).apply(); toast(v ? "تنظيف تلقائي كل دقيقة ونصف" : "التنظيف التلقائي متوقف"); break; }
+            case "stepBriUp": setBri(cl(briV + 1 / 14f)); break;
+            case "stepBriDown": setBri(cl(briV - 1 / 14f)); break;
+            case "stepVolUp": setVol(cl(volV + 1 / 14f)); break;
+            case "stepVolDown": setVol(cl(volV - 1 / 14f)); break;
+            case "color": { final int idx = Extras.cycleTint(ctx); toast("لون الشاشة: " + Extras.TINT_NAMES[idx]); break; }
         }
         refreshStates();
     }
