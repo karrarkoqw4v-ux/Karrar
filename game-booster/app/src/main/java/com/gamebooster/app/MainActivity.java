@@ -2,7 +2,6 @@ package com.gamebooster.app;
 
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -124,31 +123,14 @@ public class MainActivity extends Activity {
     }
 
     private void boostAndLaunch(String pkg) {
-        long before = freeMem();
-        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        PackageManager pm = getPackageManager();
-        int n = 0;
-        for (ApplicationInfo ai : pm.getInstalledApplications(0)) {
-            boolean system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-            if (system || ai.packageName.equals(pkg) || ai.packageName.equals(getPackageName())) continue;
-            am.killBackgroundProcesses(ai.packageName);
-            n++;
-        }
-        if (dnd) setDnd();
-        long freed = Math.max(0, freeMem() - before) / (1024 * 1024);
-        Toast.makeText(this, "تم تسريع الجهاز ✔ (فُحص " + n + " تطبيق، تحرّر ~" + freed + " MB)", Toast.LENGTH_LONG).show();
-        Intent launch = pm.getLaunchIntentForPackage(pkg);
-        if (launch != null) startActivity(launch);
-    }
-
-    private void setDnd() {
-        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        if (nm.isNotificationPolicyAccessGranted()) {
-            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
-        } else {
+        long freed = Booster.killBackground(this, pkg);
+        if (dnd && !Booster.setDnd(this, true)) {
             Toast.makeText(this, "امنح المسرّع صلاحية «عدم الإزعاج» ثم أعد المحاولة", Toast.LENGTH_LONG).show();
-            startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS));
+            startActivity(Booster.dndSettings());
         }
+        Toast.makeText(this, "تم تسريع الجهاز ✔ (تحرّر ~" + freed + " MB)", Toast.LENGTH_LONG).show();
+        Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
+        if (launch != null) startActivity(launch);
     }
 
     private long freeMem() {
