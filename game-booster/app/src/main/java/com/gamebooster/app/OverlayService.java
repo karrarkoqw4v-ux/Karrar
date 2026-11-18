@@ -18,25 +18,31 @@ import android.view.WindowManager;
 public class OverlayService extends Service {
     static boolean running;
     private WindowManager wm;
-    private View handleL, handleR, bubble; private PanelView panel; private final android.os.Handler ah = new android.os.Handler(android.os.Looper.getMainLooper());
+    private View bubble; private PanelView panel; private final android.os.Handler ah = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int missCount; private boolean seenGame;
+    /** يراقب الخروج من اللعبة: عند خروجك يُرجع كل شيء تلقائياً ويُغلق اللوحة. */
+    private final Runnable monitor = new Runnable() {
+        @Override public void run() {
+            ShizukuHelper.run(() -> {
+                Booster.thermalGuard(OverlayService.this);
+                final String top = Booster.topPackage(OverlayService.this);
+                ah.post(() -> onTop(top));
+            });
+            ah.postDelayed(this, 2000);
+        }
+    };
+    private void onTop(String top) {
+        if (!running || top == null || !Booster.prefs(this).getBoolean("sessionOn", false)) return;
+        String game = Booster.prefs(this).getString("sessionPkg", null);
+        if (top.equals(game)) { missCount = 0; seenGame = true; return; }
+        if (top.equals("com.android.systemui") || top.equals(getPackageName())) { if (top.equals(getPackageName())) missCount += 2; return; }
+        if (seenGame && ++missCount >= 2) { Booster.endSession(this); Extras.clear(this); stopSelf(); }
+    }
     private final Runnable autoClean = new Runnable() { @Override public void run() { if (Booster.prefs(OverlayService.this).getBoolean("autoClean", false)) Booster.killBackground(OverlayService.this, null); ah.postDelayed(this, 90000); } };
     private WindowManager.LayoutParams bp;
     private int type;
 
     @Override public IBinder onBind(Intent i) { return null; }
-
-    /** مقبض مضيء على حافة الشاشة: اسحب للداخل أو اضغط لفتح اللوحة */
-    static class Handle extends View {
-        final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); final long t0 = SystemClock.uptimeMillis(); final boolean left;
-        Handle(android.content.Context c, boolean left) { super(c); this.left = left; }
-        @Override protected void onDraw(Canvas c) {
-            float t = (SystemClock.uptimeMillis() - t0) / 1000f, w = getWidth(), h = getHeight(), a = .55f + .45f * (float) Math.sin(t * 3);
-            p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(left ? 0 : w, 0, left ? w : 0, 0, Color.argb((int) (255 * a), 255, 140, 30), Color.argb(0, 255, 140, 30), Shader.TileMode.CLAMP));
-            c.drawRoundRect(left ? -w : 0, 0, left ? w : 2 * w, h, w, w, p); p.setShader(null);
-            p.setColor(Color.argb((int) (230 * a), 255, 230, 180)); c.drawRoundRect(left ? 2 : w * .55f, h * .38f, left ? w * .45f : w - 2, h * .62f, 6, 6, p);
-            postInvalidateOnAnimation();
-        }
-    }
 
     @Override public void onCreate() {
         super.onCreate();
@@ -48,47 +54,27 @@ public class OverlayService extends Service {
         running = true;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-        showTriggers(); ah.postDelayed(autoClean, 90000);
+        showTriggers(); ah.postDelayed(autoClean, 90000); ah.postDelayed(monitor, 3000);
     }
 
     private void showTriggers() {
-        if (Booster.num(this, "bubbleStyle", 1) == 1) {
-            handleL = addHandle(true); handleR = addHandle(false);
-        } else {
-            View b = UiUtil.icon(this, "bolt", Color.rgb(42, 18, 0)); b.setBackground(UiUtil.round(UiUtil.ACC, 200, Color.WHITE, 3)); b.setPadding(UiUtil.dp(b, 12), UiUtil.dp(b, 12), UiUtil.dp(b, 12), UiUtil.dp(b, 12)); bubble = b;
-            bp = new WindowManager.LayoutParams(UiUtil.dp(b, 52), UiUtil.dp(b, 52), type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
-            bp.gravity = Gravity.TOP | Gravity.START; bp.x = 0; bp.y = 200;
-            b.setOnTouchListener(new View.OnTouchListener() {
-                float sx, sy; int ox, oy; boolean moved;
-                @Override public boolean onTouch(View v, MotionEvent e) {
-                    switch (e.getAction()) {
-                        case MotionEvent.ACTION_DOWN: sx = e.getRawX(); sy = e.getRawY(); ox = bp.x; oy = bp.y; moved = false; v.animate().scaleX(.88f).scaleY(.88f).setDuration(80).start(); return true;
-                        case MotionEvent.ACTION_MOVE: if (Math.abs(e.getRawX() - sx) + Math.abs(e.getRawY() - sy) > 12) moved = true; bp.x = ox + (int) (e.getRawX() - sx); bp.y = oy + (int) (e.getRawY() - sy); wm.updateViewLayout(bubble, bp); return true;
-                        case MotionEvent.ACTION_UP: case MotionEvent.ACTION_CANCEL: v.animate().scaleX(1f).scaleY(1f).setDuration(140).start(); if (!moved) openPanel(); return true;
-                    }
-                    return false;
-                }
-            });
-            wm.addView(bubble, bp);
-        }
-    }
-
-    private View addHandle(final boolean left) {
-        Handle hv = new Handle(this, left);
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(UiUtil.dp(hv, 20), UiUtil.dp(hv, 170), type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
-        lp.gravity = (left ? Gravity.START : Gravity.END) | Gravity.CENTER_VERTICAL;
-        hv.setOnTouchListener(new View.OnTouchListener() {
-            float sx; boolean fired;
+        final BubbleView b = new BubbleView(this, Booster.num(this, "bubbleStyle", 0) == 1); bubble = b;
+        final int size = UiUtil.dp(b, 84);
+        bp = new WindowManager.LayoutParams(size, size, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, PixelFormat.TRANSLUCENT);
+        bp.gravity = Gravity.CENTER;           // وسط الشاشة افتراضياً
+        bp.x = Booster.prefs(this).getInt("bubX", 0); bp.y = Booster.prefs(this).getInt("bubY", 0);
+        b.setOnTouchListener(new View.OnTouchListener() {
+            float sx, sy; int ox, oy; boolean moved;
             @Override public boolean onTouch(View v, MotionEvent e) {
                 switch (e.getAction()) {
-                    case MotionEvent.ACTION_DOWN: sx = e.getRawX(); fired = false; return true;
-                    case MotionEvent.ACTION_MOVE: { float dx = (e.getRawX() - sx) * (left ? 1 : -1); if (!fired && dx > UiUtil.dp(v, 24)) { fired = true; openPanel(); } return true; }
-                    case MotionEvent.ACTION_UP: if (!fired && Math.abs(e.getRawX() - sx) < 10) openPanel(); return true;
+                    case MotionEvent.ACTION_DOWN: sx = e.getRawX(); sy = e.getRawY(); ox = bp.x; oy = bp.y; moved = false; b.pressed = true; return true;
+                    case MotionEvent.ACTION_MOVE: if (Math.abs(e.getRawX() - sx) + Math.abs(e.getRawY() - sy) > 14) moved = true; if (moved) { bp.x = ox + (int) (e.getRawX() - sx); bp.y = oy + (int) (e.getRawY() - sy); try { wm.updateViewLayout(bubble, bp); } catch (Exception ignored) {} } return true;
+                    case MotionEvent.ACTION_UP: case MotionEvent.ACTION_CANCEL: b.pressed = false; if (moved) Booster.prefs(OverlayService.this).edit().putInt("bubX", bp.x).putInt("bubY", bp.y).apply(); else { b.burst(); ah.postDelayed(OverlayService.this::openPanel, 160); } return true;
                 }
                 return false;
             }
         });
-        wm.addView(hv, lp); return hv;
+        wm.addView(b, bp);
     }
 
     private void openPanel() {
@@ -99,10 +85,7 @@ public class OverlayService extends Service {
         wm.addView(panel, lp);
     }
     private void closePanel() { try { if (panel != null) wm.removeView(panel); } catch (Exception ignored) {} panel = null; }
-    private void hideTriggers() {
-        for (View v : new View[]{handleL, handleR, bubble}) try { if (v != null) wm.removeView(v); } catch (Exception ignored) {}
-        handleL = handleR = bubble = null;
-    }
+    private void hideTriggers() { try { if (bubble != null) wm.removeView(bubble); } catch (Exception ignored) {} bubble = null; }
 
     @Override public void onDestroy() {
         running = false; ah.removeCallbacksAndMessages(null); closePanel(); if (wm != null) hideTriggers(); Extras.clear(this); super.onDestroy();

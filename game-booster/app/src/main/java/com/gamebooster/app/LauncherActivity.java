@@ -189,8 +189,10 @@ public class LauncherActivity extends Activity {
         TextView tt = UiUtil.text(this, "", 22, Color.WHITE, true); tt.setText(title); top.addView(tt);
         clock = UiUtil.text(this, "", 16, Color.WHITE, true); clock.setPadding(UiUtil.dp(root, 22), 0, UiUtil.dp(root, 14), 0); top.addView(clock);
         cRam = chip(); cCpu = chip(); cTemp = chip(); cBat = chip(); cSz = chip(); chipIcon(cRam, "ram"); chipIcon(cCpu, "cpu"); chipIcon(cTemp, "therm");
-        for (TextView c : new TextView[]{cRam, cCpu, cTemp, cBat, cSz}) { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(c, 30)); lp.setMargins(UiUtil.dp(c, 4), 0, UiUtil.dp(c, 4), 0); top.addView(c, lp); }
-        top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1));
+        LinearLayout chipRow = new LinearLayout(this); chipRow.setGravity(Gravity.CENTER_VERTICAL);
+        for (TextView c : new TextView[]{cRam, cCpu, cTemp, cBat, cSz}) { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(c, 30)); lp.setMargins(UiUtil.dp(c, 4), 0, UiUtil.dp(c, 4), 0); chipRow.addView(c, lp); }
+        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setOverScrollMode(View.OVER_SCROLL_NEVER); hs.addView(chipRow);
+        top.addView(hs, new LinearLayout.LayoutParams(0, -2, 1));
         top.addView(circle("x", v -> finishAffinity())); top.addView(circle("wrench", v -> startActivity(new Intent(this, HubActivity.class)))); top.addView(circle("gear", v -> startActivity(new Intent(this, SettingsActivity.class))));
         col.addView(top, new LinearLayout.LayoutParams(-1, UiUtil.dp(root, 50)));
 
@@ -262,7 +264,7 @@ public class LauncherActivity extends Activity {
             row.addView(ic, new LinearLayout.LayoutParams(UiUtil.dp(row, 54), UiUtil.dp(row, 54)));
             LinearLayout tx = new LinearLayout(this); tx.setOrientation(LinearLayout.VERTICAL); tx.setPadding(UiUtil.dp(row, 12), 0, 0, 0);
             TextView n = UiUtil.text(this, r.loadLabel(pm).toString(), 16, Color.WHITE, true); n.setSingleLine(true); n.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            tx.addView(n); tx.addView(UiUtil.text(this, "الإصدار " + versionOf(r.activityInfo.packageName), 11, Color.rgb(170, 178, 205), false));
+            tx.addView(n); TextView ver = UiUtil.text(this, "الإصدار " + versionOf(r.activityInfo.packageName), 11, Color.rgb(170, 178, 205), false); ver.setSingleLine(true); ver.setEllipsize(android.text.TextUtils.TruncateAt.END); tx.addView(ver);
             row.addView(tx, new LinearLayout.LayoutParams(0, -2, 1));
             row.setOnClickListener(v -> { if (sel != idx) { sel = idx; reload(); pop(); } });
             row.setOnLongClickListener(v -> { Booster.setGame(this, r.activityInfo.packageName, false); toast("أُزيلت من الألعاب"); reload(); return true; });

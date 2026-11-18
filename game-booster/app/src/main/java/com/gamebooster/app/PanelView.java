@@ -37,8 +37,8 @@ public class PanelView extends View {
     private String downKey; private float downY, downScroll; private boolean dragged;
     private List<Drawable> appIcons = new ArrayList<>(); private List<String> appPkgs = new ArrayList<>();
 
-    private static final String[][] LEFT = {{"data", "وضع المعرفة"}, {"cross", "مؤشر مركز الشاشة"}, {"color", "لون الشاشة"}, {"magn", "أداة تكبير الشاشة"}, {"fix", "أداء ثابت"}, {"touch", "لمس أسرع"}};
-    private static final String[] LSHORT = {"المعرفة", "المؤشر", "اللون", "التكبير", "أداء", "لمس"};
+    private static final String[][] LEFT = {{"fix", "أداء ثابت"}, {"data", "وضع المعرفة"}, {"cross", "مؤشر مركز الشاشة"}, {"color", "لون الشاشة"}, {"magn", "أداة تكبير الشاشة"}, {"touch", "لمس أسرع"}};
+    private static final String[] LSHORT = {"ثابت", "المعرفة", "المؤشر", "اللون", "التكبير", "لمس"};
     private static final String[][] RIGHT = {{"shot", "لقطة"}, {"rotate", "تدوير"}, {"bellx", "الإشعارات"}, {"auto", "إضاءة"}, {"hz", "معدل"}, {"wifi", "واي فاي"}, {"rocket", "معزز"}, {"moon", "عدم الإزعاج"}, {"broom", "المهملات"}};
 
     public PanelView(Context c, Closer closer) {
@@ -55,8 +55,8 @@ public class PanelView extends View {
     private void refreshStates() {
         st.put("data", Extras.hudOn); st.put("cross", Extras.crossOn); st.put("color", Extras.tint > 0);
         st.put("magn", Booster.prefs(ctx).getBoolean("magnLive", false)); st.put("fix", Booster.prefs(ctx).getBoolean("fixedLive", false)); st.put("touch", Booster.prefs(ctx).getBoolean("touchLive", false));
-        st.put("rotate", Booster.prefs(ctx).getBoolean("rotLockOn", false)); st.put("bellx", Booster.filter(ctx) == NotificationManager.INTERRUPTION_FILTER_PRIORITY);
-        st.put("moon", Booster.filter(ctx) == NotificationManager.INTERRUPTION_FILTER_NONE); st.put("auto", Booster.brightOn(ctx));
+        st.put("rotate", Booster.prefs(ctx).getBoolean("rotLockOn", false)); st.put("bellx", Booster.dndMode(ctx) == 1);
+        st.put("moon", Booster.dndMode(ctx) == 2); st.put("auto", Booster.brightOn(ctx));
         st.put("hz", Booster.prefs(ctx).getInt("hzForced", 0) > 0); st.put("perf", gamePkg != null && Booster.gameFlag(ctx, gamePkg, "perfLive", false)); st.put("autoClean", Booster.prefs(ctx).getBoolean("autoClean", false));
     }
     private boolean on(String k) { Boolean b = st.get(k); return b != null && b; }
@@ -211,8 +211,8 @@ public class PanelView extends View {
         hits.add(new Object[]{new RectF(sx, sy, sx + sw / 2, sy + sh), "segL"}); hits.add(new Object[]{new RectF(sx + sw / 2, sy, sx + sw, sy + sh), "segG"});
         // العدّاد
         float gcx = 182 * U; bigNumber(c, gcx, 82 * U, cpuIsGhz ? String.format(Locale.US, "%.2f", dCpuNum) : String.valueOf(Math.round(dCpuNum)), cpuIsGhz ? "GHz" : "%");
-        disk(c, gcx, 118 * U, 62 * U, 24 * U, (now - t0) / 1000f, dCpuFrac, "CPU");
-        hexChip(c, gcx, 170 * U, on("perf") ? "وضع التسريع" : "الوضع العادي", "chipPerf");
+        disk(c, gcx, 128 * U, 62 * U, 24 * U, (now - t0) / 1000f, dCpuFrac, "CPU");
+        hexChip(c, gcx, 180 * U, on("perf") ? "وضع التسريع" : "الوضع العادي", "chipPerf");
         stripes(c, 145 * U, 238 * U, briV, "sun", "barBri");
         // قائمة الأدوات (قابلة للتمرير)
         c.save(); c.clipRect(0, 98 * U, 130 * U, H);
@@ -231,8 +231,8 @@ public class PanelView extends View {
         }
         p.setStrokeWidth(1.2f * U); p.setColor(Color.argb(90, 255, 255, 255)); p.setStyle(Paint.Style.STROKE); c.drawLine(W - 238 * U, 48 * U, W, 48 * U, p);
         float gcx = W - 191 * U; bigNumber(c, gcx, 82 * U, String.valueOf(Math.round(dRamFrac * 100)) + "%", "");
-        disk(c, gcx, 118 * U, 62 * U, 24 * U, (now - t0) / 1000f + .5f, dRamFrac, "RAM");
-        hexChip(c, gcx, 170 * U, on("autoClean") ? "تنظيف تلقائي" : "الوضع العادي", "chipClean");
+        disk(c, gcx, 128 * U, 62 * U, 24 * U, (now - t0) / 1000f + .5f, dRamFrac, "RAM");
+        hexChip(c, gcx, 180 * U, on("autoClean") ? "تنظيف تلقائي" : "الوضع العادي", "chipClean");
         stripes(c, W - 200 * U, 238 * U, volV, "spk", "barVol");
         for (int i = 0; i < RIGHT.length; i++) {
             float x = W - (i % 2 == 0 ? 104 : 47) * U, y = (49 + (i / 2) * 57) * U; if (i % 2 == 0) x = W - 104 * U; else x = W - 47 * U;
@@ -280,12 +280,12 @@ public class PanelView extends View {
             case "segL": if (!listMode) { listMode = true; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break; case "segG": if (listMode) { listMode = false; seg0 = SystemClock.uptimeMillis(); scroll = 0; } break;
             case "data": Extras.toggleHud(ctx); break; case "cross": Extras.toggleCross(ctx); break; case "color": Extras.cycleTint(ctx); break;
             case "magn": if (needSz()) { final boolean v = !on("magn"); Booster.prefs(ctx).edit().putBoolean("magnLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.settingsPut("secure", "accessibility_display_magnification_enabled", v ? "1" : "0")); toast(v ? "التكبير: اضغط ثلاثاً على الشاشة" : "التكبير متوقف"); } break;
-            case "fix": if (needSz()) { final boolean v = !on("fix"); Booster.prefs(ctx).edit().putBoolean("fixedLive", v).apply(); ShizukuHelper.run(() -> { final String o = ShizukuHelper.fixedPerformance(v); h.post(() -> toast("أداء ثابت: " + o)); }); } break;
+            case "fix": if (needSz()) { final boolean v = !on("fix"); toast(v ? "جارٍ تفعيل أداء ثابت..." : "جارٍ الإرجاع..."); final String pk = gamePkg; ShizukuHelper.run(() -> { final String o; if (v) o = Booster.ultraOn(ctx, pk); else { Booster.ultraOff(ctx); o = "أداء ثابت: متوقف"; } h.post(() -> { toast(o); refreshStates(); }); }); } break;
             case "touch": if (needSz()) { final boolean v = !on("touch"); Booster.prefs(ctx).edit().putBoolean("touchLive", v).apply(); ShizukuHelper.run(() -> ShizukuHelper.touchBoost(v)); toast(v ? "اللمس أسرع" : "اللمس عادي"); } break;
             case "shot": if (needSz()) { ShizukuHelper.run(() -> { final String f = ShizukuHelper.screenshot(); h.post(() -> toast(f != null ? "حُفظت اللقطة: " + f : "تعذّر أخذ اللقطة")); }); } break;
             case "rotate": { boolean v = !on("rotate"); if (Booster.setRotationLock(ctx, v)) Booster.prefs(ctx).edit().putBoolean("rotLockOn", v).apply(); else toast("امنح صلاحية تعديل الإعدادات"); break; }
-            case "bellx": if (!Booster.setFilter(ctx, on("bellx") ? NotificationManager.INTERRUPTION_FILTER_ALL : NotificationManager.INTERRUPTION_FILTER_PRIORITY)) toast("امنح صلاحية عدم الإزعاج"); break;
-            case "moon": if (!Booster.setFilter(ctx, on("moon") ? NotificationManager.INTERRUPTION_FILTER_ALL : NotificationManager.INTERRUPTION_FILTER_NONE)) toast("امنح صلاحية عدم الإزعاج"); break;
+            case "bellx": if (!Booster.setDndMode(ctx, on("bellx") ? 0 : 1)) toast("امنح صلاحية عدم الإزعاج"); else toast(on("bellx") ? "الإشعارات عادت" : "الإشعارات مكتومة — صوت اللعبة يبقى"); break;
+            case "moon": if (!Booster.setDndMode(ctx, on("moon") ? 0 : 2)) toast("امنح صلاحية عدم الإزعاج"); else toast(on("moon") ? "عدم الإزعاج متوقف" : "عدم إزعاج — صوت اللعبة يبقى"); break;
             case "auto": if (!Booster.setBright(ctx, !Booster.brightOn(ctx))) { if (needSz()) { final boolean v = !Booster.brightOn(ctx); Booster.prefs(ctx).edit().putBoolean("bright", v).apply(); ShizukuHelper.run(() -> { ShizukuHelper.settingsPut("system", "screen_brightness_mode", "0"); ShizukuHelper.settingsPut("system", "screen_brightness", v ? "255" : "128"); }); briV = v ? 1f : .5f; } } else briV = Booster.brightOn(ctx) ? 1f : .5f; break;
             case "hz": if (needSz()) ShizukuHelper.run(() -> { final int r = Extras.nextHz(ctx); h.post(() -> toast("معدّل التحديث: " + r + "Hz")); }); break;
             case "wifi": try { Intent i = new Intent(android.os.Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_INTERNET_CONNECTIVITY : Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); ctx.startActivity(i); } catch (Exception ignored) {} break;
