@@ -19,7 +19,8 @@ import android.widget.TextView;
 public class OverlayService extends Service {
     static boolean running;
     private WindowManager wm;
-    private View handleL, handleR, bubble; private GamePanel panel;
+    private View handleL, handleR, bubble; private PanelView panel; private final android.os.Handler ah = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable autoClean = new Runnable() { @Override public void run() { if (Booster.prefs(OverlayService.this).getBoolean("autoClean", false)) Booster.killBackground(OverlayService.this, null); ah.postDelayed(this, 90000); } };
     private WindowManager.LayoutParams bp;
     private int type;
 
@@ -48,7 +49,7 @@ public class OverlayService extends Service {
         running = true;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-        showTriggers();
+        showTriggers(); ah.postDelayed(autoClean, 90000);
     }
 
     private void showTriggers() {
@@ -95,8 +96,8 @@ public class OverlayService extends Service {
     private void openPanel() {
         if (panel != null) return;
         hideTriggers();
-        panel = new GamePanel(this, () -> { closePanel(); showTriggers(); });
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-1, -1, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, PixelFormat.TRANSLUCENT);
+        panel = new PanelView(this, () -> { closePanel(); showTriggers(); });
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-1, -1, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_FULLSCREEN, PixelFormat.TRANSLUCENT);
         if (Build.VERSION.SDK_INT >= 28) lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         wm.addView(panel, lp);
     }
@@ -107,6 +108,6 @@ public class OverlayService extends Service {
     }
 
     @Override public void onDestroy() {
-        running = false; closePanel(); if (wm != null) hideTriggers(); super.onDestroy();
+        running = false; ah.removeCallbacksAndMessages(null); closePanel(); if (wm != null) hideTriggers(); Extras.clear(this); super.onDestroy();
     }
 }

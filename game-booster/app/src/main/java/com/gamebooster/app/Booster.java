@@ -66,6 +66,13 @@ final class Booster {
         return true;
     }
 
+    /** مرشح المقاطعات الحالي (ALL=1, PRIORITY=2, NONE=3, ALARMS=4). */
+    static int filter(Context c) { return ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).getCurrentInterruptionFilter(); }
+    static boolean setFilter(Context c, int f) {
+        if (!hasDnd(c)) return false;
+        ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).setInterruptionFilter(f); return true;
+    }
+
     // ---------- إغلاق تطبيقات الخلفية ----------
     static long freeMem(Context c) {
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
