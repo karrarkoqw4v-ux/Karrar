@@ -32,7 +32,7 @@ public class LauncherActivity extends Activity {
     private List<ResolveInfo> games = new ArrayList<>();
     private int sel = 0;
     private LinearLayout list, chips;
-    private ImageView big;
+    private BgView bgView; private StageView stage; private String shownPkg;
     private TextView name, info, clock, cRam, cCpu, cTemp, cBat, cSz, empty, play;
     private final Handler h = new Handler(Looper.getMainLooper());
     private boolean first = true;
@@ -56,8 +56,9 @@ public class LauncherActivity extends Activity {
 
     // ---------- الخلفية ----------
     static final int[][] BG_COLS = {{255, 140, 20}, {0, 220, 220}, {255, 50, 30}, {60, 120, 255}};
-    static void drawBgStyle(Canvas c, Paint p, float w, float hh, int style, float t) {
-        int[] k = BG_COLS[Math.max(0, Math.min(3, style))];
+    static void drawBgStyle(Canvas c, Paint p, float w, float hh, int style, float t) { drawBgStyle(c, p, w, hh, style, t, null); }
+    static void drawBgStyle(Canvas c, Paint p, float w, float hh, int style, float t, int[] over) {
+        int[] k = over != null ? over : BG_COLS[Math.max(0, Math.min(3, style))];
         p.setShader(new LinearGradient(0, 0, 0, hh, Color.rgb(4, 5, 12), Color.rgb(14, 16, 36), Shader.TileMode.CLAMP)); p.setStyle(Paint.Style.FILL); c.drawRect(0, 0, w, hh, p); p.setShader(null);
         float cx = w * .5f, hz = hh * .62f;
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(Math.max(1f, w / 900f));
@@ -70,7 +71,7 @@ public class LauncherActivity extends Activity {
     }
     static class BgView extends View {
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); final long t0 = SystemClock.uptimeMillis();
-        Bitmap bmp; int style; boolean anim;
+        Bitmap bmp, blur; int style; boolean anim; int[] accent; long changeT;
         BgView(Context c) {
             super(c);
             style = Booster.num(c, "bg", 0); anim = Booster.flag(c, "bgAnim", true);
@@ -80,33 +81,97 @@ public class LauncherActivity extends Activity {
                 java.io.InputStream in = c.getContentResolver().openInputStream(android.net.Uri.parse(u)); bmp = BitmapFactory.decodeStream(in, null, o); if (in != null) in.close();
             } catch (Exception e) { bmp = null; }
         }
+        /** تلوين الخلفية بألوان أيقونة اللعبة المختارة + أيقونة مموّهة مظلّلة خلفها. */
+        void setGame(Bitmap icon, int color) {
+            accent = new int[]{Color.red(color), Color.green(color), Color.blue(color)}; changeT = SystemClock.uptimeMillis();
+            blur = icon == null ? null : Bitmap.createScaledBitmap(Bitmap.createScaledBitmap(icon, 10, 10, true), 40, 40, true); invalidate();
+        }
         @Override protected void onDraw(Canvas c) {
             float w = getWidth(), hh = getHeight(), t = anim ? (SystemClock.uptimeMillis() - t0) / 1000f : 0;
             if (bmp != null) {
                 float s = Math.max(w / bmp.getWidth(), hh / bmp.getHeight()); c.save(); c.translate((w - bmp.getWidth() * s) / 2, (hh - bmp.getHeight() * s) / 2); c.scale(s, s); c.drawBitmap(bmp, 0, 0, p); c.restore();
                 p.setStyle(Paint.Style.FILL); p.setColor(Color.argb(110, 0, 0, 0)); c.drawRect(0, 0, w, hh, p);
-            } else drawBgStyle(c, p, w, hh, style, t);
+            } else {
+                drawBgStyle(c, p, w, hh, style, t, accent);
+                if (blur != null) { p.setFilterBitmap(true); p.setAlpha((int) (70 * Math.min(1f, (SystemClock.uptimeMillis() - changeT) / 500f))); float s = Math.max(w / blur.getWidth(), hh / blur.getHeight()) * 1.3f; c.save(); c.translate(w / 2, hh * .45f); c.scale(s, s); c.drawBitmap(blur, -blur.getWidth() / 2f, -blur.getHeight() / 2f, p); c.restore(); p.setAlpha(255); }
+            }
+            // تظليل: أعلى وأسفل داكنان + هالة سوداء على الأطراف
+            p.setStyle(Paint.Style.FILL);
+            p.setShader(new LinearGradient(0, 0, 0, hh, new int[]{Color.argb(190, 0, 0, 0), 0, 0, Color.argb(215, 0, 0, 0)}, new float[]{0, .28f, .62f, 1}, Shader.TileMode.CLAMP)); c.drawRect(0, 0, w, hh, p); p.setShader(null);
+            p.setShader(new RadialGradient(w / 2, hh * .48f, Math.max(w, hh) * .62f, 0x00000000, Color.argb(170, 0, 0, 0), Shader.TileMode.CLAMP)); c.drawRect(0, 0, w, hh, p); p.setShader(null);
             if (anim) postInvalidateOnAnimation();
         }
     }
-    static class RingView extends View {
+    /** المسرح: شعار اللعبة كبير بتوهج وأشعة وانعكاس على الأرض وجسيمات. */
+    static class StageView extends View {
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); final long t0 = SystemClock.uptimeMillis();
-        RingView(Context c) { super(c); }
+        Bitmap bmp; int accent = Color.rgb(255, 165, 31); long changeT = -10000;
+        StageView(Context c) { super(c); }
+        void set(Bitmap b, int color) { bmp = b; accent = color; changeT = SystemClock.uptimeMillis(); invalidate(); }
+        private static float eob(float x) { float c1 = 1.70158f, c3 = c1 + 1, k = x - 1; return 1 + c3 * k * k * k + c1 * k * k; }
+        private int a(int alpha) { return Color.argb(Math.max(0, Math.min(255, alpha)), Color.red(accent), Color.green(accent), Color.blue(accent)); }
         @Override protected void onDraw(Canvas c) {
-            float t = (SystemClock.uptimeMillis() - t0) / 1000f, cx = getWidth() / 2f, cy = getHeight() / 2f, r0 = Math.min(cx, cy);
+            long now = SystemClock.uptimeMillis(); float t = (now - t0) / 1000f, w = getWidth(), h = getHeight(), cx = w / 2, size = Math.min(w * .78f, h * .62f), cy = h * .44f;
+            float pop = eob(Math.min(1f, (now - changeT) / 520f)), fade = Math.min(1f, (now - changeT) / 350f);
+            // أشعة دوّارة
+            p.setStyle(Paint.Style.FILL);
+            for (int i = 0; i < 7; i++) {
+                double ang = t * .18 + i * Math.PI * 2 / 7; float rx = (float) Math.cos(ang), ry = (float) Math.sin(ang), L = Math.max(w, h);
+                p.setShader(new LinearGradient(cx, cy, cx + rx * L, cy + ry * L, a(46), a(0), Shader.TileMode.CLAMP));
+                path.reset(); path.moveTo(cx, cy); path.lineTo(cx + (rx - ry * .09f) * L, cy + (ry + rx * .09f) * L); path.lineTo(cx + (rx + ry * .09f) * L, cy + (ry - rx * .09f) * L); path.close(); c.drawPath(path, p);
+            }
+            p.setShader(null);
+            // توهج خلف الشعار + بقعة على الأرض
+            p.setShader(new RadialGradient(cx, cy, size * .95f, a((int) (125 * fade)), a(0), Shader.TileMode.CLAMP)); c.drawCircle(cx, cy, size * .95f, p); p.setShader(null);
+            float fy = cy + size * .58f; rf.set(cx - size * .75f, fy - size * .09f, cx + size * .75f, fy + size * .09f);
+            p.setShader(new RadialGradient(cx, fy, size * .75f, a(150), a(0), Shader.TileMode.CLAMP)); c.save(); c.scale(1f, .24f, cx, fy); c.drawCircle(cx, fy, size * .75f, p); c.restore(); p.setShader(null);
+            // حلقات
             p.setStyle(Paint.Style.STROKE);
-            for (int i = 0; i < 3; i++) { float k = (t * .5f + i / 3f) % 1f; p.setStrokeWidth(3); p.setColor(Color.argb((int) (150 * (1 - k)), 255, 165, 31)); c.drawCircle(cx, cy, r0 * (.55f + k * .45f), p); }
-            p.setStrokeWidth(4); p.setColor(Color.argb(200, 255, 165, 31)); RectF rf = new RectF(cx - r0 * .55f, cy - r0 * .55f, cx + r0 * .55f, cy + r0 * .55f);
-            c.drawArc(rf, t * 90, 70, false, p); c.drawArc(rf, t * 90 + 180, 70, false, p);
+            for (int i = 0; i < 3; i++) { float k = (t * .45f + i / 3f) % 1f; p.setStrokeWidth(3); p.setColor(a((int) (170 * (1 - k)))); c.drawCircle(cx, cy, size * (.56f + k * .55f), p); }
+            p.setStrokeWidth(4.5f); p.setStrokeCap(Paint.Cap.ROUND); p.setColor(a(230)); rf.set(cx - size * .6f, cy - size * .6f, cx + size * .6f, cy + size * .6f);
+            c.drawArc(rf, t * 80, 64, false, p); c.drawArc(rf, t * 80 + 180, 64, false, p); p.setStrokeWidth(2); p.setColor(a(120)); c.drawArc(rf, -t * 55 + 60, 100, false, p); p.setStrokeCap(Paint.Cap.BUTT);
+            if (bmp != null) {
+                float bob = (float) Math.sin(t * 2.2) * size * .025f, s = size * pop, half = s / 2;
+                // الانعكاس على الأرض
+                int lay = c.saveLayer(cx - half, cy + half + bob + 6, cx + half, cy + half + bob + 6 + half * .9f, null);
+                c.save(); c.translate(cx, cy + half + bob + 6); c.scale(1, -1); rf.set(-half, 0, half, s); p.setStyle(Paint.Style.FILL); p.setAlpha(90); c.drawBitmap(bmp, null, rf, p); p.setAlpha(255); c.restore();
+                p.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN)); p.setShader(new LinearGradient(0, cy + half + bob + 6, 0, cy + half + bob + 6 + half * .9f, Color.argb(160, 0, 0, 0), 0x00000000, Shader.TileMode.CLAMP));
+                c.drawRect(cx - half, cy + half + bob + 6, cx + half, cy + half + bob + 6 + half * .9f, p); p.setShader(null); p.setXfermode(null); c.restoreToCount(lay);
+                // الشعار نفسه مع إطار ولمعة تعبر
+                c.save(); c.translate(0, bob); rf.set(cx - half, cy - half, cx + half, cy + half); path.reset(); path.addRoundRect(rf, s * .22f, s * .22f, Path.Direction.CW);
+                p.setStyle(Paint.Style.FILL); p.setColor(a(90)); rf.inset(-s * .04f, -s * .04f); c.drawRoundRect(rf, s * .26f, s * .26f, p); rf.set(cx - half, cy - half, cx + half, cy + half);
+                c.save(); c.clipPath(path); p.setAlpha((int) (255 * fade)); c.drawBitmap(bmp, null, rf, p); p.setAlpha(255);
+                float sx = cx - half + ((t * .5f) % 2f - .5f) * s * 1.6f; p.setShader(new LinearGradient(sx - s * .12f, 0, sx + s * .12f, 0, new int[]{0x00FFFFFF, 0x55FFFFFF, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+                c.save(); c.skew(-.3f, 0); c.drawRect(sx - s * .12f, cy - half, sx + s * .12f, cy + half, p); c.restore(); p.setShader(null); c.restore();
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); p.setColor(Color.argb(210, 255, 255, 255)); c.drawPath(path, p); c.restore();
+            }
+            // جسيمات تصعد
+            p.setStyle(Paint.Style.FILL);
+            for (int i = 0; i < 26; i++) {
+                float k = (t * (.12f + (i % 5) * .03f) + i * .137f) % 1f, x = cx + (float) Math.sin(i * 12.9898) * size * .75f + (float) Math.sin(t + i) * 8, y = cy + size * .62f - k * size * 1.5f;
+                p.setColor(a((int) (200 * (1 - k)))); c.drawCircle(x, y, 1.5f + (i % 3), p);
+            }
             postInvalidateOnAnimation();
         }
+        private final Path path = new Path(); private final RectF rf = new RectF();
+    }
+
+    /** يحوّل أيقونة التطبيق إلى صورة، ويستخرج لوناً مميزاً منها. */
+    static Bitmap toBitmap(android.graphics.drawable.Drawable d) {
+        Bitmap b = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888); Canvas cv = new Canvas(b); d.setBounds(0, 0, 192, 192); d.draw(cv); return b;
+    }
+    static int accentOf(Bitmap b) {
+        Bitmap s = Bitmap.createScaledBitmap(b, 16, 16, true); float[] hsv = new float[3]; double r = 0, g = 0, bl = 0, ws = 0;
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) { int px = s.getPixel(x, y); Color.colorToHSV(px, hsv); double wgt = hsv[1] * hsv[2] * (Color.alpha(px) / 255.0); r += Color.red(px) * wgt; g += Color.green(px) * wgt; bl += Color.blue(px) * wgt; ws += wgt; }
+        if (ws < .5) return Color.rgb(255, 165, 31);
+        Color.colorToHSV(Color.rgb((int) (r / ws), (int) (g / ws), (int) (bl / ws)), hsv); hsv[1] = Math.max(.6f, hsv[1]); hsv[2] = Math.max(.9f, hsv[2]); return Color.HSVToColor(hsv);
     }
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         UiUtil.immersive(this);
         FrameLayout root = new FrameLayout(this);
-        root.addView(new BgView(this), new FrameLayout.LayoutParams(-1, -1));
+        bgView = new BgView(this); root.addView(bgView, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL);
         int pad = UiUtil.dp(root, 20); col.setPadding(pad, UiUtil.dp(root, 10), pad, UiUtil.dp(root, 8));
         root.addView(col, new FrameLayout.LayoutParams(-1, -1));
@@ -128,10 +193,7 @@ public class LauncherActivity extends Activity {
         list = new LinearLayout(this); list.setOrientation(LinearLayout.VERTICAL); sv.addView(list);
         mid.addView(sv, new LinearLayout.LayoutParams(0, -1, 3f));
         FrameLayout center = new FrameLayout(this);
-        center.addView(new RingView(this), new FrameLayout.LayoutParams(-1, -1));
-        big = new ImageView(this); big.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        int bs = UiUtil.dp(root, 130); center.addView(big, new FrameLayout.LayoutParams(bs, bs, Gravity.CENTER));
-        ObjectAnimator bob = ObjectAnimator.ofFloat(big, "translationY", -UiUtil.dp(root, 6), UiUtil.dp(root, 6)); bob.setDuration(1800); bob.setRepeatMode(ValueAnimator.REVERSE); bob.setRepeatCount(ValueAnimator.INFINITE); bob.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()); bob.start();
+        stage = new StageView(this); center.addView(stage, new FrameLayout.LayoutParams(-1, -1));
         empty = UiUtil.text(this, "لا توجد ألعاب بعد\nاضغط + لإضافة لعبة", 16, Color.rgb(190, 200, 230), false); empty.setGravity(Gravity.CENTER); center.addView(empty, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
         mid.addView(center, new LinearLayout.LayoutParams(0, -1, 3.4f));
         LinearLayout right = new LinearLayout(this); right.setOrientation(LinearLayout.VERTICAL); right.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
@@ -205,11 +267,11 @@ public class LauncherActivity extends Activity {
         }
         first = false;
         boolean has = !games.isEmpty();
-        empty.setVisibility(has ? View.GONE : View.VISIBLE); big.setVisibility(has ? View.VISIBLE : View.GONE); play.setAlpha(has ? 1f : .6f);
+        empty.setVisibility(has ? View.GONE : View.VISIBLE); stage.setVisibility(has ? View.VISIBLE : View.GONE); play.setAlpha(has ? 1f : .6f);
         chips.removeAllViews();
         if (has) {
             ResolveInfo r = games.get(sel); String pkg = r.activityInfo.packageName;
-            big.setImageDrawable(r.loadIcon(pm)); name.setText(r.loadLabel(pm));
+            name.setText(r.loadLabel(pm)); if (!pkg.equals(shownPkg)) { shownPkg = pkg; Bitmap ib = toBitmap(r.loadIcon(pm)); int ac = accentOf(ib); stage.set(ib, ac); bgView.setGame(ib, ac); }
             boolean sz = ShizukuHelper.granted();
             info.setText(sz ? "Shizuku فعّال — التسريع الكامل متاح" : "Shizuku غير مفعّل — تسريع محدود");
             chips.addView(optChip("🚀 أداء", pkg, "perf", Booster.flag(this, "gameModePerf", true), sz));
@@ -233,7 +295,7 @@ public class LauncherActivity extends Activity {
         return t;
     }
 
-    private void pop() { ObjectAnimator a = ObjectAnimator.ofFloat(big, "scaleX", .75f, 1f); a.setDuration(300).setInterpolator(new OvershootInterpolator(2f)); a.start(); ObjectAnimator b = ObjectAnimator.ofFloat(big, "scaleY", .75f, 1f); b.setDuration(300).setInterpolator(new OvershootInterpolator(2f)); b.start(); }
+    private void pop() { /* الحركة تتم داخل StageView عند تغيّر اللعبة */ }
     private String versionOf(String pkg) { try { String v = getPackageManager().getPackageInfo(pkg, 0).versionName; return v == null ? "-" : v; } catch (Exception e) { return "-"; } }
 
     private void startGame() {
