@@ -2,5 +2,18 @@ aiogram>=3.13
 yt-dlp
 aiosqlite
 python-dotenv
-uvloop; sys_platform != "win32"
 aiohttp-socks
+uvloop; sys_platform != "win32"
+httpx
+pillow
+qrcode[pil]
+pypdf
+pymupdf
+phonenumbers
+hijridate
+zxing-cpp
+pytesseract
+arabic-reshaper
+python-bidi
+deep-translator
+tzdata

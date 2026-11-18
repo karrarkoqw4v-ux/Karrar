@@ -18,54 +18,17 @@ from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, Inli
 import config
 import db
 import downloader as dl
+import menu
+from gate import SUB_TEXT, clear_cache, is_admin, missing_channels, sub_kb
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("bot")
 router = Router()
 sem = asyncio.Semaphore(config.MAX_PARALLEL)
 busy: set[int] = set()
-_sub_ok: dict[int, float] = {}  # ذاكرة قصيرة للمشتركين لتسريع الاستجابة
-
-
-def is_admin(uid: int) -> bool:
-    return uid in config.ADMIN_IDS
 
 
 # ---------------- الاشتراك الإجباري ----------------
-async def missing_channels(bot: Bot, uid: int) -> list[tuple[str, str, str]]:
-    if is_admin(uid) or _sub_ok.get(uid, 0) > time.time():
-        return []
-    chans = await db.channels()
-    if not chans:
-        return []
-
-    async def check(ch):
-        try:
-            m = await bot.get_chat_member(ch[0], uid)
-            return None if m.status in (ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR, ChatMemberStatus.RESTRICTED) else ch
-        except (TelegramBadRequest, TelegramForbiddenError) as e:
-            log.warning("لا يمكن فحص القناة %s (هل البوت مشرف فيها؟): %s", ch[0], e)
-            return None  # لا نحجب المستخدم بسبب إعداد خاطئ
-    res = await asyncio.gather(*(check(c) for c in chans))
-    miss = [c for c in res if c]
-    if not miss:
-        _sub_ok[uid] = time.time() + 120
-    return miss
-
-
-def sub_kb(miss) -> InlineKeyboardMarkup:
-    rows = []
-    for i, (chat, title, link) in enumerate(miss, 1):
-        url = link or (f"https://t.me/{chat.lstrip('@')}" if chat.startswith("@") else None)
-        if url:
-            rows.append([InlineKeyboardButton(text=f"📢 {title or chat}", url=url)])
-    rows.append([InlineKeyboardButton(text="✅ تحققت من الاشتراك", callback_data="chk")])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-SUB_TEXT = "⚠️ <b>عذراً عزيزي، يجب الاشتراك في القنوات التالية أولاً لاستخدام البوت:</b>\n\nاشترك ثم اضغط «✅ تحققت من الاشتراك»."
-
-
 async def gate(bot: Bot, msg: Message) -> bool:
     """True إذا المستخدم مشترك في كل القنوات"""
     miss = await missing_channels(bot, msg.from_user.id)
@@ -79,8 +42,9 @@ async def gate(bot: Bot, msg: Message) -> bool:
 async def start(msg: Message, bot: Bot):
     u = msg.from_user
     await db.add_user(u.id, u.full_name, u.username)
+    menu.pending.pop(msg.from_user.id, None)
     if await gate(bot, msg):
-        await msg.answer(config.WELCOME)
+        await msg.answer(config.WELCOME, reply_markup=menu.main_button())
 
 
 @router.callback_query(F.data == "chk")
@@ -98,7 +62,7 @@ async def chk(cb: CallbackQuery, bot: Bot):
         await cb.message.delete()
     except TelegramBadRequest:
         pass
-    await cb.message.answer(config.WELCOME)
+    await cb.message.answer(config.WELCOME, reply_markup=menu.main_button())
 
 
 # ---------------- البحث بالآيدي ----------------
@@ -272,7 +236,7 @@ async def addch(msg: Message, bot: Bot):
         return
     link = parts[1] if len(parts) > 1 else (f"https://t.me/{info.username}" if info.username else "")
     await db.add_channel(chat, info.title or chat, link)
-    _sub_ok.clear()
+    clear_cache()
     warn = "" if me.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR) else "\n⚠️ البوت ليس مشرفاً، لن يتمكن من فحص الاشتراك."
     await msg.answer(f"✅ أُضيفت القناة: {info.title}{warn}")
 
@@ -283,7 +247,7 @@ async def delch(msg: Message):
         return
     parts = msg.text.split()[1:]
     ok = bool(parts) and await db.del_channel(parts[0])
-    _sub_ok.clear()
+    clear_cache()
     await msg.answer("✅ تم الحذف" if ok else "❌ القناة غير موجودة")
 
 
@@ -338,6 +302,8 @@ async def main():
         session = AiohttpSession(timeout=600)
     bot = Bot(config.BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
+    menu.setup(db, gate_fn=missing_channels, sub_kb=sub_kb, sub_text=SUB_TEXT, sem=sem)
+    dp.include_router(menu.router)
     dp.include_router(router)
     me = await bot.get_me()
     log.info("البوت يعمل: @%s", me.username)
@@ -346,6 +312,11 @@ async def main():
             await bot.set_my_name(config.BOT_NAME)
     except Exception:  # noqa: BLE001
         log.warning('تعذر تغيير اسم البوت')
+    try:
+        from aiogram.types import BotCommand
+        await bot.set_my_commands([BotCommand(command='start', description='البداية'), BotCommand(command='tools', description='🧰 قائمة الأدوات'), BotCommand(command='id', description='🆔 آيديك'), BotCommand(command='cancel', description='إلغاء العملية')])
+    except Exception:  # noqa: BLE001
+        pass
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, handle_as_tasks=True, allowed_updates=["message", "callback_query"])
 
