@@ -1,0 +1,21 @@
+# نشر مجاني على Render: New → Blueprint → اختر المستودع والفرع. ضع BOT_TOKEN يدوياً في لوحة Render.
+services:
+  - type: web
+    name: video-bot
+    runtime: docker
+    rootDir: video-bot
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: FORCE_CHANNELS
+        sync: false
+      - key: MAX_PARALLEL
+        value: "3"
+      - key: TMP_DIR
+        value: /tmp/downloads
+      - key: DB_PATH
+        value: /tmp/bot.db

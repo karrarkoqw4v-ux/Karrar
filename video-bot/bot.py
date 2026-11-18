@@ -1,6 +1,9 @@
 import asyncio
 import logging
+import os
 import time
+
+from aiohttp import web
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
@@ -254,10 +257,25 @@ async def bcast(msg: Message, bot: Bot):
     await msg.answer(f"📣 تم الإرسال: {ok} • فشل: {bad}")
 
 
+async def health_server():
+    """خادم صحة بسيط: المنصات المجانية (Render/Koyeb/HF) تطلب منفذ ويب مفتوحاً"""
+    port = int(os.getenv("PORT", "0") or 0)
+    if not port:
+        return
+    app = web.Application()
+    app.router.add_get("/", lambda r: web.Response(text="ok"))
+    app.router.add_get("/health", lambda r: web.Response(text="ok"))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", port).start()
+    log.info("health server on :%s", port)
+
+
 async def main():
     if not config.BOT_TOKEN:
         raise SystemExit("BOT_TOKEN غير مضبوط. انسخ .env.example إلى .env وضع التوكن.")
     await db.init()
+    await health_server()
     session = None
     if config.TELEGRAM_API_URL:
         session = AiohttpSession(api=TelegramAPIServer.from_base(config.TELEGRAM_API_URL), timeout=1800)
