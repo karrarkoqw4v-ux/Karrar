@@ -6,8 +6,8 @@ android {
         applicationId "com.gamebooster.app"
         minSdk 24
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.2.0"
     }
     buildTypes { release { minifyEnabled false; signingConfig signingConfigs.debug } }
     lint { abortOnError false; checkReleaseBuilds false }
