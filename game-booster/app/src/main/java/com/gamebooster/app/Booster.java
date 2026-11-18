@@ -193,24 +193,48 @@ final class Booster {
         return true;
     }
 
-    /** بداية جلسة لعب حسب إعدادات المستخدم. */
-    static String startSession(Context c, String pkg) {
+    /** بداية جلسة لعب حسب إعدادات المستخدم (يُنفَّذ على خيط خلفي إذا استُخدم Shizuku). */
+    static String startSession(final Context c, final String pkg) {
         StringBuilder sb = new StringBuilder();
-        if (flag(c, "cleanBefore", true)) sb.append("✔ تحرّر ~").append(killBackground(c, pkg)).append(" MB");
-        if (flag(c, "dndOnStart", true)) { if (setDnd(c, true)) sb.append(" · كتم الإشعارات"); else sb.append(" · (امنح صلاحية عدم الإزعاج)"); }
+        final boolean sz = ShizukuHelper.granted();
+        final boolean dndNow = gameFlag(c, pkg, "dnd", flag(c, "dndOnStart", true));
+        if (gameFlag(c, pkg, "clean", flag(c, "cleanBefore", true))) sb.append("✔ تحرّر ~").append(killBackground(c, pkg)).append(" MB");
+        if (dndNow) { if (setDnd(c, true)) sb.append(" · كتم الإشعارات"); else sb.append(" · (امنح صلاحية عدم الإزعاج)"); }
         if (flag(c, "lockBright", false) && setBright(c, true)) sb.append(" · سطوع مقفول");
         if (flag(c, "lockRotation", false) && setRotationLock(c, true)) sb.append(" · تدوير مقفول");
-        prefs(c).edit().putBoolean("sessionOn", true).apply();
+        if (sz) {
+            final boolean perf = gameFlag(c, pkg, "perf", flag(c, "gameModePerf", true)), trim = flag(c, "trimCaches", true), fs = flag(c, "forceStop", true),
+                    fixed = flag(c, "fixedPerf", false), touch = flag(c, "touchBoost", false);
+            if (perf) sb.append(" · وضع الأداء");
+            if (fs) sb.append(" · إغلاق قسري");
+            ShizukuHelper.run(() -> {
+                if (fs) ShizukuHelper.forceStopOthers(c, pkg);
+                if (trim) ShizukuHelper.trimCaches();
+                if (perf) ShizukuHelper.gameMode(pkg, "performance");
+                if (fixed) ShizukuHelper.fixedPerformance(true);
+                if (touch) ShizukuHelper.touchBoost(true);
+            });
+        }
+        prefs(c).edit().putBoolean("sessionOn", true).putString("sessionPkg", pkg).putBoolean("sessionDnd", dndNow).apply();
         return sb.length() == 0 ? "تم" : sb.toString();
     }
     /** إنهاء الجلسة وإرجاع الإعدادات (يُستدعى عند الرجوع للتطبيق). */
-    static void endSessionIfActive(Context c) {
+    static void endSessionIfActive(final Context c) {
         if (!prefs(c).getBoolean("sessionOn", false) || !flag(c, "restoreOnReturn", true)) return;
+        final String pkg = prefs(c).getString("sessionPkg", null);
         prefs(c).edit().putBoolean("sessionOn", false).apply();
-        if (flag(c, "dndOnStart", true)) setDnd(c, false);
+        if (prefs(c).getBoolean("sessionDnd", false)) setDnd(c, false);
         if (brightOn(c)) setBright(c, false);
         if (flag(c, "lockRotation", false)) setRotationLock(c, false);
+        if (ShizukuHelper.granted()) ShizukuHelper.run(() -> {
+            if (pkg != null) ShizukuHelper.gameMode(pkg, "standard");
+            if (flag(c, "fixedPerf", false)) ShizukuHelper.fixedPerformance(false);
+            if (flag(c, "touchBoost", false)) ShizukuHelper.touchBoost(false);
+        });
     }
+    /** خيار خاص بلعبة معيّنة (يرجع للافتراضي العام إن لم يُحدَّد). */
+    static boolean gameFlag(Context c, String pkg, String k, boolean def) { return prefs(c).getBoolean("gf:" + pkg + ":" + k, def); }
+    static void setGameFlag(Context c, String pkg, String k, boolean v) { prefs(c).edit().putBoolean("gf:" + pkg + ":" + k, v).apply(); }
 
     /** التسريع الكامل: تنظيف الخلفية + كتم (إن مُنحت الصلاحية) + سطوع. */
     static String boostAll(Context c, String keepPkg) {

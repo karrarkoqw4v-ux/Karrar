@@ -13,7 +13,7 @@ import android.widget.*;
 /** صفحة الإعدادات: قائمة جانبية + محتوى. كل خيار هنا يغيّر سلوكاً حقيقياً في التطبيق. */
 public class SettingsActivity extends Activity {
     private static final int REQ_IMG = 11;
-    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "الفقاعة العائمة", "لوحة الأدوات", "خيارات أخرى", "عن التطبيق"};
+    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "الفقاعة العائمة", "لوحة الأدوات", "خيارات أخرى", "الأداء المتقدم", "عن التطبيق"};
     private FrameLayout content;
     private LinearLayout side;
     private int page = 0;
@@ -67,7 +67,8 @@ public class SettingsActivity extends Activity {
             case 6: pageBubble(col); break;
             case 7: pageHub(col); break;
             case 8: pageOther(col); break;
-            case 9: pageAbout(col); break;
+            case 9: pageShizuku(col); break;
+            case 10: pageAbout(col); break;
         }
         return o[0];
     }
@@ -155,7 +156,7 @@ public class SettingsActivity extends Activity {
     // ===== 6: الفقاعة =====
     private void pageBubble(LinearLayout c) {
         TextView t = UiUtil.text(this, "اختر شكل الفقاعة فوق اللعبة", 18, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setPadding(0, UiUtil.dp(t, 12), 0, UiUtil.dp(t, 12)); c.addView(t);
-        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER); int sel = Booster.num(this, "bubbleStyle", 0);
+        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER); int sel = Booster.num(this, "bubbleStyle", 1);
         String[] labels = {"فقاعة حرّة تسحبها لأي مكان", "لسان جانبي يلتصق بحافة الشاشة"};
         for (int i = 0; i < 2; i++) {
             final int idx = i;
@@ -194,7 +195,24 @@ public class SettingsActivity extends Activity {
         flagRow(c, "خلفية متحركة", "تحريك الشبكة والتوهج في الصفحة الرئيسية", "bgAnim", true);
         flagRow(c, "تعطيل الفقاعة العائمة", "لا يمكن تشغيل الفقاعة طالما هذا الخيار مفعّل", "disableBubble", false);
     }
-    // ===== 9: عن التطبيق =====
+    // ===== 9: الأداء المتقدم (Shizuku) =====
+    private void pageShizuku(final LinearLayout c) {
+        boolean ok = ShizukuHelper.granted();
+        c.addView(info("حالة Shizuku", ok ? "يعمل ومسموح ✔" : (ShizukuHelper.running() ? "يعمل — لم تُمنح الصلاحية" : "غير مفعّل")));
+        final TextView who = UiUtil.text(this, ok ? "جارٍ الفحص..." : "الأوامر لن تعمل قبل تفعيل Shizuku ومنحه الإذن.", 14, ok ? SettingsUi.MUTED : Color.rgb(255, 110, 100), false);
+        who.setPadding(UiUtil.dp(who, 18), UiUtil.dp(who, 8), UiUtil.dp(who, 18), UiUtil.dp(who, 4)); c.addView(who);
+        if (ok) ShizukuHelper.async("id", o -> who.setText("هوية التنفيذ: " + (o.isEmpty() ? "—" : o)));
+        else { TextView b = SettingsUi.choice(this, "تفعيل الآن", true); b.setOnClickListener(v -> { if (ShizukuHelper.running()) ShizukuHelper.request(2); else { android.content.Intent i = ShizukuHelper.managerIntent(this); startActivity(i != null ? i : ShizukuHelper.installIntent()); } });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(b, 180), UiUtil.dp(b, 42)); lp.setMargins(UiUtil.dp(b, 18), 0, 0, UiUtil.dp(b, 8)); c.addView(b, lp); }
+        flagRow(c, "وضع الأداء للعبة (Game Mode)", "يطبّق وضع الأداء من النظام على اللعبة عند بدئها ويرجّعه عند عودتك", "gameModePerf", true);
+        flagRow(c, "إغلاق قسري لتطبيقات الخلفية", "أقوى من التنظيف العادي ويستثني التطبيقات المحمية", "forceStop", true);
+        flagRow(c, "تنظيف الكاش عند التشغيل", "يمسح الذاكرة المؤقتة لكل التطبيقات قبل اللعب", "trimCaches", true);
+        flagRow(c, "أداء ثابت", "يطلب من النظام تثبيت أداء المعالج (يعمل فقط على الأجهزة التي تدعمه)", "fixedPerf", false);
+        flagRow(c, "لمس أسرع", "يقلّل مهلة الضغط المطوّل واللمس المتعدد أثناء اللعب ويرجعها بعد الخروج", "touchBoost", false);
+        flagRow(c, "إظهار اللوحة تلقائياً عند بدء اللعبة", "يفتح لسان اللوحة على حافة الشاشة فوق اللعبة", "autoPanel", true);
+    }
+
+    // ===== 10: عن التطبيق =====
     private void pageAbout(LinearLayout c) {
         String ver = "1.0.0"; try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
         c.addView(info("الإصدار", ver));

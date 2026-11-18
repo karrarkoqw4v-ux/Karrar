@@ -23,4 +23,15 @@ final class UiUtil {
     static TextView text(android.content.Context c, String s, int sp, int color, boolean bold) {
         TextView t = new TextView(c); t.setText(s); t.setTextSize(sp); t.setTextColor(color); if (bold) t.setTypeface(Typeface.DEFAULT_BOLD); return t;
     }
+
+    /** حركة ضغط ناعمة: يصغر قليلاً عند اللمس ثم يعود (لا تمنع النقر). */
+    static void pressable(final View v) {
+        v.setOnTouchListener((x, e) -> {
+            switch (e.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN: x.animate().scaleX(.94f).scaleY(.94f).setDuration(90).start(); break;
+                case android.view.MotionEvent.ACTION_UP: case android.view.MotionEvent.ACTION_CANCEL: x.animate().scaleX(1f).scaleY(1f).setDuration(180).setInterpolator(new android.view.animation.OvershootInterpolator(2f)).start(); break;
+            }
+            return false;
+        });
+    }
 }
