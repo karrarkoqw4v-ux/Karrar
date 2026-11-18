@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.BatteryManager;
+import android.os.SystemClock;
 import android.os.Build;
 import android.provider.Settings;
 
@@ -77,26 +78,38 @@ final class Booster {
     static Intent overlaySettings(Context c) { return new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + c.getPackageName())); }
     static Intent writeSettings(Context c) { return new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + c.getPackageName())); }
 
-    // ---------- كتم الإشعارات والمكالمات ----------
-    static boolean dndOn(Context c) {
+    // ---------- كتم الإشعارات والمكالمات (بدون كتم صوت اللعبة) ----------
+    /** 0 = متوقف، 1 = كتم الإشعارات فقط (المكالمات من المفضّلة تصل)، 2 = عدم إزعاج كامل (بدون مكالمات). صوت اللعبة والوسائط لا يُكتم أبداً. */
+    static int dndMode(Context c) {
+        if (!hasDnd(c)) return 0;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        int f = nm.getCurrentInterruptionFilter();
-        return hasDnd(c) && (f == NotificationManager.INTERRUPTION_FILTER_NONE || f == NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+        if (nm.getCurrentInterruptionFilter() != NotificationManager.INTERRUPTION_FILTER_PRIORITY) return 0;
+        return (nm.getNotificationPolicy().priorityCategories & NotificationManager.Policy.PRIORITY_CATEGORY_CALLS) != 0 ? 1 : 2;
     }
+    static boolean dndOn(Context c) { return dndMode(c) != 0; }
     /** @return false إذا لا توجد صلاحية */
-    static boolean setDnd(Context c, boolean on) {
+    static boolean setDndMode(Context c, int mode) {
         if (!hasDnd(c)) return false;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.setInterruptionFilter(on ? (flag(c, "blockCalls", true) ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_PRIORITY) : NotificationManager.INTERRUPTION_FILTER_ALL);
+        SharedPreferences p = prefs(c);
+        if (mode == 0) {
+            if (p.contains("polCats")) {   // أرجع السياسة السابقة كما كانت
+                try { nm.setNotificationPolicy(new NotificationManager.Policy(p.getInt("polCats", 0), p.getInt("polCalls", 0), p.getInt("polMsgs", 0))); } catch (Exception ignored) {}
+                p.edit().remove("polCats").remove("polCalls").remove("polMsgs").apply();
+            }
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL);
+            return true;
+        }
+        if (!p.contains("polCats")) { NotificationManager.Policy old = nm.getNotificationPolicy(); p.edit().putInt("polCats", old.priorityCategories).putInt("polCalls", old.priorityCallSenders).putInt("polMsgs", old.priorityMessageSenders).apply(); }
+        // الوسائط والألعاب والمنبّهات تبقى مسموحة؛ المكالمات من المفضّلة فقط في الوضع 1
+        int cats = NotificationManager.Policy.PRIORITY_CATEGORY_MEDIA | NotificationManager.Policy.PRIORITY_CATEGORY_ALARMS;
+        if (mode == 1) cats |= NotificationManager.Policy.PRIORITY_CATEGORY_CALLS;
+        try { nm.setNotificationPolicy(new NotificationManager.Policy(cats, NotificationManager.Policy.PRIORITY_SENDERS_STARRED, NotificationManager.Policy.PRIORITY_SENDERS_STARRED)); } catch (Exception e) { return false; }
+        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
         return true;
     }
-
-    /** مرشح المقاطعات الحالي (ALL=1, PRIORITY=2, NONE=3, ALARMS=4). */
-    static int filter(Context c) { return ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).getCurrentInterruptionFilter(); }
-    static boolean setFilter(Context c, int f) {
-        if (!hasDnd(c)) return false;
-        ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).setInterruptionFilter(f); return true;
-    }
+    /** تفعيل/إلغاء حسب إعداد «كتم المكالمات أيضاً». */
+    static boolean setDnd(Context c, boolean on) { return setDndMode(c, on ? (flag(c, "blockCalls", true) ? 2 : 1) : 0); }
 
     // ---------- إغلاق تطبيقات الخلفية ----------
     static long freeMem(Context c) {
@@ -243,27 +256,85 @@ final class Booster {
                 if (fs) ShizukuHelper.forceStopOthers(c, pkg);
                 if (trim) ShizukuHelper.trimCaches();
                 if (perf) ShizukuHelper.gameMode(pkg, "performance");
-                if (fixed) ShizukuHelper.fixedPerformance(true);
                 if (touch) ShizukuHelper.touchBoost(true);
+                if (fixed) ultraOn(c, pkg);
             });
         }
         prefs(c).edit().putBoolean("sessionOn", true).putString("sessionPkg", pkg).putBoolean("sessionDnd", dndNow).apply();
         return sb.length() == 0 ? "تم" : sb.toString();
     }
-    /** إنهاء الجلسة وإرجاع الإعدادات (يُستدعى عند الرجوع للتطبيق). */
-    static void endSessionIfActive(final Context c) {
-        if (!prefs(c).getBoolean("sessionOn", false) || !flag(c, "restoreOnReturn", true)) return;
+    /** إنهاء الجلسة وإرجاع الإعدادات عند الرجوع لواجهة التطبيق. */
+    static void endSessionIfActive(final Context c) { if (flag(c, "restoreOnReturn", true)) endSession(c); }
+    /** يُرجع كل ما غيّره التطبيق (كتم، سطوع، تدوير، وضع الأداء، الأداء الثابت...) ويُنهي الجلسة. آمن للاستدعاء أكثر من مرة. */
+    static void endSession(final Context c) {
+        if (!prefs(c).getBoolean("sessionOn", false)) return;
         final String pkg = prefs(c).getString("sessionPkg", null);
         prefs(c).edit().putBoolean("sessionOn", false).apply();
         if (prefs(c).getBoolean("sessionDnd", false)) setDnd(c, false);
         if (brightOn(c)) setBright(c, false);
-        if (flag(c, "lockRotation", false)) setRotationLock(c, false);
+        if (prefs(c).getBoolean("rotLockOn", false) || flag(c, "lockRotation", false)) { setRotationLock(c, false); prefs(c).edit().putBoolean("rotLockOn", false).apply(); }
         if (ShizukuHelper.granted()) ShizukuHelper.run(() -> {
             if (pkg != null) ShizukuHelper.gameMode(pkg, "standard");
-            if (flag(c, "fixedPerf", false)) ShizukuHelper.fixedPerformance(false);
-            if (flag(c, "touchBoost", false)) ShizukuHelper.touchBoost(false);
+            if (prefs(c).getBoolean("ultraOn", false)) ultraOff(c);
+            if (flag(c, "touchBoost", false) || prefs(c).getBoolean("touchLive", false)) { ShizukuHelper.touchBoost(false); prefs(c).edit().putBoolean("touchLive", false).apply(); }
         });
     }
+
+    // ---------- «أداء ثابت»: أقوى وضع أداء ممكن بصلاحيات shell ----------
+    private static final String[][] ULTRA_KEYS = {{"system", "min_refresh_rate"}, {"system", "peak_refresh_rate"}, {"global", "window_animation_scale"}, {"global", "transition_animation_scale"}, {"global", "animator_duration_scale"},
+            {"global", "tcp_default_init_rwnd"}, {"global", "mobile_data_always_on"}, {"secure", "long_press_timeout"}, {"secure", "multi_press_timeout"}};
+    /** أعلى معدّل تحديث تدعمه الشاشة فعلاً (لا يتجاوز عتاد الجهاز). */
+    static int maxHz(Context c) { java.util.List<Integer> l = Extras.hzList(c); return l.get(l.size() - 1); }
+    /** يفعّل «أداء ثابت». يُستدعى من خيط خلفي. @return ملخص بما نُفّذ والزمن بالمللي ثانية */
+    static String ultraOn(Context c, String pkg) {
+        if (!ShizukuHelper.granted()) return "يحتاج Shizuku";
+        long t0 = SystemClock.elapsedRealtime();
+        SharedPreferences.Editor ed = prefs(c).edit();
+        if (!prefs(c).getBoolean("ultraOn", false)) for (String[] k : ULTRA_KEYS) ed.putString("up:" + k[1], ShizukuHelper.sh("settings get " + k[0] + " " + k[1]));
+        ed.putBoolean("ultraOn", true).apply();
+        int hz = maxHz(c);
+        StringBuilder skip = new StringBuilder(c.getPackageName()); if (pkg != null) skip.append("|").append(pkg);
+        for (android.content.pm.ApplicationInfo ai : c.getPackageManager().getInstalledApplications(0)) if (isProtected(c, ai.packageName)) skip.append("|").append(ai.packageName);
+        String script = "cmd power set-fixed-performance-mode-enabled true;"
+                + (pkg != null ? " cmd game mode performance " + pkg + " || cmd game set --mode 2 --user 0 " + pkg + ";" : "")
+                + " am kill-all;"
+                + " for p in $(pm list packages -3 | cut -d: -f2); do case \"$p\" in " + skip + ") ;; *) am force-stop $p;; esac; done;"
+                + " pm trim-caches 999G;"
+                + " settings put system min_refresh_rate " + hz + "; settings put system peak_refresh_rate " + hz + ";"
+                + " settings put global window_animation_scale 0.5; settings put global transition_animation_scale 0.5; settings put global animator_duration_scale 0.5;"
+                + " settings put global tcp_default_init_rwnd 60; settings put global mobile_data_always_on 1;"
+                + " settings put secure long_press_timeout 250; settings put secure multi_press_timeout 200;"
+                + " echo DONE";
+        String out = ShizukuHelper.sh(script);
+        long ms = SystemClock.elapsedRealtime() - t0;
+        prefs(c).edit().putBoolean("fixedLive", true).apply();
+        return (out.contains("DONE") ? "تم" : "نُفّذ جزئياً") + " في " + String.format(java.util.Locale.US, "%.1f", ms / 1000f) + " ث — تحديث " + hz + "Hz";
+    }
+    /** يرجع كل القيم التي غيّرها «أداء ثابت» إلى ما كانت عليه. */
+    static void ultraOff(Context c) {
+        if (!ShizukuHelper.granted()) return;
+        StringBuilder sb = new StringBuilder("cmd power set-fixed-performance-mode-enabled false;");
+        for (String[] k : ULTRA_KEYS) {
+            String v = prefs(c).getString("up:" + k[1], "null");
+            if (v == null || v.isEmpty() || v.equals("null")) sb.append(" settings delete ").append(k[0]).append(' ').append(k[1]).append(';');
+            else sb.append(" settings put ").append(k[0]).append(' ').append(k[1]).append(' ').append(v).append(';');
+        }
+        ShizukuHelper.sh(sb.toString());
+        prefs(c).edit().putBoolean("ultraOn", false).putBoolean("fixedLive", false).apply();
+    }
+    /** حماية الحرارة: إذا ارتفعت الحرارة أثناء «أداء ثابت» يخفّض المعدّل مؤقتاً ثم يرجعه. */
+    static void thermalGuard(Context c) {
+        if (!prefs(c).getBoolean("ultraOn", false) || !ShizukuHelper.granted()) return;
+        float t = batteryTemp(c); boolean cut = prefs(c).getBoolean("thermalCut", false);
+        java.util.List<Integer> l = Extras.hzList(c);
+        if (!cut && t >= 44f && l.size() > 1) {
+            int lower = l.get(Math.max(0, l.size() / 2 - (l.size() % 2 == 0 ? 1 : 0)));
+            ShizukuHelper.sh("settings put system min_refresh_rate " + lower + "; settings put system peak_refresh_rate " + lower); prefs(c).edit().putBoolean("thermalCut", true).apply();
+        } else if (cut && t <= 41f) {
+            int hz = maxHz(c); ShizukuHelper.sh("settings put system min_refresh_rate " + hz + "; settings put system peak_refresh_rate " + hz); prefs(c).edit().putBoolean("thermalCut", false).apply();
+        }
+    }
+
     /** خيار خاص بلعبة معيّنة (يرجع للافتراضي العام إن لم يُحدَّد). */
     static boolean gameFlag(Context c, String pkg, String k, boolean def) { return prefs(c).getBoolean("gf:" + pkg + ":" + k, def); }
     static void setGameFlag(Context c, String pkg, String k, boolean v) { prefs(c).edit().putBoolean("gf:" + pkg + ":" + k, v).apply(); }

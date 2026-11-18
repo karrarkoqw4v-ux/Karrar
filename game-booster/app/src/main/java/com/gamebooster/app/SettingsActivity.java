@@ -13,7 +13,7 @@ import android.widget.*;
 /** صفحة الإعدادات: قائمة جانبية + محتوى. كل خيار هنا يغيّر سلوكاً حقيقياً في التطبيق. */
 public class SettingsActivity extends Activity {
     private static final int REQ_IMG = 11;
-    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "الفقاعة العائمة", "لوحة الأدوات", "خيارات أخرى", "الأداء المتقدم", "عن التطبيق"};
+    private static final String[] NAMES = {"عدم الإزعاج", "الحماية", "المعالج", "#أداء", "الذاكرة", "الخلفية", "زر اللوحة", "لوحة الأدوات", "خيارات أخرى", "الأداء المتقدم", "عن التطبيق"};
     private FrameLayout content;
     private LinearLayout side;
     private int page = 0;
@@ -153,26 +153,28 @@ public class SettingsActivity extends Activity {
             Booster.prefs(this).edit().putString("bgUri", u.toString()).apply(); show(page);
         }
     }
-    // ===== 6: الفقاعة =====
+    // ===== 6: زر اللوحة =====
     private void pageBubble(LinearLayout c) {
-        TextView t = UiUtil.text(this, "اختر شكل الفقاعة فوق اللعبة", 18, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setPadding(0, UiUtil.dp(t, 12), 0, UiUtil.dp(t, 12)); c.addView(t);
-        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER); int sel = Booster.num(this, "bubbleStyle", 1);
-        String[] labels = {"فقاعة حرّة تسحبها لأي مكان", "لسان جانبي يلتصق بحافة الشاشة"};
+        TextView t = UiUtil.text(this, "شكل زر فتح اللوحة (يظهر وسط الشاشة، اسحبه لأي مكان)", 18, Color.WHITE, true); t.setGravity(Gravity.CENTER); t.setPadding(0, UiUtil.dp(t, 12), 0, UiUtil.dp(t, 12)); c.addView(t);
+        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER); int sel = Booster.num(this, "bubbleStyle", 0);
+        String[] labels = {"دائرة", "مربع مستدير"};
         for (int i = 0; i < 2; i++) {
             final int idx = i;
             View pv = new View(this) {
                 final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                 @Override protected void onDraw(Canvas cv) {
-                    float w = getWidth(), h = getHeight(); p.setStyle(Paint.Style.FILL); p.setColor(Color.rgb(24, 27, 40)); cv.drawRoundRect(10, 10, w - 10, h - 40, 18, 18, p);
-                    p.setColor(UiUtil.ACC); if (idx == 0) cv.drawCircle(w * .5f, (h - 30) * .5f, h * .14f, p); else cv.drawRoundRect(10, (h - 30) * .38f, h * .13f, (h - 30) * .62f, 16, 16, p);
-                    p.setColor(Color.WHITE); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(h * .075f); cv.drawText(labels[idx], w / 2, h - 12, p);
+                    float w = getWidth(), h = getHeight(), r = h * .22f, cx = w / 2, cy = (h - 30) / 2; p.setStyle(Paint.Style.FILL); p.setColor(Color.rgb(24, 27, 40)); cv.drawRoundRect(10, 10, w - 10, h - 40, 18, 18, p);
+                    p.setShader(new LinearGradient(0, cy - r, 0, cy + r, Color.rgb(255, 200, 80), Color.rgb(230, 110, 10), Shader.TileMode.CLAMP));
+                    if (idx == 0) cv.drawCircle(cx, cy, r, p); else cv.drawRoundRect(cx - r, cy - r, cx + r, cy + r, r * .38f, r * .38f, p); p.setShader(null);
+                    Icons.draw(cv, "bolt", cx, cy, r * 1.1f, Color.rgb(60, 25, 0), p);
+                    p.setStyle(Paint.Style.FILL); p.setColor(Color.WHITE); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(h * .09f); cv.drawText(labels[idx], w / 2, h - 12, p);
                 }
             };
             FrameLayout f = SettingsUi.card(this, pv, sel == i); f.setOnClickListener(v -> { Booster.setNum(this, "bubbleStyle", idx); show(page); });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(f, 270), UiUtil.dp(f, 130)); lp.setMargins(UiUtil.dp(f, 10), 0, UiUtil.dp(f, 10), 0); row.addView(f, lp);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(UiUtil.dp(f, 200), UiUtil.dp(f, 130)); lp.setMargins(UiUtil.dp(f, 10), 0, UiUtil.dp(f, 10), 0); row.addView(f, lp);
         }
         c.addView(row);
-        TextView n = UiUtil.text(this, "التغيير يظهر عند إعادة تشغيل الفقاعة من لوحة الأدوات.", 12, SettingsUi.MUTED, false); n.setGravity(Gravity.CENTER); n.setPadding(0, UiUtil.dp(n, 12), 0, 0); c.addView(n);
+        TextView n = UiUtil.text(this, "يتغيّر الشكل عند إعادة تشغيل الزر (ابدأ اللعب من جديد). اضغطه لفتح اللوحة.", 12, SettingsUi.MUTED, false); n.setGravity(Gravity.CENTER); n.setPadding(0, UiUtil.dp(n, 12), 0, 0); c.addView(n);
     }
     // ===== 7: لوحة الأدوات =====
     private void pageHub(LinearLayout c) {
@@ -207,7 +209,8 @@ public class SettingsActivity extends Activity {
         flagRow(c, "وضع الأداء للعبة (Game Mode)", "يطبّق وضع الأداء من النظام على اللعبة عند بدئها ويرجّعه عند عودتك", "gameModePerf", true);
         flagRow(c, "إغلاق قسري لتطبيقات الخلفية", "أقوى من التنظيف العادي ويستثني التطبيقات المحمية", "forceStop", true);
         flagRow(c, "تنظيف الكاش عند التشغيل", "يمسح الذاكرة المؤقتة لكل التطبيقات قبل اللعب", "trimCaches", true);
-        flagRow(c, "أداء ثابت", "يطلب من النظام تثبيت أداء المعالج (يعمل فقط على الأجهزة التي تدعمه)", "fixedPerf", false);
+        
+        flagRow(c, "تفعيل «أداء ثابت» تلقائياً عند بدء اللعبة", "وضع أداء ثابت + أعلى معدّل تحديث + تنظيف + ضبط الشبكة، ويُرجع كل شيء عند خروجك من اللعبة", "fixedPerf", false);
         flagRow(c, "لمس أسرع", "يقلّل مهلة الضغط المطوّل واللمس المتعدد أثناء اللعب ويرجعها بعد الخروج", "touchBoost", false);
         flagRow(c, "إظهار اللوحة تلقائياً عند بدء اللعبة", "يفتح لسان اللوحة على حافة الشاشة فوق اللعبة", "autoPanel", true);
     }
