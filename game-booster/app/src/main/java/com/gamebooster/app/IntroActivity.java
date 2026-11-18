@@ -25,7 +25,7 @@ public class IntroActivity extends Activity {
         if (going) return;
         going = true;
         boolean allGood = Booster.hasDnd(this) && Booster.hasOverlay(this) && Booster.hasPostNotifications(this);
-        startActivity(new Intent(this, allGood ? HubActivity.class : PermissionsActivity.class));
+        startActivity(new Intent(this, allGood ? LauncherActivity.class : PermissionsActivity.class));
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 

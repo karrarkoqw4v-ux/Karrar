@@ -53,7 +53,7 @@ public class PermissionsActivity extends Activity {
         go.setTextColor(android.graphics.Color.rgb(42, 18, 0));
         go.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         go.setBackground(UiUtil.round(UiUtil.ACC, UiUtil.dp(root, 22), 0, 0));
-        go.setOnClickListener(v -> { startActivity(new Intent(this, HubActivity.class)); finish(); });
+        go.setOnClickListener(v -> { startActivity(new Intent(this, LauncherActivity.class)); finish(); });
         root.addView(go, new LinearLayout.LayoutParams(UiUtil.dp(root, 220), UiUtil.dp(root, 46)));
         setContentView(root);
     }

@@ -124,6 +124,35 @@ final class Booster {
         return b.getIntExtra(BatteryManager.EXTRA_LEVEL, 0) * 100 / Math.max(1, b.getIntExtra(BatteryManager.EXTRA_SCALE, 100));
     }
 
+    static boolean isCharging(Context c) {
+        Intent b = c.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (b == null) return false;
+        int st = b.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+        return st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL;
+    }
+
+    // ---------- الألعاب ----------
+    static java.util.List<android.content.pm.ResolveInfo> launchable(Context c) {
+        Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+        java.util.List<android.content.pm.ResolveInfo> l = c.getPackageManager().queryIntentActivities(q, 0);
+        java.util.List<android.content.pm.ResolveInfo> out = new java.util.ArrayList<>();
+        for (android.content.pm.ResolveInfo r : l) if (!r.activityInfo.packageName.equals(c.getPackageName())) out.add(r);
+        final PackageManager pm = c.getPackageManager();
+        java.util.Collections.sort(out, (a, b) -> a.loadLabel(pm).toString().compareToIgnoreCase(b.loadLabel(pm).toString()));
+        return out;
+    }
+    static boolean isGame(Context c, android.content.pm.ResolveInfo r) {
+        ApplicationInfo ai = r.activityInfo.applicationInfo;
+        boolean auto = (ai.flags & ApplicationInfo.FLAG_IS_GAME) != 0 || (Build.VERSION.SDK_INT >= 26 && ai.category == ApplicationInfo.CATEGORY_GAME);
+        return prefs(c).getBoolean("g:" + ai.packageName, auto);
+    }
+    static void setGame(Context c, String pkg, boolean game) { prefs(c).edit().putBoolean("g:" + pkg, game).apply(); }
+    static java.util.List<android.content.pm.ResolveInfo> games(Context c) {
+        java.util.List<android.content.pm.ResolveInfo> out = new java.util.ArrayList<>();
+        for (android.content.pm.ResolveInfo r : launchable(c)) if (isGame(c, r)) out.add(r);
+        return out;
+    }
+
     /** التسريع الكامل: تنظيف الخلفية + كتم (إن مُنحت الصلاحية) + سطوع. */
     static String boostAll(Context c, String keepPkg) {
         long freed = killBackground(c, keepPkg);

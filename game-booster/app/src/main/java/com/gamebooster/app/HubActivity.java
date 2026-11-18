@@ -141,7 +141,7 @@ public class HubActivity extends Activity {
             }
             h.postDelayed(this::refreshTiles, 400);
         });
-        tGames.setOnClickListener(v -> startActivity(new Intent(this, MainActivity.class)));
+        tGames.setOnClickListener(v -> { startActivity(new Intent(this, LauncherActivity.class)); finish(); });
         tNet.setOnClickListener(v -> {
             try { startActivity(new Intent(Build.VERSION.SDK_INT >= 29 ? Settings.Panel.ACTION_INTERNET_CONNECTIVITY : Settings.ACTION_WIRELESS_SETTINGS)); }
             catch (Exception e) { startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS)); }
