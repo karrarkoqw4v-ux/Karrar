@@ -75,38 +75,48 @@ public class PanelView extends View {
     private static float eob(float x) { float c1 = 1.70158f, c3 = c1 + 1, k = x - 1; return 1 + c3 * k * k * k + c1 * k * k; }
     private static int lerpC(int a, int b, float k) { return Color.rgb((int) (Color.red(a) + (Color.red(b) - Color.red(a)) * k), (int) (Color.green(a) + (Color.green(b) - Color.green(a)) * k), (int) (Color.blue(a) + (Color.blue(b) - Color.blue(a)) * k)); }
     private float openK(long now) { return eob(cl((now - t0) / 520f)); }
-    private float edgeX(float y, boolean left) {   // حافة اللوحة بالبكسل عند ارتفاع y
-        float xt = 235 * U, xv = 299 * U, xb = 170 * U, yv = 105 * U, x = y <= yv ? xt + (xv - xt) * (y / yv) : xv + (xb - xv) * ((y - yv) / (H - yv));
-        return left ? x : W - x;
-    }
+    /** حافة الشريط الداخلية (x) عند ارتفاع y بالبكسل للوحة اليسرى. */
+    private float xin(float y) { float yv = 102 * U; return y <= yv ? 232 * U + 45 * U * (y / yv) : 277 * U - 119 * U * ((y - yv) / (H - yv)); }
+    private float edgeX(float y, boolean left) { float x = xin(y) + 22 * U; return left ? x : W - x; }
 
+    private void bandPoly(float y0, float y1, float bw, boolean left) {
+        float yv = 102 * U; path.reset(); boolean v = y0 < yv && y1 > yv; float[] xs = new float[8], ys = new float[8]; int n = 0;
+        xs[n] = xin(y0); ys[n++] = y0; if (v) { xs[n] = xin(yv); ys[n++] = yv; } xs[n] = xin(y1); ys[n++] = y1; xs[n] = xin(y1) + bw; ys[n++] = y1; if (v) { xs[n] = xin(yv) + bw; ys[n++] = yv; } xs[n] = xin(y0) + bw; ys[n++] = y0;
+        for (int i = 0; i < n; i++) { float x = left ? xs[i] : W - xs[i]; if (i == 0) path.moveTo(x, ys[i]); else path.lineTo(x, ys[i]); } path.close();
+    }
+    private void line3(boolean left, float off) {
+        path.reset(); float[] ys = {0, 102 * U, H};
+        for (int i = 0; i < 3; i++) { float x = xin(ys[i]) + off; if (!left) x = W - x; if (i == 0) path.moveTo(x, ys[i]); else path.lineTo(x, ys[i]); }
+    }
+    private static int mixc(int[] a, int[] b, float k) { return Color.rgb((int) Math.max(0, Math.min(255, a[0] + (b[0] - a[0]) * k)), (int) Math.max(0, Math.min(255, a[1] + (b[1] - a[1]) * k)), (int) Math.max(0, Math.min(255, a[2] + (b[2] - a[2]) * k))); }
+
+    /** الشريط الأحمر: شرائح أفقية بتدرج لامع، هالة وردية، وخط داخلي بنفسجي داكن (مطابق للمرجع). */
     private void band(Canvas c, boolean left, float shimmer, float slide) {
-        float[][] pts = {{235 * U, 0}, {299 * U, 105 * U}, {170 * U, H}};
-        float total = 0; float[] leg = new float[2];
-        for (int i = 0; i < 2; i++) { leg[i] = (float) Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]); total += leg[i]; }
-        float segLen = 40 * U, gap = 4 * U, th = 24 * U, acc = 0;
-        for (int i = 0; i < 2; i++) {
-            float dx = (pts[i + 1][0] - pts[i][0]) / leg[i], dy = (pts[i + 1][1] - pts[i][1]) / leg[i], nx = dy, ny = -dx;
-            for (float s = 0; s + segLen * .4f < leg[i]; s += segLen + gap) {
-                float s1 = Math.min(leg[i], s + segLen), f = (acc + (s + s1) / 2) / total, bright = Math.max(0, 1 - Math.abs(f - shimmer) * 5f);
-                int col = lerpC(lerpC(Color.rgb(244, 130, 110), Color.rgb(196, 44, 30), f), Color.rgb(255, 215, 170), bright * .75f);
-                float ax = pts[i][0] + dx * s, ay = pts[i][1] + dy * s, bx = pts[i][0] + dx * s1, by = pts[i][1] + dy * s1;
-                float[] q = {ax, ay, bx, by, bx + nx * th, by + ny * th, ax + nx * th, ay + ny * th};
-                path.reset(); for (int k = 0; k < 4; k++) { float x = left ? q[k * 2] : W - q[k * 2]; if (k == 0) path.moveTo(x, q[k * 2 + 1]); else path.lineTo(x, q[k * 2 + 1]); } path.close();
-                p.setStyle(Paint.Style.FILL); p.setColor(Color.argb((int) (70 + 60 * bright), 255, 60, 40)); p.setStrokeWidth(5 * U); p.setStyle(Paint.Style.STROKE); c.drawPath(path, p);
-                p.setStyle(Paint.Style.FILL); p.setColor(col); c.drawPath(path, p);
-            }
-            acc += leg[i];
+        float bw = 22 * U, pitch = 26.3f * U, gap = 4 * U;
+        p.setStyle(Paint.Style.STROKE); p.setStrokeJoin(Paint.Join.ROUND);
+        for (int i = 0; i < 4; i++) { line3(left, bw + (6 + i * 5) * U); p.setStrokeWidth((8 + i * 7) * U); p.setColor(Color.argb((int) (255 * (.11f - i * .025f)), 150, 30, 70)); c.drawPath(path, p); }
+        int[][] ct = {{244, 146, 124}, {238, 92, 68}, {226, 48, 30}};
+        for (float y0 = -2 * U; y0 < H; y0 += pitch) {
+            float a = Math.max(0, y0), y1 = Math.min(H, y0 + pitch - gap); if (y1 <= a) continue;
+            float f = (a + y1) / 2 / H, br = Math.max(0, 1 - Math.abs(f - shimmer) * 5);
+            int[] base = f < .4f ? new int[]{(int) (ct[0][0] + (ct[1][0] - ct[0][0]) * f / .4f), (int) (ct[0][1] + (ct[1][1] - ct[0][1]) * f / .4f), (int) (ct[0][2] + (ct[1][2] - ct[0][2]) * f / .4f)}
+                    : new int[]{(int) (ct[1][0] + (ct[2][0] - ct[1][0]) * (f - .4f) / .6f), (int) (ct[1][1] + (ct[2][1] - ct[1][1]) * (f - .4f) / .6f), (int) (ct[1][2] + (ct[2][2] - ct[1][2]) * (f - .4f) / .6f)};
+            int top = mixc(base, new int[]{255, 225, 190}, br * .65f), bot = mixc(base, new int[]{255, 200, 150}, br * .5f);
+            top = Color.rgb(Math.min(255, Color.red(top) + 10), Math.min(255, Color.green(top) + 10), Math.min(255, Color.blue(top) + 10)); bot = Color.rgb(Math.max(0, Color.red(bot) - 22), Math.max(0, Color.green(bot) - 22), Math.max(0, Color.blue(bot) - 22));
+            bandPoly(a, y1, bw, left);
+            p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(0, a, 0, y1, top, bot, Shader.TileMode.CLAMP)); c.drawPath(path, p); p.setShader(null);
+            p.setStyle(Paint.Style.STROKE); p.setStrokeJoin(Paint.Join.MITER); p.setStrokeWidth(1.1f * U); p.setColor(Color.argb(217, 0, 0, 0)); c.drawPath(path, p);
         }
-        // خط الحافة الداخلية الأحمر الداكن
-        path.reset(); for (int i = 0; i < 3; i++) { float x = left ? pts[i][0] : W - pts[i][0]; if (i == 0) path.moveTo(x, pts[i][1]); else path.lineTo(x, pts[i][1]); }
-        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.5f * U); p.setColor(Color.rgb(110, 14, 14)); c.drawPath(path, p);
+        p.setStrokeJoin(Paint.Join.ROUND); p.setStyle(Paint.Style.STROKE);
+        line3(left, -7 * U); p.setStrokeWidth(3 * U); p.setColor(Color.rgb(66, 22, 42)); c.drawPath(path, p);
+        line3(left, 0); p.setStrokeWidth(1.6f * U); p.setColor(Color.rgb(8, 4, 8)); c.drawPath(path, p);
     }
 
+    private final Path panelPath = new Path();
     private void panelFill(Canvas c, boolean left) {
-        path.reset(); float x0 = left ? 0 : W;
-        path.moveTo(x0, 0); path.lineTo(left ? 235 * U : W - 235 * U, 0); path.lineTo(left ? 299 * U : W - 299 * U, 105 * U); path.lineTo(left ? 170 * U : W - 170 * U, H); path.lineTo(x0, H); path.close();
-        p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(0, 0, 0, H, Color.rgb(4, 4, 6), Color.rgb(20, 5, 8), Shader.TileMode.CLAMP)); c.drawPath(path, p); p.setShader(null);
+        panelPath.reset(); float x0 = left ? 0 : W; float[] ys = {0, 102 * U, H};
+        panelPath.moveTo(x0, 0); for (int i = 0; i < 3; i++) { float x = xin(ys[i]); panelPath.lineTo(left ? x : W - x, ys[i]); } panelPath.lineTo(x0, H); panelPath.close();
+        p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(0, 0, 0, H, Color.rgb(4, 4, 6), Color.rgb(20, 5, 8), Shader.TileMode.CLAMP)); c.drawPath(panelPath, p); p.setShader(null);
     }
 
     private void disk(Canvas c, float cx, float cy, float rx, float ry, float spin, float frac, String label) {
@@ -178,8 +188,9 @@ public class PanelView extends View {
             boolean left = side == 0; float off = (left ? -1 : 1) * panelW * (1 - slide);
             c.save(); c.translate(off, 0);
             panelFill(c, left);
-            float stag = 0;
+            c.save(); c.clipPath(panelPath);
             if (left) drawLeft(c, now, slide); else drawRight(c, now, slide);
+            c.restore();
             band(c, left, shimmer, slide);
             c.restore();
         }
