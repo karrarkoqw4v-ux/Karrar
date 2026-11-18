@@ -38,6 +38,7 @@ public class AppsActivity extends Activity {
             list.addView(row);
             View l = new View(this); l.setBackgroundColor(SettingsUi.LINE); list.addView(l, new LinearLayout.LayoutParams(-1, 2));
         }
+        UiUtil.applySafeInsets(root);
         setContentView(root);
     }
     @Override protected void onResume() { super.onResume(); UiUtil.immersive(this); }
