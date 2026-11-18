@@ -1,0 +1,12 @@
+services:
+  bot:
+    build: .
+    restart: always
+    env_file: .env
+    volumes:
+      - ./data:/data
+    environment:
+      DB_PATH: /data/bot.db
+      TMP_DIR: /tmp/downloads
+    tmpfs:
+      - /tmp/downloads:size=2g

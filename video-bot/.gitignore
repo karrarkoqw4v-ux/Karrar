@@ -1,0 +1,6 @@
+.env
+*.db
+downloads/
+__pycache__/
+.venv/
+cookies.txt

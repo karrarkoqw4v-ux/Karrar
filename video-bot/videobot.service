@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Video Downloader Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/video-bot
+ExecStart=/opt/video-bot/.venv/bin/python bot.py
+Restart=always
+RestartSec=3
+User=videobot
+# تحديث yt-dlp تلقائياً عند كل إعادة تشغيل (المواقع تغيّر نفسها باستمرار)
+ExecStartPre=/opt/video-bot/.venv/bin/pip install -q -U yt-dlp
+
+[Install]
+WantedBy=multi-user.target

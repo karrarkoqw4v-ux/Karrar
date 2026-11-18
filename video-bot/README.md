@@ -1,0 +1,38 @@
+# بوت تحميل الفيديوهات (تيليجرام)
+
+يحمّل من: يوتيوب، انستكرام، تيك توك، فيسبوك، تويتر/X، سناب شات، ساوند كلاود.
+Python 3.11+ — مكتبات: **aiogram 3** (غير متزامن) + **yt-dlp** + **ffmpeg** + aiosqlite.
+
+## المميزات
+- رسائل الاشتراك الإجباري عند `/start` وعند إرسال أي رابط (قنوات متعددة، فحص متوازٍ).
+- رسالة «لحظه من فضلك . . .» ثم الفيديو مع معلوماته (العنوان، الناشر، المدة، المشاهدات، الإعجابات، التعليقات، التاريخ، الجودة، الحجم، المنصة).
+- **تخزين مؤقت بـ file_id:** أي رابط حُمّل سابقاً يُرسل فوراً (أقل من ثانية) بدون تحميل.
+- تحميل متوازٍ (16 جزء لكل فيديو) و8 مستخدمين معاً (قابل للتعديل)، وإعادة ترميز تلقائية إلى h264 عند الحاجة، وخفض الجودة تلقائياً إن زاد الحجم عن 50MB.
+- ساوند كلاود يُرسل ملف MP3 مع اسم الفنان.
+- أوامر الأدمن: `/stats` `/channels` `/addch` `/delch` `/bcast`.
+
+## التشغيل على خادم (Ubuntu/Debian)
+```bash
+sudo apt install -y python3-venv ffmpeg git
+git clone <repo> /opt/video-bot && cd /opt/video-bot/video-bot   # أو انسخ المجلد
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env && nano .env      # ضع BOT_TOKEN و ADMIN_IDS
+.venv/bin/python bot.py                # تجربة
+```
+كخدمة دائمة:
+```bash
+sudo cp videobot.service /etc/systemd/system/ && sudo systemctl enable --now videobot
+journalctl -u videobot -f
+```
+أو Docker: `docker compose up -d --build`.
+
+## الاشتراك الإجباري
+1. أضف البوت **مشرفاً** في كل قناة.
+2. أرسل للبوت: `/addch @channel` (قناة خاصة: `/addch -100123456 https://t.me/+invite`).
+3. `/channels` لعرضها، `/delch @channel` لحذفها. (`ADMIN_IDS` في `.env` = آيدي حسابك).
+
+## ملاحظات مهمة
+- **حد تيليجرام للرفع 50MB** عبر Bot API العادي. لرفع حتى 2GB شغّل [telegram-bot-api المحلي](https://github.com/tdlib/telegram-bot-api) وضع `TELEGRAM_API_URL=http://localhost:8081`.
+- **يوتيوب وانستغرام** كثيراً ما يحظران عناوين الخوادم (مراكز البيانات). الحل: ملف كوكيز (`COOKIES_FILE`) من حساب ثانوي، أو بروكسي سكني (`PROXY`).
+- المواقع تغيّر نفسها كثيراً؛ حدّث `yt-dlp` دورياً: `pip install -U yt-dlp` (الخدمة تفعل ذلك تلقائياً عند كل إعادة تشغيل).
+- لا تضع التوكن في المستودع؛ `.env` مُستثنى في `.gitignore`.
