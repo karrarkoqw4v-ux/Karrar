@@ -35,7 +35,7 @@ public class OverlayService extends Service {
                 .setSmallIcon(android.R.drawable.stat_notify_more).build();
         if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         else startForeground(1, n);
-        if (!Booster.hasOverlay(this)) { stopSelf(); return; }
+        if (!Booster.hasOverlay(this) || Booster.flag(this, "disableBubble", false)) { stopSelf(); return; }
         running = true;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         int type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
@@ -57,7 +57,13 @@ public class OverlayService extends Service {
                     case MotionEvent.ACTION_MOVE:
                         if (Math.abs(e.getRawX() - sx) + Math.abs(e.getRawY() - sy) > 12) moved = true;
                         bp.x = ox + (int) (e.getRawX() - sx); bp.y = oy + (int) (e.getRawY() - sy); wm.updateViewLayout(bubble, bp); return true;
-                    case MotionEvent.ACTION_UP: if (!moved) togglePanel(); return true;
+                    case MotionEvent.ACTION_UP:
+                        if (!moved) togglePanel();
+                        else if (Booster.num(OverlayService.this, "bubbleStyle", 0) == 1) {
+                            int sw = getResources().getDisplayMetrics().widthPixels, half = bubble.getWidth() / 2;
+                            bp.x = (bp.x + half < sw / 2) ? -half : sw - half; wm.updateViewLayout(bubble, bp); bubble.setAlpha(.75f);
+                        }
+                        return true;
                 }
                 return false;
             }

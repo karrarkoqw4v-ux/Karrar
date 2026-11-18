@@ -18,6 +18,7 @@ import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.widget.*;
 
@@ -41,21 +42,40 @@ public class LauncherActivity extends Activity {
         }
     };
 
-    // ---------- الخلفية: شبكة + توهج ----------
+    // ---------- الخلفية ----------
+    static final int[][] BG_COLS = {{255, 140, 20}, {0, 220, 220}, {255, 50, 30}, {60, 120, 255}};
+    /** يرسم أحد أنماط الخلفية الأربعة (t = الزمن للتحريك). */
+    static void drawBgStyle(Canvas c, Paint p, float w, float hh, int style, float t) {
+        int[] k = BG_COLS[Math.max(0, Math.min(3, style))];
+        p.setShader(new LinearGradient(0, 0, 0, hh, Color.rgb(4, 5, 12), Color.rgb(14, 16, 36), Shader.TileMode.CLAMP)); p.setStyle(Paint.Style.FILL); c.drawRect(0, 0, w, hh, p); p.setShader(null);
+        float cx = w * .5f, hz = hh * .62f;
+        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(Math.max(1f, w / 900f));
+        for (int i = -14; i <= 14; i++) { p.setColor(Color.argb(40, k[0], k[1], k[2])); c.drawLine(cx + i * w * .024f, hz, cx + i * w * .13f, hh, p); }
+        for (int i = 0; i < 12; i++) { float z = ((i / 12f + t * .06f) % 1f), y = hz + z * z * (hh - hz); p.setColor(Color.argb((int) (20 + 60 * z), k[0], k[1], k[2])); c.drawLine(0, y, w, y, p); }
+        float pulse = .85f + .15f * (float) Math.sin(t * 2);
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx, hh * .45f, hh * .75f * pulse, Color.argb(style == 2 ? 90 : 70, k[0], k[1], k[2]), 0x00000000, Shader.TileMode.CLAMP)); c.drawRect(0, 0, w, hh, p); p.setShader(null);
+        if (style == 2) { p.setStrokeWidth(3); p.setStyle(Paint.Style.STROKE); for (int i = 0; i < 16; i++) { double a = Math.PI * 2 * i / 16 + t * .2; p.setColor(Color.argb(40, 255, 80, 40)); c.drawLine(cx, hh * .45f, (float) (cx + Math.cos(a) * w), (float) (hh * .45f + Math.sin(a) * w), p); } }
+    }
     static class BgView extends View {
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); final long t0 = SystemClock.uptimeMillis();
-        BgView(Context c) { super(c); }
+        Bitmap bmp; int style; boolean anim;
+        BgView(Context c) {
+            super(c);
+            style = Booster.num(c, "bg", 0); anim = Booster.flag(c, "bgAnim", true);
+            String u = Booster.prefs(c).getString("bgUri", null);
+            if (u != null) try {
+                BitmapFactory.Options o = new BitmapFactory.Options(); o.inSampleSize = 2;
+                java.io.InputStream in = c.getContentResolver().openInputStream(android.net.Uri.parse(u)); bmp = BitmapFactory.decodeStream(in, null, o); if (in != null) in.close();
+            } catch (Exception e) { bmp = null; }
+        }
         @Override protected void onDraw(Canvas c) {
-            float w = getWidth(), hh = getHeight(), t = (SystemClock.uptimeMillis() - t0) / 1000f;
-            p.setShader(new LinearGradient(0, 0, 0, hh, Color.rgb(4, 5, 12), Color.rgb(14, 16, 36), Shader.TileMode.CLAMP)); p.setStyle(Paint.Style.FILL); c.drawRect(0, 0, w, hh, p); p.setShader(null);
-            float cx = w * .5f, hz = hh * .62f;
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.5f);
-            for (int i = -14; i <= 14; i++) { p.setColor(Color.argb(40, 255, 165, 31)); c.drawLine(cx + i * 30, hz, cx + i * 170, hh, p); }
-            for (int i = 0; i < 12; i++) { float z = ((i / 12f + t * .06f) % 1f), y = hz + z * z * (hh - hz); p.setColor(Color.argb((int) (20 + 60 * z), 255, 165, 31)); c.drawLine(0, y, w, y, p); }
-            float pulse = .85f + .15f * (float) Math.sin(t * 2);
-            p.setStyle(Paint.Style.FILL);
-            p.setShader(new RadialGradient(cx, hh * .45f, hh * .75f * pulse, Color.argb(70, 255, 140, 20), 0x00000000, Shader.TileMode.CLAMP)); c.drawRect(0, 0, w, hh, p); p.setShader(null);
-            postInvalidateOnAnimation();
+            float w = getWidth(), hh = getHeight(), t = anim ? (SystemClock.uptimeMillis() - t0) / 1000f : 0;
+            if (bmp != null) {
+                float s = Math.max(w / bmp.getWidth(), hh / bmp.getHeight()); c.save(); c.translate((w - bmp.getWidth() * s) / 2, (hh - bmp.getHeight() * s) / 2); c.scale(s, s); c.drawBitmap(bmp, 0, 0, p); c.restore();
+                p.setStyle(Paint.Style.FILL); p.setColor(Color.argb(110, 0, 0, 0)); c.drawRect(0, 0, w, hh, p);
+            } else drawBgStyle(c, p, w, hh, style, t);
+            if (anim) postInvalidateOnAnimation();
         }
     }
 
@@ -97,7 +117,7 @@ public class LauncherActivity extends Activity {
         View sp = new View(this); top.addView(sp, new LinearLayout.LayoutParams(0, 1, 1));
         top.addView(circle("✖", v -> finishAffinity()));
         top.addView(circle("🛠", v -> startActivity(new Intent(this, HubActivity.class))));
-        top.addView(circle("⚙", v -> startActivity(new Intent(this, PermissionsActivity.class))));
+        top.addView(circle("⚙", v -> startActivity(new Intent(this, SettingsActivity.class))));
         col.addView(top, new LinearLayout.LayoutParams(-1, UiUtil.dp(root, 50)));
 
         // ===== الوسط =====
@@ -142,7 +162,7 @@ public class LauncherActivity extends Activity {
         FrameLayout bottom = new FrameLayout(this);
         TextView plus = UiUtil.text(this, "+", 28, Color.WHITE, true); plus.setGravity(Gravity.CENTER);
         plus.setBackground(UiUtil.round(UiUtil.CARD, UiUtil.dp(root, 10), 0, 0));
-        plus.setOnClickListener(v -> pickGameToAdd());
+        plus.setOnClickListener(v -> startActivity(new Intent(this, AppsActivity.class)));
         bottom.addView(plus, new FrameLayout.LayoutParams(UiUtil.dp(root, 54), UiUtil.dp(root, 44), Gravity.START | Gravity.CENTER_VERTICAL));
         LinearLayout tabs = new LinearLayout(this);
         TextView home = tab("الرئيسية (اللوبي)", true);
@@ -168,7 +188,7 @@ public class LauncherActivity extends Activity {
         return t;
     }
 
-    @Override protected void onResume() { super.onResume(); UiUtil.immersive(this); reload(); h.post(tick); }
+    @Override protected void onResume() { super.onResume(); UiUtil.immersive(this); Booster.endSessionIfActive(this); reload(); h.post(tick); }
     @Override protected void onPause() { super.onPause(); h.removeCallbacks(tick); }
 
     private void reload() {
@@ -210,12 +230,30 @@ public class LauncherActivity extends Activity {
     }
 
     private void startGame() {
-        if (games.isEmpty()) { pickGameToAdd(); return; }
-        String pkg = games.get(sel).activityInfo.packageName;
-        String res = Booster.boostAll(this, pkg);
-        Toast.makeText(this, res, Toast.LENGTH_LONG).show();
-        Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
-        if (i != null) startActivity(i);
+        if (games.isEmpty()) { startActivity(new Intent(this, AppsActivity.class)); return; }
+        final String pkg = games.get(sel).activityInfo.packageName;
+        final String res = Booster.startSession(this, pkg);
+        final Runnable go = () -> {
+            Toast.makeText(this, res, Toast.LENGTH_LONG).show();
+            Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
+            if (i != null) startActivity(i);
+        };
+        if (!Booster.flag(this, "launchAnim", true)) { go.run(); return; }
+        // حركة الانطلاق: حلقات + صاعقة تكبر ثم تشغيل اللعبة
+        final View fx = new View(this) {
+            final Paint pp = new Paint(Paint.ANTI_ALIAS_FLAG); final long t0 = SystemClock.uptimeMillis();
+            @Override protected void onDraw(Canvas c) {
+                float k = Math.min(1f, (SystemClock.uptimeMillis() - t0) / 650f), w = getWidth(), hh = getHeight(), cx = w / 2, cy = hh / 2;
+                pp.setStyle(Paint.Style.FILL); pp.setColor(Color.argb((int) (230 * k), 0, 0, 0)); c.drawRect(0, 0, w, hh, pp);
+                pp.setStyle(Paint.Style.STROKE); pp.setStrokeWidth(8);
+                for (int i = 0; i < 3; i++) { float r = (k * 1.2f - i * .15f); if (r <= 0) continue; pp.setColor(Color.argb((int) (255 * (1 - Math.min(1, r))), 255, 165, 31)); c.drawCircle(cx, cy, r * Math.max(w, hh) * .6f, pp); }
+                Path b = new Path(); float s = hh * .0045f * (.5f + k); b.moveTo(cx + 14 * s, cy - 96 * s); b.lineTo(cx - 52 * s, cy + 10 * s); b.lineTo(cx - 6 * s, cy + 10 * s); b.lineTo(cx - 24 * s, cy + 96 * s); b.lineTo(cx + 52 * s, cy - 18 * s); b.lineTo(cx + 6 * s, cy - 18 * s); b.close();
+                pp.setStyle(Paint.Style.FILL); pp.setColor(Color.argb((int) (255 * k), 255, 177, 0)); c.drawPath(b, pp);
+                if (k < 1f) postInvalidateOnAnimation();
+            }
+        };
+        ((ViewGroup) getWindow().getDecorView()).addView(fx, new ViewGroup.LayoutParams(-1, -1));
+        fx.postDelayed(() -> { go.run(); fx.postDelayed(() -> ((ViewGroup) getWindow().getDecorView()).removeView(fx), 600); }, 700);
     }
 
     private void pickGameToAdd() {

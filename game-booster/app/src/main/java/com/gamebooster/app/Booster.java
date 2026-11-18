@@ -20,6 +20,27 @@ final class Booster {
 
     static SharedPreferences prefs(Context c) { return c.getSharedPreferences("booster", Context.MODE_PRIVATE); }
 
+    // ---------- إعدادات المستخدم ----------
+    static boolean flag(Context c, String k, boolean d) { return prefs(c).getBoolean("s:" + k, d); }
+    static void setFlag(Context c, String k, boolean v) { prefs(c).edit().putBoolean("s:" + k, v).apply(); }
+    static int num(Context c, String k, int d) { return prefs(c).getInt("n:" + k, d); }
+    static void setNum(Context c, String k, int v) { prefs(c).edit().putInt("n:" + k, v).apply(); }
+    static boolean isProtected(Context c, String pkg) { return prefs(c).getBoolean("p:" + pkg, false); }
+    static void setProtected(Context c, String pkg, boolean v) { prefs(c).edit().putBoolean("p:" + pkg, v).apply(); }
+
+    /** تردد المعالج الحالي بالـGHz (أعلى نواة) أو -1 إذا النظام يمنع القراءة. */
+    static float cpuGHz() {
+        float best = -1;
+        for (int i = 0; i < 16; i++) {
+            java.io.File f = new java.io.File("/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq");
+            if (!f.canRead()) continue;
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f))) {
+                String l = r.readLine(); if (l != null) best = Math.max(best, Long.parseLong(l.trim()) / 1_000_000f);
+            } catch (Exception ignored) {}
+        }
+        return best;
+    }
+
     // ---------- الصلاحيات ----------
     static boolean hasDnd(Context c) { return ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).isNotificationPolicyAccessGranted(); }
     static boolean hasOverlay(Context c) { return Settings.canDrawOverlays(c); }
@@ -34,13 +55,14 @@ final class Booster {
     // ---------- كتم الإشعارات والمكالمات ----------
     static boolean dndOn(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        return hasDnd(c) && nm.getCurrentInterruptionFilter() == NotificationManager.INTERRUPTION_FILTER_NONE;
+        int f = nm.getCurrentInterruptionFilter();
+        return hasDnd(c) && (f == NotificationManager.INTERRUPTION_FILTER_NONE || f == NotificationManager.INTERRUPTION_FILTER_PRIORITY);
     }
     /** @return false إذا لا توجد صلاحية */
     static boolean setDnd(Context c, boolean on) {
         if (!hasDnd(c)) return false;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.setInterruptionFilter(on ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_ALL);
+        nm.setInterruptionFilter(on ? (flag(c, "blockCalls", true) ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_PRIORITY) : NotificationManager.INTERRUPTION_FILTER_ALL);
         return true;
     }
 
@@ -61,7 +83,7 @@ final class Booster {
         ActivityManager am = (ActivityManager) c.getSystemService(Context.ACTIVITY_SERVICE);
         for (ApplicationInfo ai : c.getPackageManager().getInstalledApplications(0)) {
             if ((ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0) continue;
-            if (ai.packageName.equals(c.getPackageName()) || ai.packageName.equals(keepPkg)) continue;
+            if (ai.packageName.equals(c.getPackageName()) || ai.packageName.equals(keepPkg) || isProtected(c, ai.packageName)) continue;
             am.killBackgroundProcesses(ai.packageName);
         }
         return Math.max(0, freeMem(c) - before) / (1024 * 1024);
@@ -151,6 +173,43 @@ final class Booster {
         java.util.List<android.content.pm.ResolveInfo> out = new java.util.ArrayList<>();
         for (android.content.pm.ResolveInfo r : launchable(c)) if (isGame(c, r)) out.add(r);
         return out;
+    }
+
+    // ---------- قفل التدوير ----------
+    static boolean setRotationLock(Context c, boolean on) {
+        if (!hasWriteSettings(c)) return false;
+        android.content.ContentResolver r = c.getContentResolver();
+        SharedPreferences p = prefs(c);
+        try {
+            if (on) {
+                p.edit().putInt("prevAuto", Settings.System.getInt(r, Settings.System.ACCELEROMETER_ROTATION, 1)).putInt("prevRot", Settings.System.getInt(r, Settings.System.USER_ROTATION, 0)).apply();
+                Settings.System.putInt(r, Settings.System.ACCELEROMETER_ROTATION, 0);
+                Settings.System.putInt(r, Settings.System.USER_ROTATION, 1);
+            } else {
+                Settings.System.putInt(r, Settings.System.USER_ROTATION, p.getInt("prevRot", 0));
+                Settings.System.putInt(r, Settings.System.ACCELEROMETER_ROTATION, p.getInt("prevAuto", 1));
+            }
+        } catch (Exception e) { return false; }
+        return true;
+    }
+
+    /** بداية جلسة لعب حسب إعدادات المستخدم. */
+    static String startSession(Context c, String pkg) {
+        StringBuilder sb = new StringBuilder();
+        if (flag(c, "cleanBefore", true)) sb.append("✔ تحرّر ~").append(killBackground(c, pkg)).append(" MB");
+        if (flag(c, "dndOnStart", true)) { if (setDnd(c, true)) sb.append(" · كتم الإشعارات"); else sb.append(" · (امنح صلاحية عدم الإزعاج)"); }
+        if (flag(c, "lockBright", false) && setBright(c, true)) sb.append(" · سطوع مقفول");
+        if (flag(c, "lockRotation", false) && setRotationLock(c, true)) sb.append(" · تدوير مقفول");
+        prefs(c).edit().putBoolean("sessionOn", true).apply();
+        return sb.length() == 0 ? "تم" : sb.toString();
+    }
+    /** إنهاء الجلسة وإرجاع الإعدادات (يُستدعى عند الرجوع للتطبيق). */
+    static void endSessionIfActive(Context c) {
+        if (!prefs(c).getBoolean("sessionOn", false) || !flag(c, "restoreOnReturn", true)) return;
+        prefs(c).edit().putBoolean("sessionOn", false).apply();
+        if (flag(c, "dndOnStart", true)) setDnd(c, false);
+        if (brightOn(c)) setBright(c, false);
+        if (flag(c, "lockRotation", false)) setRotationLock(c, false);
     }
 
     /** التسريع الكامل: تنظيف الخلفية + كتم (إن مُنحت الصلاحية) + سطوع. */

@@ -27,6 +27,10 @@
             android:configChanges="orientation|screenSize|keyboardHidden"/>
         <activity android:name=".LauncherActivity" android:exported="false" android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|keyboardHidden"/>
+        <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|keyboardHidden"/>
+        <activity android:name=".AppsActivity" android:exported="false" android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|keyboardHidden"/>
         <activity android:name=".MainActivity" android:exported="false" android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|keyboardHidden"/>
         <service android:name=".OverlayService" android:exported="false" android:foregroundServiceType="specialUse">

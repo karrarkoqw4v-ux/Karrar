@@ -43,7 +43,7 @@ public class HubActivity extends Activity {
 
     // ---------- العدّاد ----------
     static class Gauge extends View {
-        float v; String label = "", text = ""; int color = UiUtil.ACC;
+        float v; String label = "", text = ""; int color = UiUtil.ACC; int style;
         final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); final RectF r = new RectF();
         Gauge(Context c) { super(c); }
         void set(float v, String text, String label, int color) { this.v = v; this.text = text; this.label = label; this.color = color; invalidate(); }
@@ -51,8 +51,10 @@ public class HubActivity extends Activity {
             float w = getWidth(), hh = getHeight(), d = Math.min(w, hh) - 24, cx = w / 2, cy = hh / 2;
             r.set(cx - d / 2, cy - d / 2, cx + d / 2, cy + d / 2);
             p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(d * .09f);
+            if (style == 1) p.setStrokeWidth(d * .04f);
             p.setColor(Color.argb(40, 255, 255, 255)); c.drawArc(r, 135, 270, false, p);
             p.setColor(color); c.drawArc(r, 135, 270 * Math.max(0.02f, Math.min(1, v)), false, p);
+            if (style == 2) { p.setStrokeWidth(3); for (int i = 0; i <= 20; i++) { double a = Math.toRadians(135 + 270 * i / 20.0), rr = d / 2 + d * .1f; p.setColor(i / 20f <= v ? color : Color.argb(60, 255, 255, 255)); c.drawLine((float) (cx + Math.cos(a) * rr), (float) (cy + Math.sin(a) * rr), (float) (cx + Math.cos(a) * (rr + d * .06f)), (float) (cy + Math.sin(a) * (rr + d * .06f)), p); } p.setStrokeWidth(d * .09f); }
             p.setStyle(Paint.Style.FILL); p.setTextAlign(Paint.Align.CENTER); p.setColor(Color.WHITE); p.setTypeface(Typeface.DEFAULT_BOLD);
             p.setTextSize(d * .22f); c.drawText(text, cx, cy + d * .04f, p);
             p.setTextSize(d * .11f); p.setColor(color); c.drawText(label, cx, cy + d * .2f, p);
@@ -100,7 +102,7 @@ public class HubActivity extends Activity {
 
         // يمين: الأدوات
         GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(3);
+        final int hubCols = Booster.num(this, "hubCols", 3); grid.setColumnCount(hubCols);
         Tile tBoost = new Tile(this, "🧹", "تنظيف الخلفية");
         tDnd = new Tile(this, "🔕", "كتم الإشعارات والمكالمات");
         tSound = new Tile(this, "🔊", "وضع صوت الألعاب");
@@ -113,7 +115,7 @@ public class HubActivity extends Activity {
         Tile[] all = {tGames, tBoost, tDnd, tSound, tBright, tBubble, tNet, tPerm, tExit};
         for (Tile t : all) {
             GridLayout.LayoutParams lp = new GridLayout.LayoutParams(GridLayout.spec(GridLayout.UNDEFINED, 1f), GridLayout.spec(GridLayout.UNDEFINED, 1f));
-            lp.width = 0; lp.height = UiUtil.dp(grid, 84); lp.setMargins(6, 6, 6, 6);
+            lp.width = 0; lp.height = UiUtil.dp(grid, hubCols == 4 ? 72 : 84); lp.setMargins(6, 6, 6, 6);
             grid.addView(t, lp);
         }
         ScrollView sv = new ScrollView(this); sv.addView(grid);
@@ -163,8 +165,11 @@ public class HubActivity extends Activity {
     private void updateGauges() {
         long tot = Booster.totalMem(this), free = Booster.freeMem(this);
         float used = 1f - (float) free / tot, temp = Booster.batteryTemp(this);
+        gRam.style = Booster.num(this, "memStyle", 0); gTemp.style = Booster.num(this, "cpuStyle", 0);
         gRam.set(used, Math.round(used * 100) + "%", "الذاكرة", used > .85f ? UiUtil.WARN : UiUtil.ACC);
-        gTemp.set(Math.min(1f, temp / 50f), Math.round(temp) + "°", "الحرارة", temp >= 42 ? UiUtil.WARN : UiUtil.OK);
+        float ghz = Booster.cpuGHz();
+        if (ghz > 0) gTemp.set(Math.min(1f, ghz / 3.5f), String.format(java.util.Locale.US, "%.1f", ghz), "GHz", UiUtil.OK);
+        else gTemp.set(Math.min(1f, temp / 50f), Math.round(temp) + "°", "الحرارة", temp >= 42 ? UiUtil.WARN : UiUtil.OK);
         batt.setText("🔋 " + Booster.batteryPct(this) + "%   ·   متاح " + free / (1024 * 1024) + " MB" + (temp >= 42 ? "\n⚠️ الجهاز ساخن" : ""));
     }
 
