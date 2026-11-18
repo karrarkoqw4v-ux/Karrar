@@ -54,7 +54,19 @@ public class OverlayService extends Service {
         running = true;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         type = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-        showTriggers(); ah.postDelayed(autoClean, 90000); ah.postDelayed(monitor, 3000);
+        waitThenShowTriggers(0); ah.postDelayed(autoClean, 90000); ah.postDelayed(monitor, 3000);
+    }
+
+    /** ينتظر حتى تكون اللعبة فعلياً في المقدّمة قبل إظهار زر اللوحة، حتى لا يظهر فوق واجهة المسرّع نفسه أثناء الانتقال. */
+    private void waitThenShowTriggers(final int tries) {
+        if (tries >= 8) { showTriggers(); return; }         // بعد ~4 ثوانٍ أظهره على أي حال (قد لا يتوفر كشف المقدّمة)
+        if (ShizukuHelper.granted() || Booster.hasUsage(this)) {
+            ShizukuHelper.run(() -> {
+                final String top = Booster.topPackage(OverlayService.this);
+                final boolean ready = top != null && !top.equals(getPackageName());
+                ah.post(() -> { if (ready) showTriggers(); else ah.postDelayed(() -> waitThenShowTriggers(tries + 1), 500); });
+            });
+        } else ah.postDelayed(() -> waitThenShowTriggers(tries + 1), 500);
     }
 
     private void showTriggers() {

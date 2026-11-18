@@ -189,9 +189,9 @@ public class LauncherActivity extends Activity {
         TextView tt = UiUtil.text(this, "", 22, Color.WHITE, true); tt.setText(title); top.addView(tt);
         clock = UiUtil.text(this, "", 16, Color.WHITE, true); clock.setPadding(UiUtil.dp(root, 22), 0, UiUtil.dp(root, 14), 0); top.addView(clock);
         cRam = chip(); cCpu = chip(); cTemp = chip(); cBat = chip(); cSz = chip(); chipIcon(cRam, "ram"); chipIcon(cCpu, "cpu"); chipIcon(cTemp, "therm");
-        LinearLayout chipRow = new LinearLayout(this); chipRow.setGravity(Gravity.CENTER_VERTICAL);
-        for (TextView c : new TextView[]{cRam, cCpu, cTemp, cBat, cSz}) { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(c, 30)); lp.setMargins(UiUtil.dp(c, 4), 0, UiUtil.dp(c, 4), 0); chipRow.addView(c, lp); }
-        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setHorizontalScrollBarEnabled(false); hs.setOverScrollMode(View.OVER_SCROLL_NEVER); hs.addView(chipRow);
+        LinearLayout chipRow = new LinearLayout(this); chipRow.setGravity(Gravity.CENTER_VERTICAL); chipRow.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        for (TextView c : new TextView[]{cRam, cCpu, cTemp, cBat, cSz}) { LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, UiUtil.dp(c, 32)); lp.setMargins(UiUtil.dp(c, 4), 0, UiUtil.dp(c, 4), 0); chipRow.addView(c, lp); }
+        HorizontalScrollView hs = new HorizontalScrollView(this); hs.setLayoutDirection(View.LAYOUT_DIRECTION_LTR); hs.setHorizontalScrollBarEnabled(false); hs.setOverScrollMode(View.OVER_SCROLL_NEVER); hs.addView(chipRow);
         top.addView(hs, new LinearLayout.LayoutParams(0, -2, 1));
         top.addView(circle("x", v -> finishAffinity())); top.addView(circle("wrench", v -> startActivity(new Intent(this, HubActivity.class)))); top.addView(circle("gear", v -> startActivity(new Intent(this, SettingsActivity.class))));
         col.addView(top, new LinearLayout.LayoutParams(-1, UiUtil.dp(root, 50)));

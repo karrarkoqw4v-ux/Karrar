@@ -19,7 +19,9 @@ import java.util.TreeSet;
 /** نوافذ إضافية فوق اللعبة: لوحة البيانات، مؤشر المركز، لون الشاشة، ومعدّل التحديث. */
 final class Extras {
     private Extras() {}
-    static boolean hudOn, crossOn; static int tint;           // tint: 0 إيقاف، 1 دافئ، 2 بارد، 3 حيوي
+    static boolean hudOn, crossOn; static int tint;
+    /** أسماء مرشّحات لون الشاشة؛ الفهرس 0 = إيقاف. فلاتر شفافة حقيقية (SRC_OVER) فوق أي تطبيق — ليست معايرة عتاد الشاشة. */
+    static final String[] TINT_NAMES = {"إيقاف", "دافئ سينمائي", "بارد حيوي", "مشبّع نابض", "ليلي (راحة للعين)"};
     private static View cross, tintV; private static InfoBar hud; private static String hudPkg; private static int hudTick;
     private static final Handler H = new Handler(Looper.getMainLooper());
     private static final Runnable HUD_TICK = new Runnable() {
@@ -77,14 +79,30 @@ final class Extras {
         };
         cross = v; crossOn = true; wm(c).addView(v, lp(120, 120, Gravity.CENTER, 0, 0));
     }
-    /** يدوّر بين: إيقاف ← دافئ ← بارد ← حيوي */
-    static void cycleTint(Context c) {
-        c = c.getApplicationContext(); tint = (tint + 1) % 4;
+    /** مرشّح فوق اللعبة بتدرّج لوني واقعي (ليس تلويناً مسطّحاً) + تظليل خفيف على الأطراف. يدوّر بين 5 أوضاع. @return الفهرس الجديد */
+    static int cycleTint(Context c) {
+        c = c.getApplicationContext(); tint = (tint + 1) % TINT_NAMES.length;
         try { if (tintV != null) wm(c).removeView(tintV); } catch (Exception ignored) {} tintV = null;
-        if (tint == 0) return;
-        int col = tint == 1 ? Color.argb(60, 255, 150, 40) : tint == 2 ? Color.argb(55, 60, 130, 255) : Color.argb(45, 255, 40, 120);
-        View v = new View(c); v.setBackgroundColor(col); tintV = v;
+        if (tint == 0) return tint;
+        final int preset = tint;
+        View v = new View(c) {
+            final Paint p = new Paint();
+            @Override protected void onDraw(Canvas cv) {
+                float w = getWidth(), hh = getHeight();
+                int top, bottom, vign; float opacity;
+                switch (preset) {
+                    case 1: top = Color.argb(46, 255, 176, 96); bottom = Color.argb(70, 255, 120, 30); vign = Color.argb(60, 90, 40, 0); opacity = 1f; break;   // دافئ سينمائي
+                    case 2: top = Color.argb(60, 130, 200, 255); bottom = Color.argb(40, 40, 90, 190); vign = Color.argb(70, 0, 20, 60); opacity = 1f; break;  // بارد حيوي
+                    case 3: top = Color.argb(34, 255, 70, 140); bottom = Color.argb(34, 255, 190, 40); vign = Color.argb(40, 60, 0, 40); opacity = 1f; break;  // مشبّع نابض
+                    default: top = Color.argb(78, 255, 120, 60); bottom = Color.argb(100, 180, 30, 20); vign = Color.argb(90, 40, 0, 0); opacity = 1f; break;  // ليلي
+                }
+                p.setShader(new LinearGradient(0, 0, 0, hh, top, bottom, Shader.TileMode.CLAMP)); cv.drawRect(0, 0, w, hh, p); p.setShader(null);
+                p.setShader(new RadialGradient(w / 2, hh / 2, Math.max(w, hh) * .72f, 0x00000000, vign, Shader.TileMode.CLAMP)); cv.drawRect(0, 0, w, hh, p); p.setShader(null);
+            }
+        };
+        tintV = v;
         wm(c).addView(v, lp(-1, -1, Gravity.TOP | Gravity.START, 0, 0));
+        return tint;
     }
     static void clear(Context c) {
         c = c.getApplicationContext(); hudOn = false; crossOn = false; tint = 0;

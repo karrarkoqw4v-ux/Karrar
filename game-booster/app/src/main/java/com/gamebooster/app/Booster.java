@@ -304,6 +304,9 @@ final class Booster {
                 + " settings put global window_animation_scale 0.5; settings put global transition_animation_scale 0.5; settings put global animator_duration_scale 0.5;"
                 + " settings put global tcp_default_init_rwnd 60; settings put global mobile_data_always_on 1;"
                 + " settings put secure long_press_timeout 250; settings put secure multi_press_timeout 200;"
+                + " settings put global low_power 0; dumpsys deviceidle unforce;"
+                + (pkg != null ? " am set-inactive " + pkg + " false;" : "")
+                + " svc power stayon true;"
                 + " echo DONE";
         String out = ShizukuHelper.sh(script);
         long ms = SystemClock.elapsedRealtime() - t0;
@@ -313,7 +316,7 @@ final class Booster {
     /** يرجع كل القيم التي غيّرها «أداء ثابت» إلى ما كانت عليه. */
     static void ultraOff(Context c) {
         if (!ShizukuHelper.granted()) return;
-        StringBuilder sb = new StringBuilder("cmd power set-fixed-performance-mode-enabled false;");
+        StringBuilder sb = new StringBuilder("cmd power set-fixed-performance-mode-enabled false; svc power stayon false;");
         for (String[] k : ULTRA_KEYS) {
             String v = prefs(c).getString("up:" + k[1], "null");
             if (v == null || v.isEmpty() || v.equals("null")) sb.append(" settings delete ").append(k[0]).append(' ').append(k[1]).append(';');
@@ -339,12 +342,13 @@ final class Booster {
     static boolean gameFlag(Context c, String pkg, String k, boolean def) { return prefs(c).getBoolean("gf:" + pkg + ":" + k, def); }
     static void setGameFlag(Context c, String pkg, String k, boolean v) { prefs(c).edit().putBoolean("gf:" + pkg + ":" + k, v).apply(); }
 
-    /** التسريع الكامل: تنظيف الخلفية + كتم (إن مُنحت الصلاحية) + سطوع. */
+    /** التسريع الكامل: تنظيف الخلفية + كتم (إن مُنحت الصلاحية) + سطوع + «أداء ثابت» إن توفّر Shizuku. */
     static String boostAll(Context c, String keepPkg) {
         long freed = killBackground(c, keepPkg);
         StringBuilder sb = new StringBuilder("✔ تحرّر ~" + freed + " MB");
         if (setDnd(c, true)) sb.append(" · كُتمت الإشعارات والمكالمات");
         if (setBright(c, true)) sb.append(" · سطوع عالٍ");
+        if (ShizukuHelper.granted()) { sb.append(" · أداء ثابت"); ShizukuHelper.run(() -> ultraOn(c, keepPkg)); }
         return sb.toString();
     }
 }
