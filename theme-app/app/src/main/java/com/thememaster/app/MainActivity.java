@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
@@ -226,41 +227,54 @@ public class MainActivity extends Activity {
         if (req == REQ_PICK && res == RESULT_OK && data != null && data.getData() != null) verifyAndSend(data.getData());
     }
 
-    /** يتحقّق من سلامة الـZIP فعلياً (قراءة كل مدخلاته) ثم يرسله لتطبيق الثيمات في النظام. */
+    /** نتيجة تحقّق ناجحة: الملف + تفاصيل حقيقية عنه (حجم، عدد مدخلات، بصمة SHA-256). */
+    private static final class Verified {
+        final File file; final long size; final int entries; final String sha256;
+        Verified(File f, long s, int e, String h) { file = f; size = s; entries = e; sha256 = h; }
+    }
+
+    /** يتحقّق من سلامة الـZIP فعلياً (قراءة كل مدخلاته + بصمة SHA-256 حقيقية) ثم يرسله لتطبيق الثيمات في النظام. */
     private void verifyAndSend(final Uri src) {
         spinner.setVisibility(View.VISIBLE);
-        status.setText("جارٍ التحقّق من الملف...");
-        new AsyncTask<Void, Void, Object>() {
+        status.setText("جارٍ قراءة الملف...");
+        new AsyncTask<Void, String, Object>() {
             @Override protected Object doInBackground(Void... v) {
                 File out = new File(getCacheDir(), "theme_" + System.currentTimeMillis() + ".mtz");
                 try {
                     long start = System.currentTimeMillis();
-                    int entries = 0; boolean ok;
+                    MessageDigest md = MessageDigest.getInstance("SHA-256");
+                    long size = 0;
                     try (InputStream raw = getContentResolver().openInputStream(src); OutputStream os = new FileOutputStream(out)) {
                         if (raw == null) return "تعذّر فتح الملف";
-                        byte[] buf = new byte[16384]; int n; ByteCounter counter = new ByteCounter();
-                        while ((n = raw.read(buf)) > 0) { os.write(buf, 0, n); counter.total += n; if (counter.total > 150L * 1024 * 1024) return "الملف كبير جداً (الحد 150MB)"; }
+                        byte[] buf = new byte[16384]; int n;
+                        while ((n = raw.read(buf)) > 0) { os.write(buf, 0, n); md.update(buf, 0, n); size += n; if (size > 150L * 1024 * 1024) return "الملف كبير جداً (الحد 150MB)"; }
                     }
+                    publishProgress("جارٍ التحقّق من سلامة الأرشيف...");
+                    int entries = 0; boolean ok;
                     try (ZipInputStream zin = new ZipInputStream(new java.io.FileInputStream(out))) {
                         ZipEntry e; while ((e = zin.getNextEntry()) != null) { entries++; if (entries > 5000) return "عدد ملفات داخلي كبير جداً"; }
                         ok = entries > 0;
                     } catch (ZipException ze) { return "الملف ليس أرشيف ZIP سليم"; }
                     if (!ok) return "الملف فارغ";
+                    publishProgress("جارٍ حساب بصمة الأمان SHA-256...");
+                    StringBuilder hex = new StringBuilder();
+                    for (byte b : md.digest()) hex.append(String.format(java.util.Locale.US, "%02x", b));
                     long elapsed = System.currentTimeMillis() - start;
                     if (elapsed < 1800) try { Thread.sleep(1800 - elapsed); } catch (InterruptedException ignored) {}   // فحص حقيقي، بحد أدنى يعكس حجم العمل الفعلي
-                    return out;
+                    return new Verified(out, size, entries, hex.toString());
                 } catch (Exception e) { return "خطأ: " + e.getMessage(); }
             }
+            @Override protected void onProgressUpdate(String... s) { status.setText(s[0]); }
             @Override protected void onPostExecute(Object r) {
                 spinner.setVisibility(View.GONE); status.setText("");
                 if (r instanceof String) { showDialog("تعذّر", (String) r); return; }
-                sendToSystemThemeApp((File) r);
+                sendToSystemThemeApp((Verified) r);
             }
         }.execute();
     }
-    private static final class ByteCounter { long total; }
 
-    private void sendToSystemThemeApp(File mtz) {
+    private void sendToSystemThemeApp(Verified v) {
+        File mtz = v.file;
         // نسخة ثانية في مجلّد شاومي المحلي للثيمات — عبر صلاحية الملفات، أو عبر Shizuku إن لم تُمنح الأولى
         String localPath = hasFileAccess() ? copyToMiuiLocal(mtz) : null;
         if (localPath == null && ThemeShizuku.granted()) localPath = ThemeShizuku.copyToMiuiLocal(mtz);
@@ -272,23 +286,25 @@ public class MainActivity extends Activity {
         i.setDataAndType(uri, "application/zip");
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         if (pkg != null) i.setPackage(pkg);
+        final String details = "\n\nتفاصيل الملف المتحقَّق منه:\n• الحجم: " + (v.size / 1024) + " كيلوبايت\n• عدد الملفات داخله: " + v.entries
+                + "\n• بصمة الأمان SHA-256: " + v.sha256.substring(0, 16) + "…";
         String extra = localPath != null ? "\n\nكما نُسخ الملف إلى مجلّد الثيمات المحلي على جهازك (" + localPath + ")؛ إن لم يفتح تطبيق الثيمات تلقائياً، افتحه وابحث عن الثيم ضمن «المحلي / My Themes»." : "";
         final String confirmNote = "\n\nملاحظة مهمة: تثبيت الثيم وتفعيله فعلياً يتم من داخل تطبيق الثيمات لجهازك، وهذا يشمل حتى لو استُخدم Shizuku — فتطبيق MIUI هو من يتحقّق من الثيم ويطلب تأكيدك، ولا توجد صلاحية تتجاوز تلك الخطوة.";
         try {
             startActivity(i);
-            showDialog("تم الإرسال ✔", "أُرسل الملف إلى تطبيق الثيمات في نظام جهازك. أكمل التثبيت من هناك — هو من يتحقّق من الثيم ويطبّقه فعلياً، وليس هذا التطبيق." + extra + confirmNote);
+            showDialog("تم الإرسال ✔", "أُرسل الملف إلى تطبيق الثيمات في نظام جهازك. أكمل التثبيت من هناك — هو من يتحقّق من الثيم ويطبّقه فعلياً، وليس هذا التطبيق." + details + extra + confirmNote);
         } catch (ActivityNotFoundException e1) {
             if (pkg != null) {
                 i.setPackage(null);
-                try { startActivity(i); showDialog("تم الإرسال ✔", "أُرسل الملف وفتحته أول أداة تدعم ملفات الثيمات على جهازك." + extra + confirmNote); return; } catch (ActivityNotFoundException ignored) {}
+                try { startActivity(i); showDialog("تم الإرسال ✔", "أُرسل الملف وفتحته أول أداة تدعم ملفات الثيمات على جهازك." + details + extra + confirmNote); return; } catch (ActivityNotFoundException ignored) {}
             }
             if (ThemeShizuku.granted() && localPath != null && ThemeShizuku.launchThemeManager(localPath)) {
-                showDialog("تم الإرسال ✔", "فُتح تطبيق الثيمات عبر Shizuku." + extra + confirmNote); return;
+                showDialog("تم الإرسال ✔", "فُتح تطبيق الثيمات عبر Shizuku." + details + extra + confirmNote); return;
             }
             showDialog(localPath != null ? "أُرسل جزئياً" : "تعذّر الإرسال",
                     "لم يُفتح تطبيق الثيمات تلقائياً على جهازك (قد يختلف باختلاف نسخة النظام أو المنطقة)." + (localPath != null
                             ? "\n\nلكن الملف نُسخ إلى (" + localPath + "). افتح تطبيق الثيمات يدوياً وابحث عنه ضمن «المحلي»."
-                            : " فعّل صلاحية الوصول للملفات أو Shizuku أعلاه لإتاحة طريقة بديلة.") + confirmNote);
+                            : " فعّل صلاحية الوصول للملفات أو Shizuku أعلاه لإتاحة طريقة بديلة.") + details + confirmNote);
         }
     }
 
