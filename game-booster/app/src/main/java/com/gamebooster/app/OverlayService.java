@@ -19,7 +19,7 @@ public class OverlayService extends Service {
     static boolean running;
     private WindowManager wm;
     private View bubble; private PanelView panel; private final android.os.Handler ah = new android.os.Handler(android.os.Looper.getMainLooper());
-    private int missCount; private boolean seenGame;
+    private int missCount; private boolean seenGame; private boolean hiddenForOwnApp;
     /** يراقب الخروج من اللعبة: عند خروجك يُرجع كل شيء تلقائياً ويُغلق اللوحة. */
     private final Runnable monitor = new Runnable() {
         @Override public void run() {
@@ -32,10 +32,15 @@ public class OverlayService extends Service {
         }
     };
     private void onTop(String top) {
-        if (!running || top == null || !Booster.prefs(this).getBoolean("sessionOn", false)) return;
+        if (!running || top == null) return;
+        boolean isOwn = top.equals(getPackageName());
+        // أخفِ الزر/اللوحة كلّياً كلما كنت داخل المسرّع نفسه، وأظهرهما عند الرجوع لأي تطبيق خارجي — لا شيء يظهر فوق واجهتنا نفسها بعد الآن
+        if (isOwn && !hiddenForOwnApp) { hiddenForOwnApp = true; closePanel(); hideTriggers(); }
+        else if (!isOwn && hiddenForOwnApp && !top.equals("com.android.systemui")) { hiddenForOwnApp = false; showTriggers(); }
+        if (!Booster.prefs(this).getBoolean("sessionOn", false)) return;
         String game = Booster.prefs(this).getString("sessionPkg", null);
         if (top.equals(game)) { missCount = 0; seenGame = true; return; }
-        if (top.equals("com.android.systemui") || top.equals(getPackageName())) { if (top.equals(getPackageName())) missCount += 2; return; }
+        if (top.equals("com.android.systemui") || isOwn) { if (isOwn) missCount += 2; return; }
         if (seenGame && ++missCount >= 2) { Booster.endSession(this); Extras.clear(this); stopSelf(); }
     }
     private final Runnable autoClean = new Runnable() { @Override public void run() { if (Booster.prefs(OverlayService.this).getBoolean("autoClean", false)) Booster.killBackground(OverlayService.this, null); ah.postDelayed(this, 90000); } };
@@ -92,7 +97,7 @@ public class OverlayService extends Service {
     private void openPanel() {
         if (panel != null) return;
         hideTriggers();
-        panel = new PanelView(this, () -> { closePanel(); showTriggers(); });
+        panel = new PanelView(this, toOwnApp -> { closePanel(); if (toOwnApp) hiddenForOwnApp = true; else showTriggers(); });
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(-1, -1, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_FULLSCREEN, PixelFormat.TRANSLUCENT);
         if (Build.VERSION.SDK_INT >= 28) lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         wm.addView(panel, lp);
