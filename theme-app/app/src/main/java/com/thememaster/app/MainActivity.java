@@ -90,7 +90,11 @@ public class MainActivity extends Activity {
         new AsyncTask<Void, Void, String>() {
             @Override protected String doInBackground(Void... v) {
                 try {
-                    Bitmap wp = WallpaperManager.getInstance(MainActivity.this).getBitmap();
+                    Bitmap wp;
+                    try {
+                        android.graphics.drawable.Drawable d = WallpaperManager.getInstance(MainActivity.this).getDrawable();
+                        wp = drawableToBitmap(d);
+                    } catch (SecurityException se) { return "هذا الإصدار من أندرويد لا يسمح لتطبيق عادي بقراءة الخلفية الحالية (قيد أمان منذ أندرويد 13). جرّب رفع ثيم جاهز بدلاً من التصدير."; }
                     if (wp == null) return "لا توجد خلفية شاشة يمكن قراءتها على هذا الجهاز";
                     String name = "ثيمي " + new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).format(new Date());
                     File tmp = File.createTempFile("theme", ".zip", getCacheDir());
@@ -107,6 +111,16 @@ public class MainActivity extends Activity {
                 else showResult("تعذّر", err, false);
             }
         }.execute();
+    }
+
+    /** يحوّل Drawable (الذي تعيده واجهة الخلفية العامة) إلى Bitmap قابل للحفظ. */
+    private static Bitmap drawableToBitmap(android.graphics.drawable.Drawable d) {
+        if (d == null) return null;
+        if (d instanceof android.graphics.drawable.BitmapDrawable) { Bitmap b = ((android.graphics.drawable.BitmapDrawable) d).getBitmap(); if (b != null) return b; }
+        int w = Math.max(1, d.getIntrinsicWidth()), h = Math.max(1, d.getIntrinsicHeight());
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmp); d.setBounds(0, 0, w, h); d.draw(c);
+        return bmp;
     }
 
     private boolean saveToDownloads(File src, String name) throws Exception {
