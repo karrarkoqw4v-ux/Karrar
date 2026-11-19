@@ -31,19 +31,23 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipInputStream;
 
+import rikka.shizuku.Shizuku;
+
 /**
  * شاشة واحدة بزر واحد: «رفع ملف الثيمات». يتحقّق من الملف (2–5 ثوانٍ فعلياً: فحص سلامة الـZIP)،
  * ثم يسلّمه لتطبيق الثيمات الرسمي في نظام الجهاز نفسه — هو من يطبّق الثيم فعلياً، وليس هذا التطبيق.
  * الدعم الآن: شاومي / ريدمي / بوكو (MIUI) فقط، كما طُلب.
  */
 public class MainActivity extends Activity {
-    private static final int REQ_PICK = 1, REQ_STORAGE = 2;
+    private static final int REQ_PICK = 1, REQ_STORAGE = 2, REQ_SHIZUKU = 3;
     private static final int ACC = Color.rgb(109, 76, 230), OK = Color.rgb(50, 170, 110);
     private TextView status, brandLabel;
     private ColorSpinnerView spinner;
     private GlowView glow;
     private View btnRef;
     private TextView permRow, permBtn;
+    private TextView shzRow, shzBtn;
+    private final Shizuku.OnRequestPermissionResultListener shzListener = (req, grant) -> { if (req == REQ_SHIZUKU) refreshShzUi(); };
 
     /** توهّج نابض خلف الزر — ألوان متعدّدة تدور وتخفت وتتوهّج ببطء. */
     static class GlowView extends View {
@@ -106,7 +110,22 @@ public class MainActivity extends Activity {
         permBtn.setBackground(round(ACC, dp(10))); permBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
         permBtn.setOnClickListener(v -> requestFileAccess());
         permCard.addView(permBtn);
-        LinearLayout.LayoutParams pclp = lp(dp(280), -2); pclp.setMargins(0, 0, 0, dp(22)); root.addView(permCard, pclp);
+        LinearLayout.LayoutParams pclp = lp(dp(280), -2); pclp.setMargins(0, 0, 0, dp(10)); root.addView(permCard, pclp);
+
+        // ===== Shizuku (اختياري): طريقة إضافية لنسخ الملف عبر صلاحية shell من خيارات المطوّر =====
+        LinearLayout shzCard = new LinearLayout(this); shzCard.setGravity(Gravity.CENTER_VERTICAL);
+        shzCard.setBackground(round(Color.WHITE, dp(14))); shzCard.setPadding(dp(14), dp(10), dp(14), dp(10));
+        shzCard.setElevation(dp(2));
+        LinearLayout shzCol = new LinearLayout(this); shzCol.setOrientation(LinearLayout.VERTICAL);
+        shzCol.addView(text("Shizuku (اختياري)", 14, Color.rgb(40, 40, 50), true));
+        shzRow = text("", 11, Color.rgb(140, 142, 158), false);
+        shzCol.addView(shzRow);
+        shzCard.addView(shzCol, lp(0, -2)); ((LinearLayout.LayoutParams) shzCol.getLayoutParams()).weight = 1;
+        shzBtn = text("منح", 13, Color.WHITE, true); shzBtn.setGravity(Gravity.CENTER);
+        shzBtn.setBackground(round(ACC, dp(10))); shzBtn.setPadding(dp(16), dp(8), dp(16), dp(8));
+        shzBtn.setOnClickListener(v -> requestShizuku());
+        shzCard.addView(shzBtn);
+        LinearLayout.LayoutParams sclp = lp(dp(280), -2); sclp.setMargins(0, 0, 0, dp(22)); root.addView(shzCard, sclp);
 
         LinearLayout btn = new LinearLayout(this); btn.setOrientation(LinearLayout.VERTICAL); btn.setGravity(Gravity.CENTER);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{ACC, Color.rgb(90, 62, 189)});
@@ -136,16 +155,29 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams nlp = lp(-1, -2); nlp.setMargins(0, dp(28), 0, 0); root.addView(note, nlp);
 
         setContentView(stage);
-        entranceAnim(title, brandLabel, permCard, btn, note);
+        entranceAnim(title, brandLabel, permCard, shzCard, btn, note);
+        try { Shizuku.addRequestPermissionResultListener(shzListener); } catch (Throwable ignored) {}
     }
 
-    @Override protected void onResume() { super.onResume(); refreshPermUi(); }
+    @Override protected void onResume() { super.onResume(); refreshPermUi(); refreshShzUi(); }
+    @Override protected void onDestroy() { super.onDestroy(); try { Shizuku.removeRequestPermissionResultListener(shzListener); } catch (Throwable ignored) {} }
 
     private void refreshPermUi() {
         boolean ok = hasFileAccess();
         permRow.setText(ok ? "ممنوحة ✔ — يُنسخ ملف الثيم أيضاً إلى مجلّد شاومي المحلي" : "اختياري: لنسخ الملف أيضاً إلى مجلّد الثيمات المحلي على جهازك");
         permRow.setTextColor(ok ? OK : Color.rgb(140, 142, 158));
         permBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
+    }
+
+    private void refreshShzUi() {
+        if (!ThemeShizuku.installed(this)) {
+            shzRow.setText("غير مثبّت — طريقة إضافية اختيارية لنسخ الملف عبر صلاحية shell"); shzRow.setTextColor(Color.rgb(140, 142, 158));
+            shzBtn.setText("تثبيت"); shzBtn.setVisibility(View.VISIBLE); return;
+        }
+        boolean ok = ThemeShizuku.granted();
+        shzRow.setText(ok ? "ممنوحة ✔ — طريقة نسخ إضافية عبر shell (لا تتجاوز تأكيد تطبيق الثيمات نفسه)" : "اختياري: صلاحية shell من تطبيق Shizuku (يُفعَّل من خيارات المطوّر)");
+        shzRow.setTextColor(ok ? OK : Color.rgb(140, 142, 158));
+        shzBtn.setText("منح"); shzBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
     }
 
     private boolean hasFileAccess() {
@@ -161,15 +193,27 @@ public class MainActivity extends Activity {
     }
     @Override public void onRequestPermissionsResult(int req, String[] p, int[] r) { refreshPermUi(); }
 
-    /** دخول متتابع: العنوان ينزلق، ثم اسم الجهاز، ثم بطاقة الصلاحية، ثم الزر يقفز بارتداد، ثم الملاحظة تتلاشى. */
-    private void entranceAnim(View title, View brand, View perm, View btn, View note) {
-        for (View v : new View[]{title, brand, perm, btn, note}) { v.setAlpha(0f); v.setTranslationY(dp(18)); }
+    private void requestShizuku() {
+        if (!ThemeShizuku.installed(this)) { try { startActivity(ThemeShizuku.installIntent()); } catch (Exception ignored) {} return; }
+        if (!ThemeShizuku.running()) {
+            Intent m = ThemeShizuku.managerIntent(this);
+            if (m != null) startActivity(m);
+            showDialog("فعّل Shizuku أولاً", "افتح تطبيق Shizuku وابدأ الخدمة (عبر «تصحيح USB» أو «تصحيح عبر الشبكة» ضمن خيارات المطوّر)، ثم عد واضغط «منح».");
+            return;
+        }
+        ThemeShizuku.request(REQ_SHIZUKU);
+    }
+
+    /** دخول متتابع: العنوان ينزلق، ثم اسم الجهاز، ثم بطاقات الصلاحيات، ثم الزر يقفز بارتداد، ثم الملاحظة تتلاشى. */
+    private void entranceAnim(View title, View brand, View perm, View shz, View btn, View note) {
+        for (View v : new View[]{title, brand, perm, shz, btn, note}) { v.setAlpha(0f); v.setTranslationY(dp(18)); }
         btn.setScaleX(.6f); btn.setScaleY(.6f);
         title.animate().alpha(1f).translationY(0).setStartDelay(80).setDuration(360).setInterpolator(new DecelerateInterpolator()).start();
         brand.animate().alpha(1f).translationY(0).setStartDelay(170).setDuration(340).setInterpolator(new DecelerateInterpolator()).start();
         perm.animate().alpha(1f).translationY(0).setStartDelay(260).setDuration(360).setInterpolator(new DecelerateInterpolator()).start();
-        btn.animate().alpha(1f).translationY(0).scaleX(1f).scaleY(1f).setStartDelay(400).setDuration(520).setInterpolator(new OvershootInterpolator(1.6f)).start();
-        note.animate().alpha(1f).translationY(0).setStartDelay(720).setDuration(400).setInterpolator(new DecelerateInterpolator()).start();
+        shz.animate().alpha(1f).translationY(0).setStartDelay(330).setDuration(360).setInterpolator(new DecelerateInterpolator()).start();
+        btn.animate().alpha(1f).translationY(0).scaleX(1f).scaleY(1f).setStartDelay(420).setDuration(520).setInterpolator(new OvershootInterpolator(1.6f)).start();
+        note.animate().alpha(1f).translationY(0).setStartDelay(740).setDuration(400).setInterpolator(new DecelerateInterpolator()).start();
     }
 
     private void pick() {
@@ -217,8 +261,9 @@ public class MainActivity extends Activity {
     private static final class ByteCounter { long total; }
 
     private void sendToSystemThemeApp(File mtz) {
-        // نسخة ثانية في مجلّد شاومي المحلي للثيمات (إن مُنحت صلاحية الملفات) — طريقة بديلة يراها تطبيق الثيمات بنفسه من تبويب «المحلي»
+        // نسخة ثانية في مجلّد شاومي المحلي للثيمات — عبر صلاحية الملفات، أو عبر Shizuku إن لم تُمنح الأولى
         String localPath = hasFileAccess() ? copyToMiuiLocal(mtz) : null;
+        if (localPath == null && ThemeShizuku.granted()) localPath = ThemeShizuku.copyToMiuiLocal(mtz);
 
         int bt = DeviceTheme.brand();
         String pkg = DeviceTheme.themeAppPackage(bt);
@@ -228,18 +273,22 @@ public class MainActivity extends Activity {
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         if (pkg != null) i.setPackage(pkg);
         String extra = localPath != null ? "\n\nكما نُسخ الملف إلى مجلّد الثيمات المحلي على جهازك (" + localPath + ")؛ إن لم يفتح تطبيق الثيمات تلقائياً، افتحه وابحث عن الثيم ضمن «المحلي / My Themes»." : "";
+        final String confirmNote = "\n\nملاحظة مهمة: تثبيت الثيم وتفعيله فعلياً يتم من داخل تطبيق الثيمات لجهازك، وهذا يشمل حتى لو استُخدم Shizuku — فتطبيق MIUI هو من يتحقّق من الثيم ويطلب تأكيدك، ولا توجد صلاحية تتجاوز تلك الخطوة.";
         try {
             startActivity(i);
-            showDialog("تم الإرسال ✔", "أُرسل الملف إلى تطبيق الثيمات في نظام جهازك. أكمل التثبيت من هناك — هو من يتحقّق من الثيم ويطبّقه فعلياً، وليس هذا التطبيق." + extra);
+            showDialog("تم الإرسال ✔", "أُرسل الملف إلى تطبيق الثيمات في نظام جهازك. أكمل التثبيت من هناك — هو من يتحقّق من الثيم ويطبّقه فعلياً، وليس هذا التطبيق." + extra + confirmNote);
         } catch (ActivityNotFoundException e1) {
             if (pkg != null) {
                 i.setPackage(null);
-                try { startActivity(i); showDialog("تم الإرسال ✔", "أُرسل الملف وفتحته أول أداة تدعم ملفات الثيمات على جهازك." + extra); return; } catch (ActivityNotFoundException ignored) {}
+                try { startActivity(i); showDialog("تم الإرسال ✔", "أُرسل الملف وفتحته أول أداة تدعم ملفات الثيمات على جهازك." + extra + confirmNote); return; } catch (ActivityNotFoundException ignored) {}
+            }
+            if (ThemeShizuku.granted() && localPath != null && ThemeShizuku.launchThemeManager(localPath)) {
+                showDialog("تم الإرسال ✔", "فُتح تطبيق الثيمات عبر Shizuku." + extra + confirmNote); return;
             }
             showDialog(localPath != null ? "أُرسل جزئياً" : "تعذّر الإرسال",
                     "لم يُفتح تطبيق الثيمات تلقائياً على جهازك (قد يختلف باختلاف نسخة النظام أو المنطقة)." + (localPath != null
                             ? "\n\nلكن الملف نُسخ إلى (" + localPath + "). افتح تطبيق الثيمات يدوياً وابحث عنه ضمن «المحلي»."
-                            : " فعّل صلاحية الوصول للملفات أعلاه لإتاحة طريقة بديلة."));
+                            : " فعّل صلاحية الوصول للملفات أو Shizuku أعلاه لإتاحة طريقة بديلة.") + confirmNote);
         }
     }
 
