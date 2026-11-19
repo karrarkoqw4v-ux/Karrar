@@ -52,9 +52,14 @@ public class IntroActivity extends Activity {
             p.setShader(new LinearGradient(0, 0, 0, h, Color.rgb(20, 14, 38), Color.rgb(10, 8, 20), Shader.TileMode.CLAMP));
             c.drawRect(0, 0, w, h, p); p.setShader(null);
 
+            // نبض خلفي خفيف متزامن مع إيقاع الدخولية
+            float bgPulse = .5f + .5f * (float) Math.sin(t * 9);
+            p.setShader(new RadialGradient(cx, cy, Math.max(w, h) * .55f, Color.argb((int) (50 * bgPulse * seg(t, 0, .3f)), 150, 110, 255), 0x00000000, Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, w, h, p); p.setShader(null);
+
             // قطرات ألوان تتطاير من الحواف نحو المركز ثم تستقر كنقاط على الباليت
             float fly = eo(seg(t, .05f, .55f));
-            for (int i = 0; i < 26; i++) {
+            for (int i = 0; i < 42; i++) {
                 int col = cols[i % cols.length];
                 float ang = R(i) * (float) (Math.PI * 2), dist = (40 + R(i + 9) * 55) * u;
                 float sx = cx + (float) Math.cos(ang) * dist * 3.4f * (1 - fly), sy = cy + (float) Math.sin(ang) * dist * 3.4f * (1 - fly);
@@ -66,6 +71,18 @@ public class IntroActivity extends Activity {
                 // ذيل القطرة أثناء الطيران
                 if (fly < .96f) { p.setAlpha((int) (120 * (1 - fly))); c.drawLine(sx, sy, x, y, p); }
             }
+
+            // انفجار ضوء عند لحظة اكتمال الباليت
+            float burstK = seg(t, .58f, .78f);
+            if (burstK > 0 && burstK < 1) {
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(u * .8f);
+                for (int i = 0; i < 2; i++) {
+                    float r = eo(Math.max(0, Math.min(1, burstK * 1.3f - i * .15f))) * u * 60;
+                    p.setColor(Color.argb((int) (170 * (1 - burstK)), 220, 190, 255));
+                    c.drawCircle(cx, cy, r, p);
+                }
+            }
+            if (burstK > 0 && burstK < .35f) { p.setStyle(Paint.Style.FILL); p.setColor(Color.argb((int) (120 * (1 - burstK / .35f)), 255, 255, 255)); c.drawRect(0, 0, w, h, p); }
 
             // الباليت البيضاء
             float palette = eb(seg(t, .3f, .62f));
