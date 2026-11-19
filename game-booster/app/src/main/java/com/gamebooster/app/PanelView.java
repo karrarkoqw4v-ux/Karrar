@@ -19,7 +19,7 @@ import java.util.*;
 
 /** لوحة اللعبة: لوحتان بحافة مائلة وشريط أحمر مقطّع، عدّادات هولوغرافية، وأدوات حقيقية. كل شيء يُرسم على لوحة واحدة. */
 public class PanelView extends View {
-    interface Closer { void close(); }
+    interface Closer { void close(boolean toOwnApp); }
     private final Context ctx; private final Closer closer;
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG); private final Path path = new Path(); private final RectF rf = new RectF();
@@ -234,7 +234,7 @@ public class PanelView extends View {
             band(c, left, shimmer, slide);
             c.restore();
         }
-        if (out >= 1f) { closer.close(); return; }
+        if (out >= 1f) { closer.close(closingToOwn); return; }
         postInvalidateOnAnimation();
     }
 
@@ -344,7 +344,8 @@ public class PanelView extends View {
         }
         refreshStates();
     }
-    private void go(Class<?> cls) { dismiss(); ctx.startActivity(new Intent(ctx, cls).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+    private boolean closingToOwn;
+    private void go(Class<?> cls) { closingToOwn = true; dismiss(); ctx.startActivity(new Intent(ctx, cls).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
 
     void dismiss() { if (closeT < 0) { closeT = SystemClock.uptimeMillis(); running = false; h.removeCallbacksAndMessages(null); invalidate(); } }
 }
