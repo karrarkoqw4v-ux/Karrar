@@ -41,7 +41,7 @@ async def main():
     await say("/start"); assert CALLS[-1][1]["text"].startswith("مرحبا بك")
     await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
     ed = last("send_video"); assert "استوديو المونتاج" in ed[1]["caption"]
-    kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", kb)
+    kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", len(kb), kb[:4]); assert "جاري تجهيز" in [c[1].get("text","") for c in CALLS if c[0] in ("send_message","edit_message_text")][1]
     await click("c:cv:0"); assert "edit_message_reply_markup" in [c[0] for c in CALLS][-1:], CALLS[-1][0]
     await click("e:cv_hdr_max"); assert cnt("edit_message_media") == 1; print("live edit #1 (cv_hdr_max) OK")
     await click("e:teal_orange"); assert cnt("edit_message_media") == 2
@@ -52,6 +52,14 @@ async def main():
     await click("t:l:7"); assert cnt("edit_message_media") >= 5; print("template applied live OK")
     await click("e:text"); assert "اكتب النص" in last("send_message")[1]["text"]
     await say("مرحبا بك"); await click("s:2"); assert cnt("edit_message_media") >= 6; print("text step OK")
+    # قوالب المصممين (150): عائلات ← صفحة صور كبيرة ← تطبيق
+    n0 = cnt("edit_message_media"); await click("dz"); await click("dzf:cin:0")
+    ph = last("send_photo"); assert "سينمائي" in ph[1]["caption"]; nb = [b["text"] for r in ph[1]["reply_markup"]["inline_keyboard"] for b in r]; print("DZ PAGE BUTTONS:", nb)
+    await click("dzt:cin:2"); assert cnt("edit_message_media") == n0 + 1; print("designer template applied OK")
+    # لوحة المختارة: حذف عنصر محدد ثم استرجاعه
+    await click("stk"); kb = last("edit_message_reply_markup")[1]["reply_markup"]["inline_keyboard"]; print("STACK PANEL:", [b["text"] for r in kb for b in r][:4])
+    n1 = cnt("edit_message_media"); await click("del:1"); assert cnt("edit_message_media") == n1 + 1; print("delete specific OK")
+    await click("redo"); assert cnt("edit_message_media") == n1 + 2; print("redo OK")
     await click("go")
     vid = last("send_video"); print("CAPTION:", vid[1]["caption"].replace("\n", " "))
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])

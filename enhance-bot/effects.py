@@ -360,6 +360,30 @@ def _text(c: Ctx):
 
 
 reg("text", "edit", "إضافة نص / ترجمة", _text, steps=[("text", "✍️ اكتب النص (عربي أو إنجليزي):"), ("choice", "مكان النص:", [("⬆️ أعلى", "top"), ("⏺ وسط", "mid"), ("⬇️ أسفل", "bot")], "pos")])
+def _text_pro(c: Ctx):
+    p = c.p
+    info = art.text_png_pro(p, c.w, c.h, c.name())
+    s = float(p.get("start", 0) or 0)
+    e = float(p.get("end", 0) or 0) or max(c.dur, s + 1)
+    cxp = c.w * float(p.get("x", 50)) / 100
+    cyp = c.h * float(p.get("y", 80)) / 100
+    anim = p.get("anim", "none")
+    pre = "format=rgba"
+    x = f"{cxp:.1f}-w/2"
+    y = f"{cyp:.1f}-h/2"
+    if anim == "fade":
+        pre += f",fade=t=in:st={s:.2f}:d=0.4:alpha=1,fade=t=out:st={max(s, e - 0.4):.2f}:d=0.4:alpha=1"
+    elif anim == "pop":
+        pre += f",scale=w='iw*max(0.05,min(1,0.55+0.45*(t-{s:.2f})/0.35))':h=-1:eval=frame"
+    elif anim == "slide":
+        y = f"{cyp:.1f}-h/2+{0.09 * c.h:.1f}*max(0,1-(t-{s:.2f})/0.45)"
+    elif anim == "bounce":
+        y = f"{cyp:.1f}-h/2-{0.025 * c.h:.1f}*abs(sin(4*(t-{s:.2f})))"
+    tm = f"[{{n}}:v]{pre}[tx];[{{i}}][tx]overlay=x='{x}':y='{y}':enable='between(t,{s:.2f},{e:.2f})':format=auto:shortest=1[{{o}}]"
+    return [cx(tm, [["-loop", "1", "-framerate", "30", "-i", info["path"]]])]
+
+
+reg("text_pro", "edit", "نص احترافي (من التطبيق المصغّر)", _text_pro, desc="نص بخط وحجم ولون وتأثير ومكان من محرر النصوص.")
 reg("watermark", "edit", "علامة مائية باسمك", lambda c: [cx("[{i}][{n}:v]overlay=0:0:format=auto:shortest=1[{o}]", [["-loop", "1", "-framerate", "30", "-i", art.text_png(c.p["text"], c.w, c.h, "bot", c.name(), size_ratio=0.04)]])], steps=[("text", "✍️ اكتب نص العلامة (مثل @اسمك):")])
 
 # =============== تأثيرات الحركة ===============

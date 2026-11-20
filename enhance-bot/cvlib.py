@@ -149,7 +149,43 @@ def ultra(frame):
     return vibrance(f, 0.45)
 
 
+def _pseudo_hdr(frame):
+    """دمج تعريضات اصطناعية في إشعاعية (Debevec-lite): خطّي ثم متوسط موزون بدالة القبّعة"""
+    f = _f(frame)
+    gam = (0.55, 1.0, 1.8)
+    times = (0.5, 1.0, 2.0)
+    num = np.zeros_like(f)
+    den = np.zeros_like(f) + 1e-6
+    for g, t in zip(gam, times):
+        e = np.clip(f ** g, 0, 1)
+        w = 1.0 - np.abs(2 * e - 1) ** 8
+        num += w * (e ** 2.2) / t
+        den += w
+    return (num / den).astype(np.float32)
+
+
+def tonemap(frame, method="drago", gamma_out=1.0, sat=1.15):
+    """تحويل نغمي (Tone Mapping) احترافي بخوارزميات OpenCV: Drago / Reinhard / Mantiuk"""
+    hdr = _pseudo_hdr(frame)
+    hdr = hdr / max(float(np.exp(np.log(hdr + 1e-4).mean())), 1e-4) * 0.18  # نطبّع المتوسط الهندسي إلى رمادي 18%
+    if method == "reinhard":
+        tm = cv2.createTonemapReinhard(1.0, 0.0, 0.0, 0.0)
+    elif method == "mantiuk":
+        tm = cv2.createTonemapMantiuk(1.0, 0.8, 1.0)
+    else:
+        tm = cv2.createTonemapDrago(1.0, 1.0, 0.85)
+    ldr = np.nan_to_num(tm.process(hdr.copy()))
+    ldr = np.clip(ldr / max(float(np.percentile(ldr, 99.5)), 1e-3), 0, 1)
+    m = float(np.clip(ldr.mean(), 0.05, 0.95))
+    k = float(np.clip(np.log(0.46) / np.log(m), 0.55, 1.25)) * gamma_out
+    out = _u(ldr ** k)
+    return saturation(clahe(out, 1.3, 8, 0.4), sat)
+
+
 CV_FUNCS = {
+    "cv_tm_drago": (lambda f: tonemap(f, "drago"), "تحويل نغمي HDR (Drago)"),
+    "cv_tm_reinhard": (lambda f: tonemap(f, "reinhard"), "تحويل نغمي HDR (Reinhard)"),
+    "cv_tm_mantiuk": (lambda f: tonemap(f, "mantiuk", 1.0, 1.2), "تحويل نغمي HDR (Mantiuk) تفاصيل أعلى"),
     "cv_hdr": (lambda f: hdr_fusion(f, 0.9), "HDR واقعي (دمج تعريضات)"),
     "cv_hdr_max": (lambda f: vibrance(sharpen(hdr_fusion(f, 1.5), 0.5), 0.5), "HDR أقوى + وضوح"),
     "cv_clahe": (lambda f: clahe(f, 2.2, 8, 0.9), "تباين محلي ذكي (CLAHE)"),

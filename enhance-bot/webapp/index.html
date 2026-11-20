@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>محرر النصوص</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--card2:#20242d;--ink:#fff;--sub:#9aa3b2;--acc:#f5c542;--line:#2b303b}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;overscroll-behavior:none}
+#stage{position:sticky;top:0;z-index:5;background:#000;display:flex;justify-content:center;padding:6px 0 0}
+#vwrap{position:relative;display:inline-block;touch-action:none}
+video{display:block;max-height:42vh;max-width:100vw;background:#000}
+#txt{position:absolute;transform:translate(-50%,-50%);white-space:pre;cursor:grab;user-select:none;touch-action:none;line-height:1.35;text-align:center;padding:2px 6px}
+#txt.drag{cursor:grabbing;outline:1.5px dashed var(--acc)}
+#bar{display:flex;gap:8px;padding:8px 10px;background:var(--bg);align-items:center}
+#bar button{background:var(--card2);color:var(--ink);border:0;border-radius:10px;padding:8px 12px;font-size:14px}
+main{padding:10px 12px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.card h3{margin:0 0 8px;font-size:13px;color:var(--sub);font-weight:700}
+textarea{width:100%;min-height:64px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:18px;resize:vertical;font-family:inherit}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs button,.chip{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px}
+.tabs button.on,.chip.on{background:var(--acc);color:#111;border-color:var(--acc);font-weight:700}
+#fonts{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;max-height:210px;overflow:auto}
+.f{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center;font-size:20px;color:var(--ink)}
+.f small{display:block;font:11px system-ui;color:var(--sub);margin-top:2px}
+.f.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.row{display:flex;align-items:center;gap:10px;margin:6px 0}
+.row label{min-width:78px;font-size:13px;color:var(--sub)}
+input[type=range]{flex:1;accent-color:var(--acc)}
+input[type=color]{width:38px;height:30px;border:0;background:none;padding:0}
+.sw{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.sw i{width:26px;height:26px;border-radius:50%;border:2px solid #fff3;display:inline-block}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+#save{position:fixed;bottom:0;left:0;right:0;padding:10px 12px;background:linear-gradient(transparent,var(--bg) 40%);z-index:9}
+#save button{width:100%;padding:14px;border:0;border-radius:14px;background:var(--acc);color:#111;font-size:16px;font-weight:800}
+#hint{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:11px;color:#fff9;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="stage"><div id="vwrap"><video id="v" playsinline muted loop></video><div id="txt">اكتب نصك</div><div id="hint">اسحب النص لتحديد مكانه</div></div></div>
+<div id="bar"><button id="play">▶️ تشغيل</button><button id="mute">🔇 صامت</button><span id="tm" style="color:var(--sub);font-size:12px;margin-inline-start:auto">0:00</span></div>
+<main>
+ <div class="card"><h3>✍️ النص</h3><textarea id="t" placeholder="اكتب النص هنا (سطر جديد = Enter)">مرحباً بك</textarea></div>
+ <div class="card"><h3>🔤 الخط (<span id="fcount"></span> خط)</h3>
+  <div class="tabs"><button data-l="ar" class="on">العربية</button><button data-l="en">English</button></div><div id="fonts"></div></div>
+ <div class="card"><h3>🎨 المظهر</h3>
+  <div class="row"><label>الحجم</label><input id="size" type="range" min="3" max="22" step="0.5" value="9"></div>
+  <div class="row"><label>اللون</label><div class="sw" id="sw"></div><input id="color" type="color" value="#ffffff"></div>
+  <div class="row"><label>تثخين الحواف</label><input id="stroke" type="range" min="0" max="35" value="12"><input id="scolor" type="color" value="#000000"></div>
+  <div class="row"><label>دوران</label><input id="rot" type="range" min="-30" max="30" value="0"></div>
+  <div class="chips" style="margin-top:8px"><button class="chip on" id="shadow">ظل</button><button class="chip" id="glow">توهج</button><button class="chip" id="box">خلفية</button></div>
+  <div class="chips" style="margin-top:8px"><button class="chip" data-al="right">يمين</button><button class="chip on" data-al="center">وسط</button><button class="chip" data-al="left">يسار</button></div></div>
+ <div class="card"><h3>🎬 حركة الظهور</h3><div class="chips" id="anims">
+  <button class="chip on" data-a="none">بدون</button><button class="chip" data-a="fade">تلاشي</button><button class="chip" data-a="pop">بوب</button><button class="chip" data-a="slide">انزلاق</button><button class="chip" data-a="bounce">قفز</button></div></div>
+ <div class="card"><h3>⏱ التوقيت (بالثواني)</h3>
+  <div class="row"><label>يبدأ</label><input id="st" type="range" min="0" max="10" step="0.1" value="0"><span id="stv">0.0</span></div>
+  <div class="row"><label>ينتهي</label><input id="en" type="range" min="0" max="10" step="0.1" value="10"><span id="env">كل الفيديو</span></div></div>
+</main>
+<div id="save"><button id="go">حفظ وتطبيق على الفيديو ✅</button></div>
+<script>
+const tg=window.Telegram&&Telegram.WebApp; if(tg){tg.ready();tg.expand();}
+const q=new URLSearchParams(location.search), T=q.get('t'), INIT=tg&&tg.initData?tg.initData:(q.get('init')||'');
+const $=id=>document.getElementById(id);
+const S={font:'Cairo-b.ttf',lang:'ar',al:'center',anim:'none',x:50,y:80,dur:10,fonts:[]};
+const loaded={};
+function loadFont(f){return loaded[f.file]||(loaded[f.file]=new FontFace(f.family,`url(/fonts/${f.file})`).load().then(ff=>{document.fonts.add(ff);return f.family}).catch(()=>'sans-serif'))}
+async function init(){
+  const r=await fetch('/api/init?t='+encodeURIComponent(T),{headers:{'X-Init-Data':INIT}});
+  if(!r.ok){document.body.innerHTML='<p style="padding:30px;text-align:center">انتهت الجلسة، أعد فتح المحرر من البوت.</p>';return}
+  const d=await r.json(); S.fonts=d.fonts; S.dur=d.dur||10;
+  const v=$('v'); v.src=d.video; v.play().catch(()=>{});
+  const mx=Math.max(1,Math.floor(S.dur*10)/10); $('st').max=mx; $('en').max=mx; $('en').value=mx;
+  renderFonts(); apply(); place();
+}
+function renderFonts(){
+  const list=S.fonts.filter(f=>(S.lang==='ar')===f.ar); $('fcount').textContent=S.fonts.length;
+  $('fonts').innerHTML=''; list.forEach(f=>{
+    const b=document.createElement('button'); b.className='f'+(f.file===S.font?' on':''); b.innerHTML=`<span>${S.lang==='ar'?'مرحباً بك':'Your Text'}</span><small>${f.label}</small>`;
+    b.onclick=()=>{S.font=f.file;renderFonts();apply()}; $('fonts').appendChild(b); loadFont(f).then(fam=>{b.firstChild.style.fontFamily=`'${fam}'`});
+  });
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.lang=b.dataset.l;renderFonts()});
+['#ffffff','#ffd54a','#ff4d6d','#00e5ff','#7CFF6B','#ff8a00','#b388ff','#111111'].forEach(c=>{const i=document.createElement('i');i.style.background=c;i.onclick=()=>{$('color').value=c;apply()};$('sw').appendChild(i)});
+function vsize(){const v=$('v');return Math.min(v.clientWidth||300,v.clientHeight||300)}
+function apply(){
+  const el=$('txt'), f=S.fonts.find(x=>x.file===S.font)||{family:'sans-serif',file:'x'};
+  if(f.file!=='x') loadFont(f).then(fam=>{el.style.fontFamily=`'${fam}'`});
+  el.textContent=$('t').value||' '; const px=(+$('size').value/100*vsize()); el.style.fontSize=px+'px'; el.style.color=$('color').value;
+  el.style.webkitTextStroke=(+$('stroke').value/100*px)+'px '+$('scolor').value; el.style.paintOrder='stroke fill';
+  const fx=[]; if($('shadow').classList.contains('on'))fx.push('0 3px 6px #000a'); if($('glow').classList.contains('on'))fx.push('0 0 14px '+$('color').value,'0 0 28px '+$('color').value);
+  el.style.textShadow=fx.join(','); el.style.background=$('box').classList.contains('on')?'#000a':'transparent'; el.style.borderRadius='12px';
+  el.style.textAlign=S.al; el.style.transform=`translate(-50%,-50%) rotate(${$('rot').value}deg)`;
+  const s=+$('st').value,e=+$('en').value; $('stv').textContent=s.toFixed(1); $('env').textContent=e>=+$('en').max?'كل الفيديو':e.toFixed(1);
+}
+function place(){const el=$('txt');el.style.left=S.x+'%';el.style.top=S.y+'%'}
+['t','size','color','stroke','scolor','rot','st','en'].forEach(id=>$(id).addEventListener('input',apply));
+['shadow','glow','box'].forEach(id=>$(id).onclick=()=>{$(id).classList.toggle('on');apply()});
+document.querySelectorAll('[data-al]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-al]').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.al=b.dataset.al;apply()});
+document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-a]').forEach(x=>x.classList.remove('on'));b.classList.add('on');S.anim=b.dataset.a});
+const el=$('txt'), wrap=$('vwrap'); let dragging=false;
+el.addEventListener('pointerdown',e=>{dragging=true;el.classList.add('drag');el.setPointerCapture(e.pointerId);$('hint').style.display='none'});
+el.addEventListener('pointermove',e=>{if(!dragging)return;const r=wrap.getBoundingClientRect();S.x=Math.max(2,Math.min(98,(e.clientX-r.left)/r.width*100));S.y=Math.max(2,Math.min(98,(e.clientY-r.top)/r.height*100));place()});
+el.addEventListener('pointerup',()=>{dragging=false;el.classList.remove('drag')});
+$('play').onclick=()=>{const v=$('v');if(v.paused){v.play();$('play').textContent='⏸ إيقاف'}else{v.pause();$('play').textContent='▶️ تشغيل'}};
+$('mute').onclick=()=>{const v=$('v');v.muted=!v.muted;$('mute').textContent=v.muted?'🔇 صامت':'🔊 صوت'};
+$('v').addEventListener('timeupdate',()=>{const t=$('v').currentTime;$('tm').textContent=Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0')});
+window.addEventListener('resize',apply); $('v').addEventListener('loadedmetadata',()=>{apply();place()});
+$('go').onclick=async()=>{
+  if(!$('t').value.trim()){$('t').focus();return}
+  $('go').disabled=true;$('go').textContent='⏳ جارٍ التطبيق...';
+  const e=+$('en').value, full=e>=+$('en').max;
+  const params={text:$('t').value,font:S.font,size:+$('size').value,color:$('color').value,stroke:+$('stroke').value,stroke_color:$('scolor').value,
+    shadow:$('shadow').classList.contains('on'),glow:$('glow').classList.contains('on'),box:$('box').classList.contains('on'),align:S.al,x:S.x,y:S.y,rot:+$('rot').value,anim:S.anim,start:+$('st').value,end:full?0:e};
+  const r=await fetch('/api/text',{method:'POST',headers:{'Content-Type':'application/json','X-Init-Data':INIT},body:JSON.stringify({t:T,params})});
+  if(r.ok){ if(tg&&tg.close){tg.close()}else{$('go').textContent='✅ تم'} } else {$('go').disabled=false;$('go').textContent='تعذّر الحفظ، حاول مرة أخرى'}
+};
+init();
+</script>
+</body>
+</html>

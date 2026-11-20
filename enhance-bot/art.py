@@ -167,3 +167,114 @@ def template_grid(images: list, titles: list, cols: int = 5) -> bytes:
     buf = io.BytesIO()
     sheet.save(buf, "JPEG", quality=85)
     return buf.getvalue()
+
+
+def _hex(c: str, a: int = 255):
+    c = (c or "#ffffff").lstrip("#")
+    if len(c) == 3:
+        c = "".join(x * 2 for x in c)
+    try:
+        return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16), a
+    except ValueError:
+        return 255, 255, 255, a
+
+
+def text_png_pro(p: dict, vw: int, vh: int, out: str) -> dict:
+    """طبقة نص احترافية (خط/حجم/لون/تثخين/ظل/توهج/خلفية/دوران) مقصوصة حول النص مع إحداثيات مركزه"""
+    text = (p.get("text") or "").strip() or " "
+    fname = p.get("font") or "Cairo-b.ttf"
+    if not (FONTS / fname).exists() or "/" in fname:
+        fname = "Cairo-b.ttf"
+    size = max(14, int(min(vw, vh) * float(p.get("size", 8)) / 100))
+    f = ImageFont.truetype(str(FONTS / fname), size)
+    maxw = vw * 0.9
+    lines = []
+    for para in text.split("\n"):
+        cur = ""
+        for w in para.split(" "):
+            t = (cur + " " + w).strip()
+            if cur and f.getlength(shape(t), **_kw()) > maxw:
+                lines.append(cur)
+                cur = w
+            else:
+                cur = t
+        lines.append(cur)
+    lh = int(size * 1.35)
+    widths = [f.getlength(shape(l), **_kw()) for l in lines]
+    sw = int(size * float(p.get("stroke", 0)) / 100)
+    pad = int(size * 0.5) + sw * 2
+    W, H = int(max(widths) + pad * 2), int(lh * len(lines) + pad * 2)
+    color = _hex(p.get("color", "#ffffff"))
+    sc = _hex(p.get("stroke_color", "#000000"))
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw_l = ImageDraw.Draw(layer)
+    if p.get("box"):
+        draw_l.rounded_rectangle((pad * 0.4, pad * 0.4, W - pad * 0.4, H - pad * 0.4), radius=size * 0.35, fill=_hex(p.get("box_color", "#000000"), 170))
+    align = p.get("align", "center")
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dg, ds = ImageDraw.Draw(glow), ImageDraw.Draw(shadow)
+    for i, l in enumerate(lines):
+        t = shape(l)
+        tw = widths[i]
+        x = {"left": pad, "right": W - pad - tw}.get(align, (W - tw) / 2)
+        y = pad + i * lh
+        if p.get("glow"):
+            dg.text((x, y), t, font=f, fill=color[:3] + (255,), stroke_width=max(2, size // 10), stroke_fill=color[:3] + (255,), **_kw())
+        if p.get("shadow"):
+            ds.text((x + size * 0.05, y + size * 0.07), t, font=f, fill=(0, 0, 0, 200), stroke_width=sw, stroke_fill=(0, 0, 0, 200), **_kw())
+        draw_l.text((x, y), t, font=f, fill=color, stroke_width=sw, stroke_fill=sc, **_kw())
+    comp = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    if p.get("shadow"):
+        comp.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(max(1, size * 0.06))))
+    if p.get("glow"):
+        g = glow.filter(ImageFilter.GaussianBlur(max(2, size * 0.18)))
+        comp.alpha_composite(g)
+        comp.alpha_composite(g)
+    comp.alpha_composite(layer)
+    rot = float(p.get("rot", 0) or 0)
+    if rot:
+        comp = comp.rotate(-rot, expand=True, resample=Image.BICUBIC)
+    comp.save(out)
+    return {"path": out, "w": comp.width, "h": comp.height}
+
+
+def page_grid(images: list, titles: list, start_no: int, cols: int, portrait: bool) -> bytes:
+    """صفحة قوالب كبيرة وواضحة: صورة كل قالب بنسبة الفيديو الأصلية (بدون تمديد) مع رقمها واسمها"""
+    ims = [Image.open(io.BytesIO(b)).convert("RGB") for b in images]
+    cw, ch = (330, 586) if portrait else (480, 270)
+    pad = 10
+    rows = -(-len(ims) // cols)
+    label_h = 54
+    sheet = Image.new("RGB", (cols * (cw + pad) + pad, rows * (ch + label_h + pad) + pad), (16, 17, 21))
+    d = ImageDraw.Draw(sheet)
+    f_num, f_t = font(30), font(17)
+    for i, (im, t) in enumerate(zip(ims, titles)):
+        x, y = pad + (i % cols) * (cw + pad), pad + (i // cols) * (ch + label_h + pad)
+        # نملأ الخانة بالقص المركزي مع الحفاظ على النسبة (لا تمديد)
+        k = max(cw / im.width, ch / im.height)
+        r = im.resize((max(cw, int(im.width * k)), max(ch, int(im.height * k))), Image.LANCZOS)
+        ox, oy = (r.width - cw) // 2, (r.height - ch) // 2
+        sheet.paste(r.crop((ox, oy, ox + cw, oy + ch)), (x, y))
+        d.rounded_rectangle((x, y + ch, x + cw, y + ch + label_h), radius=10, fill=(30, 32, 40))
+        # العنوان: سطران كحد أقصى
+        words, lines, cur = t.split(" "), [], ""
+        for w in words:
+            tt = (cur + " " + w).strip()
+            if cur and f_t.getlength(shape(tt), **_kw()) > cw - 16:
+                lines.append(cur)
+                cur = w
+            else:
+                cur = tt
+        lines.append(cur)
+        for li, line in enumerate(lines[:2]):
+            ts = shape(line)
+            tw = d.textlength(ts, font=f_t, **_kw())
+            d.text((x + (cw - tw) / 2, y + ch + 5 + li * 22), ts, font=f_t, fill="white", **_kw())
+        d.ellipse((x + 8, y + 8, x + 56, y + 56), fill=(245, 197, 66))
+        n = str(start_no + i)
+        nw = d.textlength(n, font=f_num)
+        d.text((x + 32 - nw / 2, y + 12), n, font=f_num, fill=(20, 20, 20))
+    buf = io.BytesIO()
+    sheet.save(buf, "JPEG", quality=90)
+    return buf.getvalue()

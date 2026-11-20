@@ -13,7 +13,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError, TelegramRetryAfter
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaVideo, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaVideo, Message, WebAppInfo
 from aiohttp import web
 from dotenv import load_dotenv
 
@@ -24,6 +24,9 @@ import effects as E
 import process
 import autograde
 import beats
+import designer
+import secrets
+import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
 
 load_dotenv()
@@ -37,6 +40,8 @@ WORK.mkdir(parents=True, exist_ok=True)
 MAX_DL = 20 * 1024 * 1024
 TTL = 1800
 PAGE = 12
+WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip().rstrip("/")
+DZ_PAGE = 6
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("bot")
@@ -72,18 +77,32 @@ def wait_text(elapsed: float, p: float | None = None, queued: bool = False) -> s
     return t
 
 
-def _kb(rows: list[list[tuple[str, str]]]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=t, callback_data=d) for t, d in r] for r in rows])
+def _kb(rows: list) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[x if isinstance(x, InlineKeyboardButton) else InlineKeyboardButton(text=x[0], callback_data=x[1]) for x in r] for r in rows])
 
 
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
 def kb_home(j: dict) -> InlineKeyboardMarkup:
-    rows = [[("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")]]
-    items = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
-    rows += [items[i:i + 2] for i in range(0, len(items), 2)]
-    rows.append([("↩️ تراجع", "u"), ("🗑 مسح الكل", "clr")])
-    rows.append([("🚀 معالجة وتصدير", "go")])
+    rows = []
+    rec = j.get("rec") if not j["stack"] else None
+    if rec:
+        rows.append([(f"💡 مقترح: {E.EFFECTS[e].title}", f"e:{e}") for e in rec[:2]])
+    rows.append([("🏆 قوالب مصممين (150)", "dz")])
+    rows.append([("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")])
+    cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
+    rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
+    rows.append(text_row(j))
+    n = len(j["stack"])
+    rows.append([(f"📋 المختارة ({n})", "stk"), ("↩️ تراجع", "u"), ("↪️ إعادة", "redo")])
+    rows.append([("🗑 مسح الكل", "clr"), ("🚀 معالجة وتصدير", "go")])
     return _kb(rows)
+
+
+def text_row(j: dict):
+    """زر إضافة نص: تطبيق مصغّر داخل تيليجرام إن وُجد WEBAPP_URL وإلا محرر داخل المحادثة"""
+    if WEBAPP_URL and j.get("wtoken"):
+        return [InlineKeyboardButton(text="🖋 محرر النصوص (تطبيق مصغّر)", web_app=WebAppInfo(url=f"{WEBAPP_URL}/app?t={j['wtoken']}")), InlineKeyboardButton(text="✍️ نص سريع", callback_data="e:text")]
+    return [("🖋 إضافة نص", "e:text")]
 
 
 def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
@@ -103,10 +122,43 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     return _kb(rows)
 
 
+def recommend(st: dict) -> list[str]:
+    """اقتراحات ذكية من تحليل الفيديو"""
+    if not st:
+        return ["auto_grade"]
+    rec = []
+    if st["luma"] < 0.3:
+        rec.append("cv_lowlight")
+    if st["noise"] > 2.5:
+        rec.append("cv_denoise")
+    if st["sat"] < 0.28:
+        rec.append("auto_vivid")
+    if st["sharp"] < 120:
+        rec.append("cv_sharp")
+    if st["p99"] - st["p1"] < 0.55:
+        rec.append("cv_hdr")
+    rec.append("auto_hdr")
+    seen = []
+    for e in rec:
+        if e not in seen:
+            seen.append(e)
+    return seen[:2]
+
+
+def video_info(w, h, dur, has_a, size, st, beat) -> str:
+    kb = f"{size / 1048576:.1f}MB" if size else "—"
+    lines = [f"📐 {w}×{h} • ⏱ {fmt(dur)} • {'🔊 بصوت' if has_a else '🔇 بلا صوت'} • 📦 {kb}"]
+    if st:
+        lines.append(f"🔆 السطوع {int(st['luma'] * 100)}% • 🎨 التشبع {int(st['sat'] * 100)}% • 🌫 التشويش {'مرتفع' if st['noise'] > 2.5 else 'منخفض'} • 🔍 الحدة {'ضعيفة' if st['sharp'] < 120 else 'جيدة'}")
+    if beat:
+        lines.append(f"🥁 إيقاع الصوت: {int(beat['bpm'])} BPM")
+    return "\n".join(lines)
+
+
 def caption(j: dict, note: str = "") -> str:
     st = j["stack"]
     lines = "\n".join(f"{i}. {E.EFFECTS[e].title}" for i, (e, _) in enumerate(st[-8:], max(1, len(st) - 7)))
-    head = "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇"
+    head = "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇" + (f"\n{j['info']}" if j.get("info") and not j["stack"] else "")
     body = f"\n\n<b>المختارة ({len(st)}):</b>\n{lines}" if st else "\n\nاختر تأثيراً أو قالباً من الأزرار تحت الفيديو 🪄"
     tail = f"\n\n{note}" if note else ""
     return (head + body + tail)[:1000]
@@ -164,6 +216,7 @@ def _video_of(m: Message):
 def drop_job(uid: int):
     j = JOBS.pop(uid, None)
     if j:
+        webapp.WTOKENS.pop(j.get("wtoken"), None)
         shutil.rmtree(j["dir"], ignore_errors=True)
 
 
@@ -189,7 +242,7 @@ async def on_video(msg: Message, bot: Bot):
     d = WORK / f"{uid}_{uuid.uuid4().hex[:6]}"
     d.mkdir(parents=True, exist_ok=True)
     src = d / "in.mp4"
-    note = await msg.answer("⏳ جارٍ تجهيز الاستوديو...\n\n⬇️ 1/3 تنزيل الفيديو")
+    note = await msg.answer("⏳ جاري تجهيز الأدوات الاستوديو ...")
     try:
         for attempt in range(3):  # تيليجرام أحياناً يبطئ؛ نعيد المحاولة بدل الانتظار الطويل
             try:
@@ -199,7 +252,7 @@ async def on_video(msg: Message, bot: Bot):
                 if attempt == 2:
                     raise
                 await asyncio.sleep(1)
-        await safe_edit(note, "⏳ جارٍ تجهيز الاستوديو...\n\n✅ 1/3 تم التنزيل\n🔧 2/3 تحليل الفيديو وصنع المعاينة")
+        await safe_edit(note, "⏳ تجهيز أدوات المونتاج ...")
         w, h, dd, has_a = process.info(await process.probe(str(src)))
         if not w or not h or dd <= 0:
             raise ValueError("bad video")
@@ -217,7 +270,7 @@ async def on_video(msg: Message, bot: Bot):
         pm = process.info(await process.probe(str(proxy)))
         if not ok or not pm[0]:
             raise ValueError("proxy")
-        await safe_edit(note, "⏳ جارٍ تجهيز الاستوديو...\n\n✅ 1/3 تم التنزيل\n✅ 2/3 تحليل الفيديو\n🎛 3/3 فتح الاستوديو")
+        await safe_edit(note, "⏳ جاري تجهيز الأدوات العامة ...")
         stats = await asyncio.to_thread(autograde.analyze, str(src), dd)
         beat = await beats.analyze(str(src)) if has_a else None
         thumb = d / "thumb.jpg"
@@ -233,7 +286,9 @@ async def on_video(msg: Message, bot: Bot):
     pbeat = dict(beat, phase=(beat["phase"] - ss) % beat["period"]) if beat else False
     j = {"uid": uid, "dir": d, "src": str(src), "meta": {"w": w, "h": h, "dur": dd, "audio": has_a, "stats": stats, "beat": beat or False},
          "pmeta": {"w": pm[0], "h": pm[1], "dur": pm[2], "audio": has_a, "stats": stats, "beat": pbeat}, "proxy": str(proxy), "thumb": str(thumb),
-         "stack": [], "pend": None, "ts": time.time(), "running": False, "busy": False, "gallery": {}, "ed": None, "rend": 0}
+         "stack": [], "redo": [], "pend": None, "ts": time.time(), "running": False, "busy": False, "gallery": {}, "ed": None, "rend": 0,
+         "chat": msg.chat.id, "wtoken": secrets.token_urlsafe(9), "dz": {}, "rec": recommend(stats), "info": video_info(w, h, dd, has_a, size, stats, beat)}
+    webapp.WTOKENS[j["wtoken"]] = uid
     JOBS[uid] = j
     try:
         await note.delete()
@@ -364,6 +419,7 @@ async def cb_effect(cb: CallbackQuery, bot: Bot):
         j["pend"] = {"eid": eid, "i": 0, "params": {}, "chat": cb.message.chat.id}
         return await ask_step(cb.message, j)
     await cb.answer(f"⏳ تطبيق: {e.title}")
+    j["redo"] = []
     j["stack"].append((eid, {}))
     if not await apply_live(cb, bot, j, f"✅ أُضيف: {e.title}"):
         j["stack"].pop()
@@ -377,8 +433,63 @@ async def cb_undo(cb: CallbackQuery, bot: Bot):
     if not j["stack"]:
         return await cb.answer("لا يوجد ما يُتراجع عنه")
     last = j["stack"].pop()
+    j["redo"].append((len(j["stack"]), last))
     await cb.answer("↩️ تم التراجع")
     await apply_live(cb, bot, j, f"↩️ أُلغي: {E.EFFECTS[last[0]].title}")
+
+
+@router.callback_query(F.data == "redo")
+async def cb_redo(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if not j["redo"]:
+        return await cb.answer("لا يوجد ما يُعاد")
+    idx, item = j["redo"].pop()
+    j["stack"].insert(min(idx, len(j["stack"])), item)
+    await cb.answer("↪️ تمت الإعادة")
+    await apply_live(cb, bot, j, f"↪️ أُعيد: {E.EFFECTS[item[0]].title}")
+
+
+def kb_stack(j: dict) -> InlineKeyboardMarkup:
+    rows = [[(f"🗑 {i}. {E.EFFECTS[e].title}", f"del:{i - 1}")] for i, (e, _) in enumerate(j["stack"], 1)]
+    if not rows:
+        rows = [[("لا توجد تأثيرات مضافة", "noop")]]
+    tail = [("↪️ استرجاع المحذوف" + (f" ({len(j['redo'])})" if j["redo"] else ""), "redo")]
+    rows += [tail, [("🔙 القائمة", "home")]]
+    return _kb(rows)
+
+
+@router.callback_query(F.data == "stk")
+async def cb_stack(cb: CallbackQuery):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    await cb.answer()
+    try:
+        await cb.message.edit_reply_markup(reply_markup=kb_stack(j))
+    except TelegramBadRequest:
+        pass
+
+
+@router.callback_query(F.data.regexp(r"^del:\d+$"))
+async def cb_del(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    i = int(cb.data[4:])
+    if not 0 <= i < len(j["stack"]):
+        return await cb.answer("تم حذفه")
+    item = j["stack"].pop(i)
+    j["redo"].append((i, item))
+    await cb.answer(f"🗑 حُذف: {E.EFFECTS[item[0]].title}")
+    if j["busy"]:
+        return
+    j["busy"] = True
+    try:
+        await refresh(bot, cb.message.chat.id, j, kb_stack(j), f"🗑 حُذف: {E.EFFECTS[item[0]].title}")
+    finally:
+        j["busy"] = False
 
 
 @router.callback_query(F.data == "clr")
@@ -386,6 +497,8 @@ async def cb_clear(cb: CallbackQuery, bot: Bot):
     j = need_job(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
+    if j["stack"]:
+        j["redo"].extend(reversed([(k, it) for k, it in enumerate(j["stack"])]))
     j["stack"] = []
     await cb.answer("🗑 تم المسح")
     await apply_live(cb, bot, j, "🗑 تم مسح كل التأثيرات")
@@ -491,6 +604,148 @@ async def cb_template(cb: CallbackQuery, bot: Bot):
         pass
 
 
+# ---------------- قوالب مصممين (150) ----------------
+def kb_dz_families() -> InlineKeyboardMarkup:
+    items = [(f"{designer.FAMILY_NAMES[k]} (15)", f"dzf:{k}:0") for k in designer.DESIGNER]
+    rows = [items[i:i + 2] for i in range(0, len(items), 2)]
+    rows.append([("🔙 القائمة", "home")])
+    return _kb(rows)
+
+
+def kb_dz_page(fam: str, page: int) -> InlineKeyboardMarkup:
+    n = len(designer.DESIGNER[fam])
+    start = page * DZ_PAGE
+    idxs = list(range(start, min(n, start + DZ_PAGE)))
+    nums = [(str(i + 1), f"dzt:{fam}:{i}") for i in idxs]
+    rows = [nums[i:i + 3] for i in range(0, len(nums), 3)]
+    nav = []
+    if page > 0:
+        nav.append(("◀️ السابق", f"dzf:{fam}:{page - 1}"))
+    nav.append((f"{page + 1}/{-(-n // DZ_PAGE)}", "noop"))
+    if start + DZ_PAGE < n:
+        nav.append(("التالي ▶️", f"dzf:{fam}:{page + 1}"))
+    rows.append(nav)
+    rows.append([("🏆 كل العائلات", "dzfam"), ("🔙 رجوع للمحرر", "tpl_close")])
+    return _kb(rows)
+
+
+async def dz_page_image(j: dict, fam: str, page: int) -> bytes:
+    key = (fam, page)
+    if key in j["dz"]:
+        return j["dz"][key]
+    items = designer.DESIGNER[fam]
+    start = page * DZ_PAGE
+    chunk = items[start:start + DZ_PAGE]
+    sem3 = asyncio.Semaphore(3)
+
+    async def one(k: int, stack):
+        tmp = j["dir"] / f"dz_{fam}_{start + k}"
+        tmp.mkdir(exist_ok=True)
+        out = tmp / "t.png"
+        async with sem3:
+            try:
+                await compose.render(j["proxy"], str(out), [(e, dict(p)) for e, p in stack], j["pmeta"], tmp, "pimg")
+                return out.read_bytes()
+            except Exception:  # noqa: BLE001
+                log.exception("designer thumb %s %s", fam, start + k)
+                return Path(j["thumb"]).read_bytes()
+    imgs = await asyncio.gather(*[one(k, st) for k, (_, st) in enumerate(chunk)])
+    titles = [t for t, _ in chunk]
+    portrait = j["pmeta"]["h"] >= j["pmeta"]["w"]
+    data = await asyncio.to_thread(art.page_grid, list(imgs), titles, start + 1, 3 if portrait else 2, portrait)
+    j["dz"][key] = data
+    return data
+
+
+@router.callback_query(F.data == "dz")
+async def cb_dz(cb: CallbackQuery):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    await cb.answer()
+    try:
+        await cb.message.edit_reply_markup(reply_markup=kb_dz_families())
+    except TelegramBadRequest:
+        pass
+
+
+@router.callback_query(F.data == "dzfam")
+async def cb_dzfam(cb: CallbackQuery, bot: Bot):
+    await cb.answer()
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
+    j = JOBS.get(cb.from_user.id)
+    if j and j.get("ed"):
+        try:
+            await bot.edit_message_reply_markup(chat_id=cb.message.chat.id, message_id=j["ed"], reply_markup=kb_dz_families())
+        except TelegramBadRequest:
+            pass
+
+
+@router.callback_query(F.data.regexp(r"^dzf:[a-z]+:\d+$"))
+async def cb_dzf(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    _, fam, page = cb.data.split(":")
+    page = int(page)
+    if fam not in designer.DESIGNER:
+        return await cb.answer()
+    await cb.answer("🏆 جارٍ تجهيز القوالب على فيديوك...")
+    chat = cb.message.chat.id
+    caption_ = f"<b>{designer.FAMILY_NAMES[fam]}</b> — صفحة {page + 1}\nاختر رقم القالب من الأزرار 👇"
+    try:
+        img = await dz_page_image(j, fam, page)
+        from_gallery = bool(cb.message.photo)
+        if from_gallery:
+            from aiogram.types import InputMediaPhoto
+            await bot.edit_message_media(InputMediaPhoto(media=BufferedInputFile(img, f"dz{page}.jpg"), caption=caption_), chat_id=chat, message_id=cb.message.message_id, reply_markup=kb_dz_page(fam, page))
+        else:
+            await bot.send_photo(chat, BufferedInputFile(img, f"dz{page}.jpg"), caption=caption_, reply_markup=kb_dz_page(fam, page))
+            if j.get("ed"):
+                try:
+                    await bot.edit_message_reply_markup(chat_id=chat, message_id=j["ed"], reply_markup=kb_home(j))
+                except TelegramBadRequest:
+                    pass
+    except Exception:  # noqa: BLE001
+        log.exception("designer gallery failed")
+        await bot.send_message(chat, "⚠️ تعذّر تجهيز هذه الصفحة، حاول مرة أخرى.")
+
+
+@router.callback_query(F.data.regexp(r"^dzt:[a-z]+:\d+$"))
+async def cb_dzt(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if j.get("running"):
+        return await cb.answer("طلبك قيد المعالجة", show_alert=True)
+    _, fam, idx = cb.data.split(":")
+    items = designer.DESIGNER.get(fam)
+    i = int(idx)
+    if not items or not 0 <= i < len(items):
+        return await cb.answer()
+    name, stack = items[i]
+    await cb.answer(f"⏳ تطبيق: {name}")
+    old = list(j["stack"])
+    j["redo"] = []
+    j["stack"] = [(e, dict(p)) for e, p in stack]
+    chat = cb.message.chat.id
+    j["busy"] = True
+    try:
+        ok = await refresh(bot, chat, j, None, f"✅ طُبّق: {designer.FAMILY_NAMES[fam]} #{i + 1} — {name}")
+    finally:
+        j["busy"] = False
+    if not ok:
+        j["stack"] = old
+        return
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
+
+
 # ---------------- خطوات التأثيرات (نص / صوت / اختيار) ----------------
 def parse_range(text: str):
     xs = re.findall(r"\d+(?::\d+)*(?:[.,]\d+)?", text.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")))
@@ -549,6 +804,7 @@ async def advance(bot: Bot, msg: Message, j: dict):
     if pend["i"] < len(e.steps):
         return await ask_step(msg, j)
     j["pend"] = None
+    j["redo"] = []
     j["stack"].append((pend["eid"], pend["params"]))
     wait = await bot.send_message(pend["chat"], f"⏳ تطبيق: {e.title}")
     j["busy"] = True
@@ -738,13 +994,36 @@ async def cleaner():
                 drop_job(uid)
 
 
+BOT: Bot | None = None
+
+
+async def text_submit(uid: int, params: dict):
+    """يُستدعى من التطبيق المصغّر عند حفظ النص: يضيف التأثير ويحدّث المحرر مباشرة"""
+    j = JOBS.get(uid)
+    if not j or j.get("running") or BOT is None:
+        return
+    j["redo"] = []
+    j["stack"].append(("text_pro", params))
+    j["busy"] = True
+    try:
+        ok = await refresh(BOT, j["chat"], j, None, "✅ أُضيف: النص")
+    finally:
+        j["busy"] = False
+    if not ok:
+        j["stack"].pop()
+
+
 async def health():
-    port = int(os.getenv("PORT", "0") or 0)
+    port = int(os.getenv("PORT", "0") or 0) or (8080 if WEBAPP_URL else 0)
     if not port:
         return
     app = web.Application()
     app.router.add_get("/", lambda r: web.Response(text="ok"))
     app.router.add_get("/health", lambda r: web.Response(text="ok"))
+    webapp.BOT_TOKEN = TOKEN
+    webapp.get_job = lambda uid: JOBS.get(uid)
+    webapp.on_text = text_submit
+    webapp.add_routes(app)
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", port).start()
@@ -758,6 +1037,8 @@ async def main():
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     dp.include_router(router)
+    global BOT
+    BOT = bot
     me = await bot.get_me()
     log.info("running @%s", me.username)
     try:
