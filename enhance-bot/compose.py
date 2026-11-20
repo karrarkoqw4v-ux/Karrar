@@ -40,8 +40,8 @@ class Plan:
     stab: bool
 
 
-def plan(stack: list[tuple[str, dict]], w: int, h: int, dur: float, has_a: bool, tmp: Path, preview: bool = False) -> Plan:
-    ctx = E.Ctx(w, h, dur, has_a, tmp)
+def plan(stack: list[tuple[str, dict]], w: int, h: int, dur: float, has_a: bool, tmp: Path, preview: bool = False, beat=None, stats=None) -> Plan:
+    ctx = E.Ctx(w, h, dur, has_a, tmp, beat=beat, stats=stats)
     pieces: list[E.Piece] = []
     for eid, params in stack:
         ctx.p = params
@@ -126,11 +126,29 @@ async def stab_detect(src: str, pre: list, trf: str):
     await _run_ffmpeg(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostdin", *pre, "-i", src, "-vf", f"vidstabdetect=shakiness=6:accuracy=9:result={trf}", "-f", "null", "-"], timeout=600)
 
 
+async def _beat_for(stack, src: str, meta: dict):
+    """إيقاع الموسيقى المضافة إن وُجدت، وإلا إيقاع صوت الفيديو"""
+    import beats
+    if not any(E.EFFECTS[e].cat == "ed" for e, _ in stack):
+        return None
+    for e, p in stack:
+        if e == "music" and p.get("audio"):
+            b = await beats.analyze(p["audio"])
+            if b:
+                return b
+    if meta.get("beat") is not None:
+        return meta["beat"] or None
+    if meta.get("audio"):
+        return await beats.analyze(meta.get("beat_src") or src)
+    return None
+
+
 async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "final", on_progress=None, budget_mb: float = 46.0, crf: int = 17) -> dict:
     """mode: final | pimg (صورة معاينة) | pclip (مقطع معاينة 2 ثانية)"""
     w, h, dur, has_a = meta["w"], meta["h"], meta["dur"], meta["audio"]
     preview = mode != "final"
-    pl = plan(stack, w, h, dur, has_a, tmp, preview=preview)
+    beat = await _beat_for(stack, src, meta)
+    pl = plan(stack, w, h, dur, has_a, tmp, preview=preview, beat=beat, stats=meta.get('stats'))
     base = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostdin"]
     if mode == "final":
         base += ["-progress", "pipe:1", "-nostats"]

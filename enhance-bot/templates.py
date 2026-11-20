@@ -29,3 +29,21 @@ TEMPLATES = [
     ("🎥 احترافي كامل", [T("cv_wb"), T("cv_hdr"), T("cv_sharp"), T("r1080")]),
 ]
 assert len(TEMPLATES) == 25
+
+# قوالب الإيديت: تقطيع وإيقاع وحركات (تتزامن مع إيقاع صوت الفيديو/الموسيقى المضافة)
+EDIT_TEMPLATES = [
+    ("⚡ إيديت إيقاع سريع", [T("auto_vivid"), T("flash_beat"), T("zoom_beat")]),
+    ("🎬 ريمكس سينمائي", [T("ramp_cine"), T("teal_orange"), T("filmgrain"), T("vignette"), T("letterbox")]),
+    ("🖤 غليتش مظلم", [T("noir"), T("glitch_burst"), T("color_flicker")]),
+    ("🌃 نيون متقلب", [T("cyber"), T("neon"), T("shake_beat")]),
+    ("🔄 قلب وتقطيع", [T("auto_vivid"), T("flip_alt"), T("zoom_cut")]),
+    ("🔥 HDR ناري", [T("auto_hdr"), T("embers"), T("zoom_beat")]),
+    ("🌀 سلو-فاست درامي", [T("ramp_pulse"), T("cin_cool"), T("vignette")]),
+    ("📱 ريلز مشرق", [T("ratio916"), T("auto_vivid"), T("zoom_beat")]),
+    ("🪩 ستروب حفلة", [T("strobe"), T("hue_pulse"), T("confetti")]),
+    ("😵 اهتزاز متوتر", [T("noir"), T("shake_beat"), T("glitch_burst"), T("filmgrain")]),
+    ("🎨 تلوين تلقائي كامل", [T("auto_grade"), T("cv_sharp"), T("vignette")]),
+    ("👑 ذهبي فاخر", [T("golden"), T("flash_beat"), T("glow"), T("letterbox")]),
+]
+assert len(EDIT_TEMPLATES) == 12
+TEMPLATE_SETS = {"l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}

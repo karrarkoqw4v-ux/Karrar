@@ -25,6 +25,8 @@ class Ctx:
     has_a: bool
     tmp: Path
     p: dict = field(default_factory=dict)
+    beat: dict | None = None
+    stats: dict | None = None
     _n: int = 0
 
     def name(self, ext="png") -> str:
@@ -58,6 +60,8 @@ class Effect:
 
 
 CATS = {
+    "auto": ("✨", "تلقائي ذكي (يحلّل فيديوك)"),
+    "ed": ("🔥", "إيديت مصممين (ريتم وتقطيع)"),
     "col": ("🎨", "فلاتر الألوان"),
     "hdr": ("🌈", "HDR والتحسين"),
     "res": ("🖥", "الدقة"),
@@ -82,6 +86,121 @@ def simple(id, cat, title, chain: str, **kw):
 def split_fx(id, cat, title, tmpl: str, **kw):
     reg(id, cat, title, lambda c, _t=tmpl: [cx(_t)], **kw)
 
+
+# =============== تلقائي ذكي: يحلّل الفيديو ويضبط الألوان والحدة ===============
+import autograde
+
+
+def _auto(mode: str):
+    def b(c: Ctx):
+        return [vf(autograde.chain(c.stats or {}, mode))]
+    return b
+
+
+reg("auto_grade", "auto", "تحسين تلقائي ذكي", _auto("grade"), desc="يقيس سطوع وتباين وتشبع وتشويش وحدة فيديوك ويضبط الفلاتر عليه تلقائياً.")
+reg("auto_natural", "auto", "تلقائي طبيعي (خفيف)", _auto("natural"))
+reg("auto_vivid", "auto", "تلقائي ألوان غنية", _auto("vivid"))
+reg("auto_hdr", "auto", "تلقائي HDR قوي", _auto("hdr"))
+
+# =============== إيديت مصممين: تأثيرات على إيقاع الصوت فعلاً (أو 0.6ث إن لم يوجد إيقاع) ===============
+def _P(c: Ctx, mult: float = 1.0):
+    bt = c.beat or {"period": 0.6, "phase": 0.0}
+    P = bt["period"]
+    while P < 0.3:
+        P *= 2
+    return P * mult, bt["phase"]
+
+
+def _tt(c: Ctx, mult: float = 1.0):
+    P, ph = _P(c, mult)
+    return f"mod(t-{ph:.3f}+{P * 100:.2f},{P:.4f})", P
+
+
+def _flash(c: Ctx):
+    m, P = _tt(c)
+    return [vf(f"eq=brightness='0.5*exp(-9*{m})':contrast='1+0.25*exp(-9*{m})':eval=frame")]
+
+
+def _zoombeat(c: Ctx):
+    m, P = _tt(c)
+    z = f"(1+0.13*exp(-7*{m}))"
+    return [vf(f"scale=w='iw*{z}':h='ih*{z}':eval=frame,crop={c.w}:{c.h}")]
+
+
+def _shakebeat(c: Ctx):
+    m, P = _tt(c)
+    env = f"exp(-8*{m})"
+    return [vf(f"scale=trunc({c.w}*1.1/2)*2:trunc({c.h}*1.1/2)*2,crop={c.w}:{c.h}:x='(iw-ow)/2+((iw-ow)/2-2)*{env}*sin(t*90)':y='(ih-oh)/2+((ih-oh)/2-2)*{env}*cos(t*80)'")]
+
+
+def _huepulse(c: Ctx):
+    m, P = _tt(c)
+    return [vf(f"hue=h='50*exp(-6*{m})':s='1+0.6*exp(-6*{m})'")]
+
+
+def _strobe(c: Ctx):
+    m, P = _tt(c, 0.5)
+    return [vf(f"eq=brightness='if(lt({m},0.05),0.45,0)':eval=frame")]
+
+
+def _flipalt(c: Ctx):
+    P, ph = _P(c, 2.0)
+    return [cx(f"[{{i}}]split[a][b];[b]hflip[f];[a][f]overlay=0:0:enable='gt(mod(t-{ph:.3f}+{P * 100:.2f},{P:.4f}),{P / 2:.4f})'[{{o}}]")]
+
+
+def _zoomcut(c: Ctx):
+    P, ph = _P(c, 2.0)
+    return [cx(f"[{{i}}]split[a][b];[b]crop=iw/1.35:ih/1.35,scale={c.w}:{c.h}:flags=bicubic[z];[a][z]overlay=0:0:enable='gt(mod(t-{ph:.3f}+{P * 100:.2f},{P:.4f}),{P / 2:.4f})'[{{o}}]")]
+
+
+def _glitchburst(c: Ctx):
+    m, P = _tt(c)
+    en = f"lt({m},{min(0.25, P / 2):.3f})"
+    return [vf(f"rgbashift=rh=-12:bh=12:gv=5:enable='{en}',noise=alls=35:allf=t:enable='{en}'")]
+
+
+def _tilt(c: Ctx):
+    P, ph = _P(c, 2.0)
+    return [vf(f"rotate=a='0.05*sin(2*PI*(t-{ph:.3f})/{P:.4f})':c=black:ow={c.w}:oh={c.h},scale=trunc({c.w}*1.08/2)*2:trunc({c.h}*1.08/2)*2,crop={c.w}:{c.h}")]
+
+
+def _colorflicker(c: Ctx):
+    P, ph = _P(c, 1.0)
+    return [vf(f"eq=saturation='1+0.55*abs(sin(PI*(t-{ph:.3f})/{P:.4f}))':contrast='1+0.12*abs(sin(PI*(t-{ph:.3f})/{P:.4f}))':eval=frame")]
+
+
+def _ramp(segs):
+    """تغيير سرعة على مقاطع: segs = [(نسبة من المدة، سرعة)] — يكتم الصوت لتفادي عدم التزامن"""
+    def b(c: Ctx):
+        d = max(c.dur, 0.5)
+        tot = sum(f for f, _ in segs)
+        t0, parts, labs, newd = 0.0, [], [], 0.0
+        for k, (frac, sp) in enumerate(segs):
+            span = d * frac / tot
+            t1 = t0 + span
+            parts.append(f"[a{k}]trim={t0:.3f}:{t1:.3f},setpts=(PTS-STARTPTS)/{sp}[s{k}]")
+            labs.append(f"[s{k}]")
+            newd += span / sp
+            t0 = t1
+        n = len(segs)
+        g = f"[{{i}}]split={n}" + "".join(f"[a{k}]" for k in range(n)) + ";" + ";".join(parts) + ";" + "".join(labs) + f"concat=n={n}:v=1:a=0[{{o}}]"
+        c.dur = newd
+        return [cx(g), Piece("mute")]
+    return b
+
+
+reg("flash_beat", "ed", "فلاش على الإيقاع", _flash, motion=True, desc="ومضة بيضاء مع كل ضربة (تتزامن مع صوت الفيديو أو الموسيقى المضافة).")
+reg("zoom_beat", "ed", "زوم نبضي على الإيقاع", _zoombeat, motion=True)
+reg("shake_beat", "ed", "اهتزاز على الضربات", _shakebeat, motion=True)
+reg("hue_pulse", "ed", "نبض ألوان على الإيقاع", _huepulse, motion=True)
+reg("strobe", "ed", "ستروب سريع", _strobe, motion=True)
+reg("flip_alt", "ed", "قلب أفقي متناوب", _flipalt, motion=True)
+reg("zoom_cut", "ed", "قطع زوم متناوب", _zoomcut, motion=True)
+reg("glitch_burst", "ed", "غليتش دفعات", _glitchburst, motion=True)
+reg("tilt", "ed", "ميلان متمايل", _tilt, motion=True)
+reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)
+reg("ramp_cine", "ed", "سلو-فاست سينمائي (يكتم الصوت)", _ramp([(0.3, 1.0), (0.25, 0.4), (0.45, 1.8)]), motion=True)
+reg("ramp_pulse", "ed", "سرعة متقطعة بطيء/سريع (يكتم الصوت)", _ramp([(0.2, 1.6), (0.15, 0.45), (0.2, 1.8), (0.15, 0.45), (0.3, 1.5)]), motion=True)
 
 # =============== فلاتر الألوان ===============
 simple("cin_warm", "col", "سينمائي دافئ", f"colorbalance=rs=.07:bs=-.07:rm=.05:bm=-.05,{SC},eq=saturation=1.08")

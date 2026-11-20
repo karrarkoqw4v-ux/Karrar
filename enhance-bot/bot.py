@@ -22,7 +22,9 @@ import compose
 import db
 import effects as E
 import process
-from templates import TEMPLATES
+import autograde
+import beats
+from templates import TEMPLATE_SETS, TEMPLATES
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN", "").strip()
@@ -48,7 +50,7 @@ WELCOME = (
     "💡 قم برسل الفيديو • يتم تعليه الدقه على HDR •🧬  وتحسين مع تاثيرات • 🔆\n\n"
     "🪄 ارسل الفيديو من فضلك"
 )
-HOME_CATS = ["cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
+HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
 
 
 def fmt(sec: float) -> str:
@@ -76,7 +78,7 @@ def _kb(rows: list[list[tuple[str, str]]]) -> InlineKeyboardMarkup:
 
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
 def kb_home(j: dict) -> InlineKeyboardMarkup:
-    rows = [[("🎞 القوالب الجاهزة (25)", "tpl")]]
+    rows = [[("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")]]
     items = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
     rows += [items[i:i + 2] for i in range(0, len(items), 2)]
     rows.append([("↩️ تراجع", "u"), ("🗑 مسح الكل", "clr")])
@@ -115,6 +117,23 @@ def caption(j: dict, note: str = "") -> str:
 async def start(msg: Message):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
     await msg.answer(WELCOME)
+
+
+HELP = (
+    "📖 <b>طريقة الاستخدام</b>\n\n"
+    "1️⃣ أرسل فيديو (حتى 20MB و3 دقائق).\n"
+    "2️⃣ يظهر لك فيديو معاينة وتحته أزرار. اضغط أي تأثير فيتغيّر الفيديو **مباشرة في نفس الرسالة** (تقدر تشغّله أو تكتم صوته).\n"
+    "3️⃣ ✨ <b>تلقائي ذكي</b>: يحلّل ألوان فيديوك ويضبط السطوع والتباين والتشبع والحدة تلقائياً.\n"
+    "4️⃣ 🔥 <b>إيديت</b>: فلاش وزوم واهتزاز وقلب وغليتش على <b>إيقاع صوت الفيديو</b> فعلاً، أو أضف موسيقى (✂️ المونتاج ← إضافة موسيقى) وسيتبع الإيقاع موسيقاك.\n"
+    "5️⃣ 🎞 <b>القوالب</b>: صورة فيها كل القوالب مطبّقة على فيديوك — اختر رقماً فيُطبَّق دفعة واحدة.\n"
+    "6️⃣ ↩️ تراجع / 🗑 مسح — ثم 🚀 <b>معالجة وتصدير</b> للفيديو الكامل بأعلى جودة.\n\n"
+    "💡 التأثيرات تتراكم بالترتيب الذي تختاره."
+)
+
+
+@router.message(Command("help"))
+async def help_cmd(msg: Message):
+    await msg.answer(HELP)
 
 
 @router.message(Command("id"))
@@ -199,6 +218,8 @@ async def on_video(msg: Message, bot: Bot):
         if not ok or not pm[0]:
             raise ValueError("proxy")
         await safe_edit(note, "⏳ جارٍ تجهيز الاستوديو...\n\n✅ 1/3 تم التنزيل\n✅ 2/3 تحليل الفيديو\n🎛 3/3 فتح الاستوديو")
+        stats = await asyncio.to_thread(autograde.analyze, str(src), dd)
+        beat = await beats.analyze(str(src)) if has_a else None
         thumb = d / "thumb.jpg"
         await _sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "1.0", "-i", str(proxy), "-frames:v", "1", "-q:v", "3", str(thumb))
     except Exception:  # noqa: BLE001
@@ -209,9 +230,10 @@ async def on_video(msg: Message, bot: Bot):
         except TelegramBadRequest:
             pass
         return
-    j = {"uid": uid, "dir": d, "src": str(src), "meta": {"w": w, "h": h, "dur": dd, "audio": has_a},
-         "pmeta": {"w": pm[0], "h": pm[1], "dur": pm[2], "audio": has_a}, "proxy": str(proxy), "thumb": str(thumb),
-         "stack": [], "pend": None, "ts": time.time(), "running": False, "busy": False, "gallery": None, "ed": None, "rend": 0}
+    pbeat = dict(beat, phase=(beat["phase"] - ss) % beat["period"]) if beat else False
+    j = {"uid": uid, "dir": d, "src": str(src), "meta": {"w": w, "h": h, "dur": dd, "audio": has_a, "stats": stats, "beat": beat or False},
+         "pmeta": {"w": pm[0], "h": pm[1], "dur": pm[2], "audio": has_a, "stats": stats, "beat": pbeat}, "proxy": str(proxy), "thumb": str(thumb),
+         "stack": [], "pend": None, "ts": time.time(), "running": False, "busy": False, "gallery": {}, "ed": None, "rend": 0}
     JOBS[uid] = j
     try:
         await note.delete()
@@ -370,14 +392,15 @@ async def cb_clear(cb: CallbackQuery, bot: Bot):
 
 
 # ---------------- القوالب ----------------
-async def build_gallery(j: dict) -> bytes:
-    if j.get("gallery"):
-        return j["gallery"]
-    imgs, titles = [], []
+async def build_gallery(j: dict, key: str) -> bytes:
+    j.setdefault("gallery", {})
+    if key in j["gallery"]:
+        return j["gallery"][key]
+    title, tpls, cols = TEMPLATE_SETS[key]
     sem3 = asyncio.Semaphore(3)
 
     async def one(i: int, name: str, stack):
-        tmp = j["dir"] / f"g{i}"
+        tmp = j["dir"] / f"g{key}{i}"
         tmp.mkdir(exist_ok=True)
         out = tmp / "t.png"
         async with sem3:
@@ -388,35 +411,39 @@ async def build_gallery(j: dict) -> bytes:
             except Exception:  # noqa: BLE001
                 log.exception("template thumb %s", name)
                 return Path(j["thumb"]).read_bytes()
-    res = await asyncio.gather(*[one(i, n, s) for i, (n, s) in enumerate(TEMPLATES)])
-    titles = [n.split(" ", 1)[1] if " " in n else n for n, _ in TEMPLATES]
-    j["gallery"] = await asyncio.to_thread(art.template_grid, list(res), titles)
-    return j["gallery"]
+    res = await asyncio.gather(*[one(i, n, s_) for i, (n, s_) in enumerate(tpls)])
+    titles = [n.split(" ", 1)[1] if " " in n else n for n, _ in tpls]
+    j["gallery"][key] = await asyncio.to_thread(art.template_grid, list(res), titles, cols)
+    return j["gallery"][key]
 
 
-def kb_templates() -> InlineKeyboardMarkup:
-    nums = [(str(i), f"t:{i}") for i in range(1, 26)]
-    rows = [nums[i:i + 5] for i in range(0, 25, 5)]
+def kb_templates(key: str) -> InlineKeyboardMarkup:
+    _, tpls, cols = TEMPLATE_SETS[key]
+    nums = [(str(i), f"t:{key}:{i}") for i in range(1, len(tpls) + 1)]
+    rows = [nums[i:i + cols] for i in range(0, len(nums), cols)]
     rows.append([("🔙 رجوع للمحرر", "tpl_close")])
     return _kb(rows)
 
 
-@router.callback_query(F.data == "tpl")
+@router.callback_query(F.data.startswith("tpl:"))
 async def cb_tpl(cb: CallbackQuery, bot: Bot):
     j = need_job(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
+    key = cb.data[4:]
+    if key not in TEMPLATE_SETS:
+        return await cb.answer()
+    title, tpls, _ = TEMPLATE_SETS[key]
     await cb.answer("🎞 جارٍ تجهيز القوالب على فيديوك...")
-    wait = await bot.send_message(cb.message.chat.id, "🪄 أطبّق 25 قالباً على لقطة من فيديوك، لحظات...")
+    chat = cb.message.chat.id
+    wait = await bot.send_message(chat, f"🪄 أطبّق {len(tpls)} قالباً على لقطة من فيديوك، لحظات...")
     try:
-        img = await build_gallery(j)
-        names = "\n".join(f"{i}. {n}" for i, (n, _) in enumerate(TEMPLATES, 1))
-        m = await bot.send_photo(cb.message.chat.id, BufferedInputFile(img, "templates.jpg"), caption="🎞 <b>القوالب الجاهزة</b>\nاختر رقم القالب من الأزرار 👇", reply_markup=kb_templates())
-        j["gal_mid"] = m.message_id
-        await bot.send_message(cb.message.chat.id, names)
+        img = await build_gallery(j, key)
+        names = "\n".join(f"{i}. {n}" for i, (n, _) in enumerate(tpls, 1))
+        await bot.send_photo(chat, BufferedInputFile(img, "templates.jpg"), caption=f"<b>{title}</b>\nاختر رقم القالب من الأزرار 👇\n\n{names}"[:1000], reply_markup=kb_templates(key))
     except Exception:  # noqa: BLE001
         log.exception("gallery failed")
-        await bot.send_message(cb.message.chat.id, "⚠️ تعذّر تجهيز القوالب، حاول مرة أخرى.")
+        await bot.send_message(chat, "⚠️ تعذّر تجهيز القوالب، حاول مرة أخرى.")
     finally:
         try:
             await wait.delete()
@@ -433,17 +460,19 @@ async def cb_tpl_close(cb: CallbackQuery):
         pass
 
 
-@router.callback_query(F.data.regexp(r"^t:\d+$"))
+@router.callback_query(F.data.regexp(r"^t:[a-z]:\d+$"))
 async def cb_template(cb: CallbackQuery, bot: Bot):
     j = need_job(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
     if j.get("running"):
         return await cb.answer("طلبك قيد المعالجة", show_alert=True)
-    n = int(cb.data[2:])
-    if not 1 <= n <= 25:
+    _, key, num = cb.data.split(":")
+    tpls = TEMPLATE_SETS[key][1]
+    n = int(num)
+    if not 1 <= n <= len(tpls):
         return await cb.answer()
-    name, stack = TEMPLATES[n - 1]
+    name, stack = tpls[n - 1]
     await cb.answer(f"⏳ تطبيق القالب: {name}")
     old = list(j["stack"])
     j["stack"] = [(e, dict(p)) for e, p in stack]
@@ -733,7 +762,7 @@ async def main():
     log.info("running @%s", me.username)
     try:
         from aiogram.types import BotCommand
-        await bot.set_my_commands([BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="🎛 استوديو المونتاج"), BotCommand(command="id", description="🆔 آيديك")])
+        await bot.set_my_commands([BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="🎛 استوديو المونتاج"), BotCommand(command="help", description="📖 طريقة الاستخدام"), BotCommand(command="id", description="🆔 آيديك")])
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())

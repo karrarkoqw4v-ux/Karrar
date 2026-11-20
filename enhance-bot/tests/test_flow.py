@@ -47,11 +47,11 @@ async def main():
     await click("e:teal_orange"); assert cnt("edit_message_media") == 2
     await click("e:snow"); assert cnt("edit_message_media") == 3
     await click("u"); assert cnt("edit_message_media") == 4; print("undo OK")
-    await click("tpl"); ph = last("send_photo"); assert "القوالب الجاهزة" in ph[1]["caption"]
-    nb = [b["text"] for r in ph[1]["reply_markup"]["inline_keyboard"] for b in r]; print("TEMPLATE BUTTONS:", len(nb))
-    await click("t:7"); assert cnt("edit_message_media") == 5; print("template applied live OK")
+    await click("tpl:l"); ph = last("send_photo"); assert "قوالب" in ph[1]["caption"]
+    nb = [b["text"] for r in ph[1]["reply_markup"]["inline_keyboard"] for b in r]; print("TEMPLATE BUTTONS:", len(nb)); await click("tpl:e"); assert "الإيديت" in last("send_photo")[1]["caption"]; await click("t:e:2"); print("edit template OK")
+    await click("t:l:7"); assert cnt("edit_message_media") >= 5; print("template applied live OK")
     await click("e:text"); assert "اكتب النص" in last("send_message")[1]["text"]
-    await say("مرحبا بك"); await click("s:2"); assert cnt("edit_message_media") == 6; print("text step OK")
+    await say("مرحبا بك"); await click("s:2"); assert cnt("edit_message_media") >= 6; print("text step OK")
     await click("go")
     vid = last("send_video"); print("CAPTION:", vid[1]["caption"].replace("\n", " "))
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
