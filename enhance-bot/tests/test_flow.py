@@ -62,6 +62,13 @@ async def main():
     await click("redo"); assert cnt("edit_message_media") == n1 + 2; print("redo OK")
     await click("go")
     vid = last("send_video"); print("CAPTION:", vid[1]["caption"].replace("\n", " "))
+    # مونتاج جارٍ + /start أو فيديو جديد => زران: إلغاء / تكملة
+    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["cx_cancel", "cx_cont"], qb; print("CONFLICT /start OK", [b["text"] for r in q["reply_markup"]["inline_keyboard"] for b in r])
+    nv = cnt("send_video"); await click("cx_cont"); assert cnt("send_video") == nv + 1; print("continue OK")
+    await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
+    qb = [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["cx_cancel", "cx_cont"]
+    nv = cnt("send_video"); await click("cx_cancel"); assert cnt("send_video") == nv + 1 and not B.JOBS.get(7, {}).get("stack"); print("cancel + new video OK")
+    await say("/start"); assert "مرحبا بك" in last("send_message")[1]["text"]; print("no conflict on fresh job OK")
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
     import emo as _e
     leak = [(n, d) for n, d in CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]

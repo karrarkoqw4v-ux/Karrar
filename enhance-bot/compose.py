@@ -117,6 +117,10 @@ async def _run_ffmpeg(args: list[str], on_progress=None, total: float = 0, timeo
     except asyncio.TimeoutError:
         proc.kill()
         raise UserError("استغرقت المعالجة وقتاً طويلاً وأُلغيت.")
+    except asyncio.CancelledError:  # إلغاء المستخدم للعملية
+        proc.kill()
+        rt.cancel()
+        raise
     await rt
     if proc.returncode != 0:
         raise RuntimeError(err.decode(errors="ignore")[-400:])

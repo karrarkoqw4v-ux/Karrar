@@ -201,6 +201,8 @@ def caption(j: dict, note: str = "") -> str:
 @router.message(CommandStart())
 async def start(msg: Message):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
+    if await ask_conflict(msg, None):
+        return
     await msg.answer(WELCOME)
 
 
@@ -259,13 +261,63 @@ async def _sh(*args) -> bool:
     return p.returncode == 0
 
 
+def _in_session(j) -> bool:
+    return bool(j) and (j.get("running") or j["stack"] or j.get("pend"))
+
+
+async def ask_conflict(msg: Message, pending) -> bool:
+    """يوجد مونتاج جارٍ: نسأل المستخدم بين الإلغاء أو التكملة (عند /start أو إرسال فيديو جديد)"""
+    j = JOBS.get(msg.from_user.id)
+    if not _in_session(j):
+        return False
+    j["pending_video"] = pending
+    what = "قيد المعالجة والتصدير" if j.get("running") else f"فيه {len(j['stack'])} تأثير مختار" if j["stack"] else "مفتوح"
+    await msg.answer(f"⚠️ لديك عملية مونتاج {what}.\n\nتريد إلغاءها أو تكملها؟",
+                     reply_markup=_kb([[InlineKeyboardButton(text="❌ إلغاء العملية", callback_data="cx_cancel", style="danger"),
+                                        InlineKeyboardButton(text="▶️ التكملة", callback_data="cx_cont", style="success")]]))
+    return True
+
+
+@router.callback_query(F.data == "cx_cont")
+async def cb_cx_cont(cb: CallbackQuery, bot: Bot):
+    j = JOBS.get(cb.from_user.id)
+    if j:
+        j["pending_video"] = None
+    with _cl.suppress(Exception):
+        await cb.message.delete()
+    await cb.answer("تكمل عمليتك")
+    if j and not j.get("running"):
+        await send_editor(bot, cb.message.chat.id, j)
+
+
+@router.callback_query(F.data == "cx_cancel")
+async def cb_cx_cancel(cb: CallbackQuery, bot: Bot):
+    uid = cb.from_user.id
+    j = JOBS.get(uid)
+    pending = j.get("pending_video") if j else None
+    await cb.answer("تم إلغاء العملية")
+    with _cl.suppress(Exception):
+        await cb.message.delete()
+    if j:
+        t = j.get("task")
+        if j.get("running") and t and not t.done():
+            t.cancel()
+            for _ in range(50):  # ننتظر توقف FFmpeg
+                if not j.get("running"):
+                    break
+                await asyncio.sleep(0.2)
+        drop_job(uid)
+    if pending is not None:
+        return await on_video(pending, bot)
+    await bot.send_message(cb.message.chat.id, WELCOME)
+
+
 @router.message(F.video | F.animation | F.video_note | (F.document & F.document.mime_type.startswith("video/")))
 async def on_video(msg: Message, bot: Bot):
     uid = msg.from_user.id
     await db.touch_user(uid, msg.from_user.full_name, msg.from_user.username)
-    old = JOBS.get(uid)
-    if old and old.get("running"):
-        return await msg.answer("⏳ لديك معالجة قيد التنفيذ، انتظر حتى تنتهي.")
+    if await ask_conflict(msg, msg):
+        return
     fid, size, dur = _video_of(msg)
     if size and size > MAX_DL:
         return await msg.answer("⚠️ حجم الفيديو أكبر من 20MB (حد تيليجرام للبوتات). أرسل فيديو أصغر أو قصّه.")
@@ -941,7 +993,8 @@ async def cb_go(cb: CallbackQuery, bot: Bot):
     try:
         async with sem:
             state["queued"] = False
-            res = await compose.render(j["src"], str(out), j["stack"], j["meta"], j["dir"], "final", prog)
+            j["task"] = asyncio.ensure_future(compose.render(j["src"], str(out), j["stack"], j["meta"], j["dir"], "final", prog))
+            res = await j["task"]
         state["done"] = True
         elapsed = time.time() - t0
         if res["size"] > 49 * 1024 * 1024:
@@ -964,6 +1017,9 @@ async def cb_go(cb: CallbackQuery, bot: Bot):
     except compose.UserError as e:
         state["done"] = True
         await safe_edit(wait, f"⚠️ {e}")
+    except asyncio.CancelledError:
+        state["done"] = True
+        await safe_edit(wait, "❌ تم إلغاء العملية")
     except Exception:  # noqa: BLE001
         state["done"] = True
         log.exception("processing failed")
