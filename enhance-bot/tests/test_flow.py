@@ -23,7 +23,7 @@ class Fake(BaseSession):
         return True
 
 async def main():
-    bot = Bot("1:test", session=Fake()); dp = Dispatcher(); dp.include_router(B.router)
+    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); dp.include_router(B.router)
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
         n[0] += 1; upd["update_id"] = n[0]
@@ -38,7 +38,7 @@ async def main():
         await feed({"callback_query": {"id": str(n[0]), "from": user, "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": chat, "video": {"file_id": "x", "file_unique_id": "u", "width": 1, "height": 1, "duration": 1}, "reply_markup": {"inline_keyboard": [[{"text": "a", "callback_data": "noop"}]]}}}})
     def last(*names): return [c for c in CALLS if c[0] in names][-1]
     def cnt(name): return len([c for c in CALLS if c[0] == name])
-    await say("/start"); assert CALLS[-1][1]["text"].startswith("مرحبا بك")
+    await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
     await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
     ed = last("send_video"); assert "استوديو المونتاج" in ed[1]["caption"]
     kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", len(kb), kb[:4]); assert "جاري تجهيز" in [c[1].get("text","") for c in CALLS if c[0] in ("send_message","edit_message_text")][1]
@@ -63,5 +63,11 @@ async def main():
     await click("go")
     vid = last("send_video"); print("CAPTION:", vid[1]["caption"].replace("\n", " "))
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
+    import emo as _e
+    leak = [(n, d) for n, d in CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]
+    assert not leak, leak[:2]
+    btns = [b for n, d in CALLS for r in ((d.get("reply_markup") or {}).get("inline_keyboard") or []) for b in r]
+    assert btns and not [b for b in btns if _e._EMOJI.search(b["text"])], [b for b in btns if _e._EMOJI.search(b["text"])][:3]
+    print("premium icons on", sum(1 for b in btns if b.get("icon_custom_emoji_id")), "of", len(btns), "buttons")
     print("FLOW OK")
 asyncio.run(main())

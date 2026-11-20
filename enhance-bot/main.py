@@ -53,6 +53,7 @@ import process
 import autograde
 import beats
 import designer
+import emo
 import secrets
 import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
@@ -79,8 +80,8 @@ pv_sem = asyncio.Semaphore(3)
 JOBS: dict[int, dict] = {}
 
 WELCOME = (
-    "مرحبا بك\n\n"
-    "💡 قم برسل الفيديو • يتم تعليه الدقه على HDR •🧬  وتحسين مع تاثيرات • 🔆\n\n"
+    "👋 <b>مرحبا بك</b>\n\n"
+    "💡 قم برسل الفيديو • يتم تعليه الدقه على HDR 💎 وتحسين مع تاثيرات 🔆\n\n"
     "🪄 ارسل الفيديو من فضلك"
 )
 HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
@@ -115,7 +116,7 @@ def kb_home(j: dict) -> InlineKeyboardMarkup:
     rec = j.get("rec") if not j["stack"] else None
     if rec:
         rows.append([(f"💡 مقترح: {E.EFFECTS[e].title}", f"e:{e}") for e in rec[:2]])
-    rows.append([("📱 دقة الآيفون", "e:cv_iphone"), ("📱 آيفون برو 2K", "e:cv_iphone_2k")])
+    rows.append([("📱 دقة الآيفون", "e:cv_iphone"), ("🔝 آيفون برو 2K", "e:cv_iphone_2k")])
     rows.append([("🏆 قوالب مصممين (150)", "dz")])
     rows.append([("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")])
     cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
@@ -123,7 +124,7 @@ def kb_home(j: dict) -> InlineKeyboardMarkup:
     rows.append(text_row(j))
     n = len(j["stack"])
     rows.append([(f"📋 المختارة ({n})", "stk"), ("↩️ تراجع", "u"), ("↪️ إعادة", "redo")])
-    rows.append([("🗑 مسح الكل", "clr"), ("🚀 معالجة وتصدير", "go")])
+    rows.append([("🧹 مسح الكل", "clr"), ("🚀 معالجة وتصدير", "go")])
     return _kb(rows)
 
 
@@ -141,10 +142,10 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     rows = [items[i:i + 2] for i in range(0, len(items), 2)]
     nav = []
     if page > 0:
-        nav.append(("◀️", f"c:{cat}:{page - 1}"))
+        nav.append(("◀️ السابق", f"c:{cat}:{page - 1}"))
     nav.append((f"{page + 1}/{max(1, -(-len(effs) // PAGE))}", "noop"))
     if (page + 1) * PAGE < len(effs):
-        nav.append(("▶️", f"c:{cat}:{page + 1}"))
+        nav.append(("التالي ▶️", f"c:{cat}:{page + 1}"))
     rows.append(nav)
     rows.append([("↩️ تراجع", "u"), ("🔙 القائمة", "home")])
     rows.append([("🚀 معالجة وتصدير", "go")])
@@ -181,7 +182,7 @@ def video_info(w, h, dur, has_a, size, st, beat) -> str:
     if min(w, h) < 720 or (size and mbps < 1.5):
         lines.append(f"⚠️ الفيديو وصلني مضغوطاً ({min(w, h)}p • {mbps:.1f} Mbps). لأعلى دقة أرسله كـ «ملف» 📎 بدل فيديو، لأن تيليجرام يضغط الفيديو العادي.")
     if st:
-        lines.append(f"🔆 السطوع {int(st['luma'] * 100)}% • 🎨 التشبع {int(st['sat'] * 100)}% • 🌫 التشويش {'مرتفع' if st['noise'] > 2.5 else 'منخفض'} • 🔍 الحدة {'ضعيفة' if st['sharp'] < 120 else 'جيدة'}")
+        lines.append(f"☀ السطوع {int(st['luma'] * 100)}% • 🎨 التشبع {int(st['sat'] * 100)}% • 🌫 التشويش {'مرتفع' if st['noise'] > 2.5 else 'منخفض'} • 🔍 الحدة {'ضعيفة' if st['sharp'] < 120 else 'جيدة'}")
     if beat:
         lines.append(f"🥁 إيقاع الصوت: {int(beat['bpm'])} BPM")
     return "\n".join(lines)
@@ -205,12 +206,12 @@ async def start(msg: Message):
 
 HELP = (
     "📖 <b>طريقة الاستخدام</b>\n\n"
-    "1️⃣ أرسل فيديو (حتى 20MB و3 دقائق).\n"
-    "2️⃣ يظهر لك فيديو معاينة وتحته أزرار. اضغط أي تأثير فيتغيّر الفيديو **مباشرة في نفس الرسالة** (تقدر تشغّله أو تكتم صوته).\n"
-    "3️⃣ ✨ <b>تلقائي ذكي</b>: يحلّل ألوان فيديوك ويضبط السطوع والتباين والتشبع والحدة تلقائياً.\n"
-    "4️⃣ 🔥 <b>إيديت</b>: فلاش وزوم واهتزاز وقلب وغليتش على <b>إيقاع صوت الفيديو</b> فعلاً، أو أضف موسيقى (✂️ المونتاج ← إضافة موسيقى) وسيتبع الإيقاع موسيقاك.\n"
-    "5️⃣ 🎞 <b>القوالب</b>: صورة فيها كل القوالب مطبّقة على فيديوك — اختر رقماً فيُطبَّق دفعة واحدة.\n"
-    "6️⃣ ↩️ تراجع / 🗑 مسح — ثم 🚀 <b>معالجة وتصدير</b> للفيديو الكامل بأعلى جودة.\n\n"
+    "<b>1.</b> أرسل فيديو (حتى 20MB و3 دقائق).\n"
+    "<b>2.</b> يظهر لك فيديو معاينة وتحته أزرار. اضغط أي تأثير فيتغيّر الفيديو <b>مباشرة في نفس الرسالة</b> (تقدر تشغّله أو تكتم صوته).\n"
+    "<b>3.</b> ✨ <b>تلقائي ذكي</b>: يحلّل ألوان فيديوك ويضبط السطوع والتباين والتشبع والحدة تلقائياً.\n"
+    "<b>4.</b> 🥁 <b>إيديت</b>: فلاش وزوم واهتزاز وقلب وغليتش على <b>إيقاع صوت الفيديو</b> فعلاً، أو أضف موسيقى (✂️ المونتاج ← إضافة موسيقى) وسيتبع الإيقاع موسيقاك.\n"
+    "<b>5.</b> 🎞 <b>القوالب</b>: صورة فيها كل القوالب مطبّقة على فيديوك — اختر رقماً فيُطبَّق دفعة واحدة.\n"
+    "<b>6.</b> ↩️ تراجع / 🧹 مسح — ثم 🚀 <b>معالجة وتصدير</b> للفيديو الكامل بأعلى جودة.\n\n"
     "💡 التأثيرات تتراكم بالترتيب الذي تختاره."
 )
 
@@ -584,7 +585,7 @@ async def cb_tpl(cb: CallbackQuery, bot: Bot):
     wait = await bot.send_message(chat, f"🪄 أطبّق {len(tpls)} قالباً على لقطة من فيديوك، لحظات...")
     try:
         img = await build_gallery(j, key)
-        names = "\n".join(f"{i}. {n}" for i, (n, _) in enumerate(tpls, 1))
+        names = "\n".join(f"{i}. {emo.strip(n)}" for i, (n, _) in enumerate(tpls, 1))
         await bot.send_photo(chat, BufferedInputFile(img, "templates.jpg"), caption=f"<b>{title}</b>\nاختر رقم القالب من الأزرار 👇\n\n{names}"[:1000], reply_markup=kb_templates(key))
     except Exception:  # noqa: BLE001
         log.exception("gallery failed")
@@ -1066,6 +1067,7 @@ async def main():
         raise SystemExit("❌ BOT_TOKEN غير مضبوط: ضعه في ملف .env أو في متغيرات البيئة على الاستضافة")
     await health()
     session = AiohttpSession(proxy=PROXY, timeout=900) if PROXY else AiohttpSession(timeout=900)
+    session.middleware(emo.PremiumEmoji())  # إيموجيات مميزة في كل النصوص والأزرار
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     dp.include_router(router)
@@ -1081,7 +1083,7 @@ async def main():
             print("⚠️ توجد نسخة أخرى من البوت تعمل بنفس التوكن (Conflict). أوقف النسخة الأخرى وإلا لن يستقبل هذا البوت الرسائل.", flush=True)
     try:
         from aiogram.types import BotCommand
-        await bot.set_my_commands([BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="🎛 استوديو المونتاج"), BotCommand(command="help", description="📖 طريقة الاستخدام"), BotCommand(command="id", description="🆔 آيديك")])
+        await bot.set_my_commands([BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="استوديو المونتاج"), BotCommand(command="help", description="طريقة الاستخدام"), BotCommand(command="id", description="آيديك")])
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
