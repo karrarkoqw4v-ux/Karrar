@@ -11,7 +11,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
+from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError, TelegramRetryAfter
 from aiogram.filters import Command, CommandStart
 from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaVideo, Message
 from aiohttp import web
@@ -170,9 +170,17 @@ async def on_video(msg: Message, bot: Bot):
     d = WORK / f"{uid}_{uuid.uuid4().hex[:6]}"
     d.mkdir(parents=True, exist_ok=True)
     src = d / "in.mp4"
-    note = await msg.answer("⏳ جارٍ تجهيز الاستوديو...")
+    note = await msg.answer("⏳ جارٍ تجهيز الاستوديو...\n\n⬇️ 1/3 تنزيل الفيديو")
     try:
-        await bot.download(fid, destination=src)
+        for attempt in range(3):  # تيليجرام أحياناً يبطئ؛ نعيد المحاولة بدل الانتظار الطويل
+            try:
+                await asyncio.wait_for(bot.download(fid, destination=src), 60)
+                break
+            except (asyncio.TimeoutError, TelegramNetworkError):
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(1)
+        await safe_edit(note, "⏳ جارٍ تجهيز الاستوديو...\n\n✅ 1/3 تم التنزيل\n🔧 2/3 تحليل الفيديو وصنع المعاينة")
         w, h, dd, has_a = process.info(await process.probe(str(src)))
         if not w or not h or dd <= 0:
             raise ValueError("bad video")
@@ -190,6 +198,7 @@ async def on_video(msg: Message, bot: Bot):
         pm = process.info(await process.probe(str(proxy)))
         if not ok or not pm[0]:
             raise ValueError("proxy")
+        await safe_edit(note, "⏳ جارٍ تجهيز الاستوديو...\n\n✅ 1/3 تم التنزيل\n✅ 2/3 تحليل الفيديو\n🎛 3/3 فتح الاستوديو")
         thumb = d / "thumb.jpg"
         await _sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "1.0", "-i", str(proxy), "-frames:v", "1", "-q:v", "3", str(thumb))
     except Exception:  # noqa: BLE001
