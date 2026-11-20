@@ -1067,6 +1067,9 @@ async def main():
         raise SystemExit("❌ BOT_TOKEN غير مضبوط: ضعه في ملف .env أو في متغيرات البيئة على الاستضافة")
     await health()
     session = AiohttpSession(proxy=PROXY, timeout=900) if PROXY else AiohttpSession(timeout=900)
+    if os.getenv("CA_BUNDLE"):  # شهادة مخصصة (للبيئات خلف وسيط HTTPS) — اختياري
+        import ssl
+        session._connector_init["ssl"] = ssl.create_default_context(cafile=os.environ["CA_BUNDLE"])
     session.middleware(emo.PremiumEmoji())  # إيموجيات مميزة في كل النصوص والأزرار
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
