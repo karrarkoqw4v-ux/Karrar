@@ -7,7 +7,7 @@ from aiogram.client.session.base import BaseSession
 from aiogram.types import Chat, File, Message, Update
 import bot as B
 
-CALLS = []; FILES = {"V": Path(sys.argv[1]).read_bytes(), "A": Path(sys.argv[2]).read_bytes()}
+CALLS = []; FILES = {"V": Path(sys.argv[1]).read_bytes(), "A": Path(sys.argv[2]).read_bytes(), "P": Path(sys.argv[3]).read_bytes()}
 
 class Fake(BaseSession):
     async def close(self): ...
@@ -23,7 +23,7 @@ class Fake(BaseSession):
         return True
 
 async def main():
-    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); dp.include_router(B.router)
+    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
         n[0] += 1; upd["update_id"] = n[0]
@@ -39,9 +39,22 @@ async def main():
     def last(*names): return [c for c in CALLS if c[0] in names][-1]
     def cnt(name): return len([c for c in CALLS if c[0] == name])
     await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
+    # ---- وضع الصور
+    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo"], qb; print("MODE CHOOSER OK")
+    await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]
+    await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
+    ed = last("send_photo"); assert "استوديو الصور" in ed[1]["caption"]; pk = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("PHOTO HOME:", len(pk), pk[:3])
+    await click("pc:bg:0"); await click("pe:bg_blur"); assert cnt("edit_message_media") == 1; print("photo live edit OK")
+    await click("pe:text"); assert "اكتب النص" in last("send_message")[1]["text"]
+    await say("مرحبا"); await click("ps:2"); assert cnt("edit_message_media") == 2; print("photo text step OK")
+    await click("pe:bg_remove"); assert cnt("edit_message_media") == 3 and "شفافة" in last("edit_message_media")[1]["media"]["caption"]; print("bg_remove alpha OK")
+    await click("pu"); await click("pr"); await click("pk"); await click("pd:0"); assert cnt("edit_message_media") >= 6; print("photo undo/redo/delete OK")
+    await click("pg"); assert last("send_document")[1]["caption"]; print("photo export OK")
+    await say("/start"); assert "لديك جلسة صور" in last("send_message")[1]["text"]; await click("cx_cancel"); assert not B.photo.PJOBS; print("photo conflict cancel OK")
+    PC = list(CALLS); CALLS.clear()
     await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
     ed = last("send_video"); assert "استوديو المونتاج" in ed[1]["caption"]
-    kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", len(kb), kb[:4]); assert "جاري تجهيز" in [c[1].get("text","") for c in CALLS if c[0] in ("send_message","edit_message_text")][1]
+    kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", len(kb), kb[:4]); assert any("جاري تجهيز" in c[1].get("text","") for c in CALLS if c[0] in ("send_message","edit_message_text"))
     await click("c:cv:0"); assert "edit_message_reply_markup" in [c[0] for c in CALLS][-1:], CALLS[-1][0]
     await click("e:cv_hdr_max"); assert cnt("edit_message_media") == 1; print("live edit #1 (cv_hdr_max) OK")
     await click("e:teal_orange"); assert cnt("edit_message_media") == 2
@@ -71,9 +84,9 @@ async def main():
     await say("/start"); assert "مرحبا بك" in last("send_message")[1]["text"]; print("no conflict on fresh job OK")
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
     import emo as _e
-    leak = [(n, d) for n, d in CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]
+    leak = [(n, d) for n, d in PC + CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]
     assert not leak, leak[:2]
-    btns = [b for n, d in CALLS for r in ((d.get("reply_markup") or {}).get("inline_keyboard") or []) for b in r]
+    btns = [b for n, d in PC + CALLS for r in ((d.get("reply_markup") or {}).get("inline_keyboard") or []) for b in r]
     assert btns and not [b for b in btns if _e._EMOJI.search(b["text"])], [b for b in btns if _e._EMOJI.search(b["text"])][:3]
     print("premium icons on", sum(1 for b in btns if b.get("icon_custom_emoji_id")), "of", len(btns), "buttons")
     print("FLOW OK")

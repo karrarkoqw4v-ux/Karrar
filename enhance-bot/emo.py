@@ -91,6 +91,44 @@ MAP: dict[str, str] = {
     "📼": "5836749569014109509",  # شاشة = ريترو
 }
 
+# رموز مسماة لقسم الصور: ⟦name⟧ -> (معرّف الإيموجي المميز، بديل عادي)
+PH: dict[str, tuple[str, str]] = {
+    "photo": ("5258254475386167466", "🖼"),     # صورة
+    "photos": ("5257974976094412956", "🖼"),    # صور متعددة = جلسة الصور
+    "film": ("5258391252914676042", "📼"),      # شريط فيلم = الفيديو
+    "home": ("4963010134172239128", "🏠"),     # بيت = القائمة
+    "grid": ("4961010470413665487", "💠"),     # شبكة = إطارات وقياسات
+    "layers": ("4961186405159011104", "💠"),   # طبقات = الخلفية
+    "undo": ("5260687119092817530", "🔄"),     # تراجع
+    "redo": ("5258420634785947640", "🔄"),     # إعادة
+    "trash": ("5258130763148172425", "🗑"),    # حذف
+    "clear": ("5267123797600783095", "❌"),    # مسح الكل
+    "check": ("4961121396534019447", "✅"),    # تم/تطبيق
+    "done": ("5357069174512303778", "✅"),     # تم
+    "download": ("5258336354642697821", "⬇️"),  # تحميل/تصدير
+    "share": ("5260379144167890225", "🔼"),    # مشاركة/رفع
+    "brush": ("5258215635996908355", "🎨"),    # ريشة = فلاتر
+    "gem": ("5359629206948976159", "💎"),      # (جوهرة) تحسين
+    "star": ("5260412365739925015", "⭐️"),     # نجمة = تأثيرات فنية
+    "search": ("5429571366384842791", "🔎"),   # بحث
+    "plus": ("5359529383319084413", "➕"),     # إضافة
+    "minus": ("5275969776668134187", "⛔️"),    # إخفاء
+    "move": ("4960789253828117549", "⬆️"),      # تحويل
+    "refresh": ("4960865034231088066", "🔄"),   # تدوير
+    "up": ("4961097812868596792", "🆙"),       # تكبير
+    "right": ("4960928080056026316", "➡️"),    # التالي
+    "left": ("4960802211744449967", "⬅️"),     # السابق
+    "file": ("5258477770735885832", "📄"),     # ملف
+    "book": ("5258328383183396223", "📖"),     # مساعدة
+    "chat": ("5258215846450305872", "💬"),     # نصوص
+    "folder": ("5258514780469075716", "📂"),   # حفظ
+    "star2": ("5258185631355378853", "⭐️"),
+    "badge": ("5258391025281408576", "📈"),
+    "stack": ("4960800343433675689", "💠"),
+}
+_PH = re.compile(r"⟦(\w+)⟧")
+
+
 # كل الإيموجيات العادية (مع محدّدات التنوع وأرقام الأزرار مثل 3️⃣)
 _EMOJI = re.compile(
     "(?:[0-9#*]️?⃣)"
@@ -121,7 +159,7 @@ def _tidy(s: str) -> str:
 
 def strip(s: str) -> str:
     """إزالة كل الإيموجيات العادية (لنصوص لا تدعم المميز)"""
-    return _tidy(_EMOJI.sub("", s or ""))
+    return _tidy(_EMOJI.sub("", _PH.sub("", s or "")))
 
 
 def html(s: str) -> str:
@@ -141,7 +179,8 @@ def _conv(s: str) -> str:
     def rep(m):
         k = _key(m.group(0))
         return f'<tg-emoji emoji-id="{MAP[k]}">{k}</tg-emoji>' if k else ""
-    return _EMOJI.sub(rep, s)
+    s = _EMOJI.sub(rep, s)
+    return _PH.sub(lambda m: f'<tg-emoji emoji-id="{PH[m.group(1)][0]}">{PH[m.group(1)][1]}</tg-emoji>' if m.group(1) in PH else "", s)
 
 
 def tg(e: str) -> str:
@@ -153,10 +192,12 @@ def tg(e: str) -> str:
 def style_for(b: InlineKeyboardButton) -> str | None:
     """ألوان الأزرار (Bot API الأحدث): success أخضر • danger أحمر • primary أزرق"""
     d = b.callback_data or ""
-    if d in ("go",):
+    if d in ("go", "pg"):
         return "success"
-    if d in ("clr", "stepcancel") or d.startswith("del:"):
+    if d in ("clr", "stepcancel", "pz", "pcancel") or d.startswith(("del:", "pd:")):
         return "danger"
+    if d in ("pe:auto", "pe:iphone", "pe:bg_remove", "pe:bg_blur", "pe:bg_bokeh", "pe:skin", "pk"):
+        return "primary"
     if b.web_app or d in ("dz", "dzfam", "e:cv_iphone", "e:cv_iphone_2k", "e:text", "stk") or d.startswith(("tpl:", "dzf:")):
         return "primary"
     if d.startswith(("t:", "dzt:")):
@@ -176,7 +217,10 @@ def _button(b: InlineKeyboardButton) -> InlineKeyboardButton:
     if b.icon_custom_emoji_id:
         return b.model_copy(update={"text": strip(b.text) or b.text})
     icon = None
-    for m in _EMOJI.finditer(b.text or ""):
+    pm = _PH.search(b.text or "")
+    if pm and pm.group(1) in PH:
+        icon = PH[pm.group(1)][0]
+    for m in ([] if icon else _EMOJI.finditer(b.text or "")):
         k = _key(m.group(0))
         if k:
             icon = MAP[k]

@@ -54,6 +54,7 @@ import autograde
 import beats
 import designer
 import emo
+import photo
 import secrets
 import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
@@ -70,6 +71,7 @@ MAX_DL = 20 * 1024 * 1024
 TTL = 1800
 PAGE = 12
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip().rstrip("/")
+photo.WORK = WORK
 DZ_PAGE = 6
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -82,8 +84,13 @@ JOBS: dict[int, dict] = {}
 WELCOME = (
     "👋 <b>مرحبا بك</b>\n\n"
     "💡 قم برسل الفيديو • يتم تعليه الدقه على HDR 💎 وتحسين مع تاثيرات 🔆\n\n"
-    "🪄 ارسل الفيديو من فضلك"
+    "🪄 اختر نوع المونتاج من الأزرار 👇"
 )
+
+
+def kb_mode() -> InlineKeyboardMarkup:
+    return _kb([[InlineKeyboardButton(text="⟦film⟧ مونتاج استوديو فيديوهات", callback_data="mode:video", style="primary")],
+                [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")]])
 HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
 
 
@@ -204,7 +211,7 @@ async def start(msg: Message):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
     if await ask_conflict(msg, None):
         return
-    await msg.answer(WELCOME)
+    await msg.answer(WELCOME, reply_markup=kb_mode())
 
 
 HELP = (
@@ -233,7 +240,10 @@ async def my_id(msg: Message):
 async def menu_cmd(msg: Message, bot: Bot):
     j = JOBS.get(msg.from_user.id)
     if not j:
-        return await msg.answer(WELCOME)
+        pj = photo.PJOBS.get(msg.from_user.id)
+        if pj:
+            return await photo.resend(bot, pj)
+        return await msg.answer(WELCOME, reply_markup=kb_mode())
     await send_editor(bot, msg.chat.id, j)
 
 
@@ -267,35 +277,60 @@ def _in_session(j) -> bool:
 
 
 async def ask_conflict(msg: Message, pending) -> bool:
-    """يوجد مونتاج جارٍ: نسأل المستخدم بين الإلغاء أو التكملة (عند /start أو إرسال فيديو جديد)"""
-    j = JOBS.get(msg.from_user.id)
-    if not _in_session(j):
+    """يوجد مونتاج (فيديو أو صور) جارٍ: نسأل المستخدم بين الإلغاء أو التكملة (عند /start أو إرسال ملف جديد)"""
+    uid = msg.from_user.id
+    j = JOBS.get(uid)
+    pj = photo.PJOBS.get(uid)
+    if _in_session(j):
+        holder = j
+        what = "قيد المعالجة والتصدير" if j.get("running") else f"فيه {len(j['stack'])} تأثير مختار" if j["stack"] else "مفتوح"
+        kind = "مونتاج فيديو"
+    elif photo.in_session(uid):
+        holder, what, kind = pj, f"فيها {len(pj['stack'])} أداة مختارة" if pj["stack"] else "مفتوحة", "جلسة صور"
+    else:
         return False
-    j["pending_video"] = pending
-    what = "قيد المعالجة والتصدير" if j.get("running") else f"فيه {len(j['stack'])} تأثير مختار" if j["stack"] else "مفتوح"
-    await msg.answer(f"⚠️ لديك عملية مونتاج {what}.\n\nتريد إلغاءها أو تكملها؟",
+    holder["pending_video"] = pending
+    await msg.answer(f"⚠️ لديك {kind} {what}.\n\nتريد إلغاءها أو تكملها؟",
                      reply_markup=_kb([[InlineKeyboardButton(text="❌ إلغاء العملية", callback_data="cx_cancel", style="danger"),
                                         InlineKeyboardButton(text="▶️ التكملة", callback_data="cx_cont", style="success")]]))
     return True
 
 
+photo.HOOK["ask"] = ask_conflict
+
+
 @router.callback_query(F.data == "cx_cont")
 async def cb_cx_cont(cb: CallbackQuery, bot: Bot):
-    j = JOBS.get(cb.from_user.id)
-    if j:
-        j["pending_video"] = None
+    uid = cb.from_user.id
+    j, pj = JOBS.get(uid), photo.PJOBS.get(uid)
+    for h in (j, pj):
+        if h:
+            h["pending_video"] = None
     with _cl.suppress(Exception):
         await cb.message.delete()
     await cb.answer("تكمل عمليتك")
-    if j and not j.get("running"):
-        await send_editor(bot, cb.message.chat.id, j)
+    if _in_session(j):
+        if not j.get("running"):
+            await send_editor(bot, cb.message.chat.id, j)
+    elif pj:
+        await photo.resend(bot, pj)
+
+
+async def dispatch_pending(msg: Message, bot: Bot):
+    """بعد الإلغاء: نبدأ بالملف الجديد (فيديو أو صورة) مباشرة"""
+    if msg.photo:
+        ph = msg.photo[-1]
+        return await photo.open_session(bot, msg, ph.file_id, ph.file_size, False)
+    if msg.document and (msg.document.mime_type or "").startswith("image/"):
+        return await photo.open_session(bot, msg, msg.document.file_id, msg.document.file_size, True)
+    return await on_video(msg, bot)
 
 
 @router.callback_query(F.data == "cx_cancel")
 async def cb_cx_cancel(cb: CallbackQuery, bot: Bot):
     uid = cb.from_user.id
-    j = JOBS.get(uid)
-    pending = j.get("pending_video") if j else None
+    j, pj = JOBS.get(uid), photo.PJOBS.get(uid)
+    pending = next((h.get("pending_video") for h in (j, pj) if h and h.get("pending_video") is not None), None)
     await cb.answer("تم إلغاء العملية")
     with _cl.suppress(Exception):
         await cb.message.delete()
@@ -308,9 +343,19 @@ async def cb_cx_cancel(cb: CallbackQuery, bot: Bot):
                     break
                 await asyncio.sleep(0.2)
         drop_job(uid)
+    photo.drop(uid)
     if pending is not None:
-        return await on_video(pending, bot)
-    await bot.send_message(cb.message.chat.id, WELCOME)
+        return await dispatch_pending(pending, bot)
+    await bot.send_message(cb.message.chat.id, WELCOME, reply_markup=kb_mode())
+
+
+@router.callback_query(F.data.in_({"mode:video", "mode:photo"}))
+async def cb_mode(cb: CallbackQuery):
+    await cb.answer()
+    if cb.data == "mode:video":
+        await cb.message.answer("⟦film⟧ <b>مونتاج استوديو فيديوهات</b>\n\n🪄 ارسل الفيديو من فضلك (حتى 20MB). يبقى الفيديو كاملاً بدون أي قص.")
+    else:
+        await cb.message.answer("⟦photos⟧ <b>مونتاج وجلسة صور</b>\n\n🪄 ارسل الصورة من فضلك — لأعلى جودة أرسلها كـ «ملف» 📎.\nأدوات: إزالة وتضبيب وإخفاء الخلفية • تحسين HDR • فلاتر • تأثيرات فنية • إطارات • نصوص.")
 
 
 @router.message(F.video | F.animation | F.video_note | (F.document & F.document.mime_type.startswith("video/")))
@@ -346,13 +391,15 @@ async def on_video(msg: Message, bot: Bot):
             await note.edit_text(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقائق.")
             shutil.rmtree(d, ignore_errors=True)
             return
-        # نسخة مصغّرة (360 على الجانب القصير، 4 ثوانٍ مع الصوت) للمعاينة المباشرة
+        # نسخة معاينة للفيديو **كاملاً بدون أي قص** (أبعاد أصغر للفيديوهات الطويلة لتبقى المعاينة سريعة)
         proxy = d / "proxy.mp4"
-        ss = max(0.0, min(dd / 2 - 2, dd - 4.0)) if dd > 4 else 0
-        ok = await _sh("ffmpeg", "-y", "-loglevel", "error", "-ss", f"{ss:.2f}", "-t", "4", "-i", str(src),
-                       "-vf", "scale='if(gt(iw,ih),-2,min(540,iw))':'if(gt(iw,ih),min(540,ih),-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25",
+        ss = 0.0
+        short = 540 if dd <= 60 else 360
+        crf = "19" if dd <= 60 else "24"
+        ok = await _sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
+                       "-vf", f"scale='if(gt(iw,ih),-2,min({short},iw))':'if(gt(iw,ih),min({short},ih),-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25",
                        "-map", "0:v:0", *(["-map", "0:a:0", "-c:a", "aac", "-b:a", "64k"] if has_a else ["-an"]),
-                       "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(proxy))
+                       "-c:v", "libx264", "-preset", "veryfast", "-crf", crf, "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(proxy))
         pm = process.info(await process.probe(str(proxy)))
         if not ok or not pm[0]:
             raise ValueError("proxy")
@@ -1070,9 +1117,9 @@ async def bcast(msg: Message, bot: Bot):
 
 @router.message()
 async def other(msg: Message):
-    if JOBS.get(msg.from_user.id):
-        return await msg.answer("اضغط /menu لإظهار الاستوديو، أو أرسل فيديو جديداً 🪄")
-    await msg.answer("🪄 ارسل الفيديو من فضلك")
+    if JOBS.get(msg.from_user.id) or photo.PJOBS.get(msg.from_user.id):
+        return await msg.answer("اضغط /menu لإظهار الاستوديو، أو أرسل فيديو/صورة جديدة 🪄")
+    await msg.answer("🪄 اختر نوع المونتاج من الأزرار 👇", reply_markup=kb_mode())
 
 
 async def cleaner():
@@ -1130,6 +1177,7 @@ async def main():
     session.middleware(emo.PremiumEmoji())  # إيموجيات مميزة في كل النصوص والأزرار
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
+    dp.include_router(photo.router)
     dp.include_router(router)
     global BOT
     BOT = bot
@@ -1147,6 +1195,7 @@ async def main():
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
+    asyncio.create_task(photo.cleaner())
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, handle_as_tasks=True, allowed_updates=["message", "callback_query"])
 
