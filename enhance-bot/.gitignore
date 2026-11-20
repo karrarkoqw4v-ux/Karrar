@@ -1,3 +1,6 @@
 .env
 work/
 __pycache__/
+stats.db
+*.db
+*.db-*
