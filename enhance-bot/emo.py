@@ -150,7 +150,28 @@ def tg(e: str) -> str:
     return f'<tg-emoji emoji-id="{MAP[k]}">{k}</tg-emoji>' if k else ""
 
 
+def style_for(b: InlineKeyboardButton) -> str | None:
+    """ألوان الأزرار (Bot API الأحدث): success أخضر • danger أحمر • primary أزرق"""
+    d = b.callback_data or ""
+    if d in ("go",):
+        return "success"
+    if d in ("clr", "stepcancel") or d.startswith("del:"):
+        return "danger"
+    if b.web_app or d in ("dz", "dzfam", "e:cv_iphone", "e:cv_iphone_2k", "e:text", "stk") or d.startswith(("tpl:", "dzf:")):
+        return "primary"
+    if d.startswith(("t:", "dzt:")):
+        return "success"
+    return None
+
+
 def button(b: InlineKeyboardButton) -> InlineKeyboardButton:
+    out = _button(b)
+    if not out.style and (st := style_for(b)):
+        out = out.model_copy(update={"style": st})
+    return out
+
+
+def _button(b: InlineKeyboardButton) -> InlineKeyboardButton:
     """أول إيموجي في نص الزر يصبح أيقونة مميزة، وتُزال الإيموجيات العادية من النص"""
     if b.icon_custom_emoji_id:
         return b.model_copy(update={"text": strip(b.text) or b.text})
