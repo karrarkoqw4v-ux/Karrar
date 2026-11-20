@@ -7,3 +7,4 @@ numpy
 opencv-contrib-python-headless<5
 arabic-reshaper
 python-bidi
+static-ffmpeg
