@@ -2,3 +2,8 @@ aiogram>=3.13
 python-dotenv
 aiohttp-socks
 uvloop; sys_platform != "win32"
+pillow
+numpy
+opencv-python-headless
+arabic-reshaper
+python-bidi

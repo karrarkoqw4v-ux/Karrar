@@ -1,7 +1,7 @@
 import asyncio, datetime, os, re, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-os.environ["BOT_TOKEN"] = "1:test"; os.environ["WORK_DIR"] = tempfile.mkdtemp()
+os.environ["BOT_TOKEN"] = "1:test"; os.environ["WORK_DIR"] = tempfile.mkdtemp(); os.environ["DB_PATH"] = tempfile.mktemp(suffix=".db"); os.environ["ADMIN_IDS"] = "7"
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.types import Chat, File, Message, Update
@@ -35,30 +35,25 @@ async def main():
             if text.startswith("/"): m["entities"] = [{"type": "bot_command", "offset": 0, "length": len(text.split()[0])}]
         await feed({"message": m})
     async def click(data):
-        await feed({"callback_query": {"id": str(n[0]), "from": user, "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": chat, "text": "m"}}})
+        await feed({"callback_query": {"id": str(n[0]), "from": user, "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": chat, "video": {"file_id": "x", "file_unique_id": "u", "width": 1, "height": 1, "duration": 1}, "reply_markup": {"inline_keyboard": [[{"text": "a", "callback_data": "noop"}]]}}}})
     def last(*names): return [c for c in CALLS if c[0] in names][-1]
+    def cnt(name): return len([c for c in CALLS if c[0] == name])
     await say("/start"); assert CALLS[-1][1]["text"].startswith("مرحبا بك")
     await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
-    t = last("send_message")[1]["text"]; assert "استوديو المونتاج" in t, t
-    await click("c:hdr:0"); assert "HDR والتحسين" in last("edit_message_text", "send_message")[1]["text"]
-    await click("e:hdr_strong")
-    pv = last("send_photo"); assert "هل يعجبك" in pv[1]["caption"]; print("preview photo sent (before/after)")
-    await click("ok"); assert "أُضيف" in last("edit_message_caption", "edit_message_text", "send_message")[1].get("caption", last("edit_message_text", "send_message")[1].get("text", ""))
-    await click("e:glitch"); assert [c for c in CALLS if c[0] == "send_animation"], "motion preview"; print("motion preview sent")
-    await click("ok")
-    await click("e:text")  # خطوات: نص ثم مكان
-    assert "اكتب النص" in last("send_message")[1]["text"]
-    await say("مرحبا بك")
-    assert "مكان النص" in last("send_message")[1]["text"]
-    await click("s:2"); assert "هل يعجبك" in last("send_photo")[1]["caption"]; await click("ok")
-    await click("e:music"); await say(audio={"file_id": "A", "file_unique_id": "u", "duration": 3, "file_size": len(FILES["A"])})
-    await click("s:1"); await click("ok")
-    await click("e:trim"); await say("0:01 0:04"); await click("ok")
-    await click("lst"); print("STACK:", last("answer_callback_query")[1].get("text", "").replace("\n", " | "))
+    ed = last("send_video"); assert "استوديو المونتاج" in ed[1]["caption"]
+    kb = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("HOME BUTTONS:", kb)
+    await click("c:cv:0"); assert "edit_message_reply_markup" in [c[0] for c in CALLS][-1:], CALLS[-1][0]
+    await click("e:cv_hdr_max"); assert cnt("edit_message_media") == 1; print("live edit #1 (cv_hdr_max) OK")
+    await click("e:teal_orange"); assert cnt("edit_message_media") == 2
+    await click("e:snow"); assert cnt("edit_message_media") == 3
+    await click("u"); assert cnt("edit_message_media") == 4; print("undo OK")
+    await click("tpl"); ph = last("send_photo"); assert "القوالب الجاهزة" in ph[1]["caption"]
+    nb = [b["text"] for r in ph[1]["reply_markup"]["inline_keyboard"] for b in r]; print("TEMPLATE BUTTONS:", len(nb))
+    await click("t:7"); assert cnt("edit_message_media") == 5; print("template applied live OK")
+    await click("e:text"); assert "اكتب النص" in last("send_message")[1]["text"]
+    await say("مرحبا بك"); await click("s:2"); assert cnt("edit_message_media") == 6; print("text step OK")
     await click("go")
-    edits = [c[1]["text"] for c in CALLS if c[0] == "edit_message_text" and "مدة الابداع" in c[1].get("text", "")]
-    print("timer edits:", len(edits)); print(edits[-1] if edits else "")
     vid = last("send_video"); print("CAPTION:", vid[1]["caption"].replace("\n", " "))
-    assert "تريد تعديلاً آخر" in last("send_message")[1]["text"]
+    await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
     print("FLOW OK")
 asyncio.run(main())

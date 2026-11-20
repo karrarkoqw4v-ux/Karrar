@@ -64,6 +64,7 @@ CATS = {
     "edit": ("✂️", "المونتاج"),
     "fx": ("🎬", "تأثيرات الحركة"),
     "part": ("✨", "جسيمات وأجواء"),
+    "cv": ("🔬", "واقعية فائقة (مكتبات عالمية)"),
     "aud": ("🎵", "الصوت"),
     "out": ("📤", "تصدير خاص"),
 }
@@ -308,6 +309,13 @@ reg("music", "aud", "إضافة موسيقى", lambda c: [Piece("music", (c.p["a
 reg("out_gif", "out", "تحويل إلى GIF متحرك", lambda c: [Piece("out", "gif")], noprev=True)
 reg("out_mp3", "out", "استخراج الصوت MP3", lambda c: [Piece("out", "mp3")], noprev=True)
 reg("out_cover", "out", "صورة غلاف من الفيديو", lambda c: [Piece("out", "cover")], noprev=True)
+
+
+# =============== واقعية فائقة: OpenCV (تُطبَّق في مرحلة منفصلة) ===============
+import cvlib
+
+for _id, (_fn, _name) in cvlib.CV_FUNCS.items():
+    reg(_id, "cv", _name, lambda c, _i=_id: [Piece("cv", _i)], desc="معالجة إطار بإطار بمكتبة OpenCV (أبطأ من الباقي لكن نتيجتها أكثر واقعية).")
 
 
 def by_cat(cat: str) -> list[Effect]:

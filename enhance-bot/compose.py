@@ -126,7 +126,7 @@ async def stab_detect(src: str, pre: list, trf: str):
     await _run_ffmpeg(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-nostdin", *pre, "-i", src, "-vf", f"vidstabdetect=shakiness=6:accuracy=9:result={trf}", "-f", "null", "-"], timeout=600)
 
 
-async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "final", on_progress=None, budget_mb: float = 46.0) -> dict:
+async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "final", on_progress=None, budget_mb: float = 46.0, crf: int = 17) -> dict:
     """mode: final | pimg (صورة معاينة) | pclip (مقطع معاينة 2 ثانية)"""
     w, h, dur, has_a = meta["w"], meta["h"], meta["dur"], meta["audio"]
     preview = mode != "final"
@@ -183,7 +183,9 @@ async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "
     if mode == "pimg":
         args += ["-frames:v", "1", dst]
     elif mode == "pclip":
-        args += ["-t", "2", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28", "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", dst]
+        args += ["-t", "4", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p"]
+        args += (["-map", amap, "-c:a", "aac", "-b:a", "64k"] if amap else ["-an"])
+        args += ["-movflags", "+faststart", dst]
     elif pl.out == "gif":
         args += ["-t", f"{min(out_dur, 12):.2f}", "-loop", "0", dst]
     elif pl.out == "cover":
@@ -192,7 +194,7 @@ async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "
         if min(pl.w, pl.h) >= 2160 and dur > 40:
             raise UserError("دقة 4K مسموحة للفيديوهات حتى 40 ثانية فقط.")
         v_kbps = max(500, int(budget_mb * 1024 * 8 / max(out_dur, 1) - 128))
-        args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "17", "-maxrate", f"{v_kbps}k", "-bufsize", f"{v_kbps * 2}k", "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+        args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf), "-maxrate", f"{v_kbps}k", "-bufsize", f"{v_kbps * 2}k", "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
         if amap:
             args += ["-map", amap, "-c:a", "aac", "-b:a", "128k"]
         else:
@@ -204,3 +206,42 @@ async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "
     d = await probe(dst) if pl.out in ("video", "gif") and mode == "final" else {}
     ow, oh, od, _ = info(d) if d else (pl.w, pl.h, out_dur, False)
     return {"kind": pl.out, "w": ow or pl.w, "h": oh or pl.h, "dur": od or out_dur, "size": Path(dst).stat().st_size}
+
+
+HEAVY_RES = {"r2k", "r4k", "r2x"}
+
+
+async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "final", on_progress=None, budget_mb: float = 46.0) -> dict:
+    """يشغّل المكدس: تأثيرات FFmpeg أولاً ثم (إن وُجدت) معالجات OpenCV كمرحلة أخيرة"""
+    cv_ids = [e for e, _ in stack if E.EFFECTS[e].cat == "cv"]
+    base_stack = [(e, p) for e, p in stack if E.EFFECTS[e].cat != "cv"]
+    if not cv_ids:
+        return await _render_base(src, dst, stack, meta, tmp, mode, on_progress, budget_mb)
+    import cv2
+    import cvpipe
+
+    cap = (2560, 1440) if any(e in HEAVY_RES for e, _ in stack) else (1920, 1080)
+    if mode == "pimg":
+        mid = str(tmp / "cv_in.png")
+        await _render_base(src, mid, base_stack, meta, tmp, "pimg")
+        img = cv2.imread(mid)
+        run = cvpipe.frame_fn(cv_ids)
+        cv2.imwrite(dst, run(img))
+        return {"kind": "video", "w": img.shape[1], "h": img.shape[0], "dur": 0, "size": Path(dst).stat().st_size}
+    inter = str(tmp / f"cv_inter_{mode}.mp4")
+    if mode == "pclip":
+        await _render_base(src, inter, base_stack, meta, tmp, "pclip")
+        return await cvpipe.cv_pass(inter, dst, cv_ids, None, budget_mb, 60, 24, cap=cap)
+
+    async def p1(p):
+        if on_progress:
+            await on_progress(p * 0.35)
+
+    async def p2(p):
+        if on_progress:
+            await on_progress(0.35 + p * 0.65)
+    await _render_base(src, inter, base_stack, meta, tmp, "final", p1, 400.0, 14)
+    try:
+        return await cvpipe.cv_pass(inter, dst, cv_ids, p2, budget_mb, 480, 17, cap=cap)
+    except cvpipe.TooHeavy as e:
+        raise UserError(str(e))

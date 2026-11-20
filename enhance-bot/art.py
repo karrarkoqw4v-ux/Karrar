@@ -141,3 +141,29 @@ def before_after(before: bytes, after: bytes, label_a="قبل", label_b="بعد"
     buf = io.BytesIO()
     sheet.save(buf, "JPEG", quality=88)
     return buf.getvalue()
+
+
+def template_grid(images: list, titles: list, cols: int = 5) -> bytes:
+    """شبكة معاينات القوالب: كل خانة صورة فيديو المستخدم بعد تطبيق القالب مع رقمها واسمها"""
+    ims = [Image.open(io.BytesIO(b)).convert("RGB") for b in images]
+    portrait = ims[0].height >= ims[0].width
+    cw, ch = (190, 338) if portrait else (338, 190)
+    pad = 8
+    rows = -(-len(ims) // cols)
+    sheet = Image.new("RGB", (cols * (cw + pad) + pad, rows * (ch + pad) + pad), (18, 18, 22))
+    d = ImageDraw.Draw(sheet)
+    f_num, f_t = font(26), font(15)
+    for i, (im, t) in enumerate(zip(ims, titles)):
+        x, y = pad + (i % cols) * (cw + pad), pad + (i // cols) * (ch + pad)
+        sheet.paste(im.resize((cw, ch), Image.LANCZOS), (x, y))
+        d.rectangle((x, y + ch - 26, x + cw, y + ch), fill=(0, 0, 0))
+        ts = shape(t)
+        tw = d.textlength(ts, font=f_t, **_kw())
+        d.text((x + (cw - tw) / 2, y + ch - 24), ts, font=f_t, fill="white", **_kw())
+        d.ellipse((x + 6, y + 6, x + 44, y + 44), fill=(245, 197, 66))
+        n = str(i + 1)
+        nw = d.textlength(n, font=f_num)
+        d.text((x + 25 - nw / 2, y + 7), n, font=f_num, fill=(20, 20, 20))
+    buf = io.BytesIO()
+    sheet.save(buf, "JPEG", quality=85)
+    return buf.getvalue()
