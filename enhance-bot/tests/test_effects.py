@@ -13,8 +13,11 @@ async def main():
     d = await process.probe(SRC); w, h, dur, a = process.info(d)
     meta = {"w": w, "h": h, "dur": dur, "audio": a}
     fails, ok = [], 0
-    for eid, e in E.EFFECTS.items():
+    import os
+    sh, shs = int(os.environ.get('SHARD', 0)), int(os.environ.get('SHARDS', 1))
+    for i, (eid, e) in enumerate(E.EFFECTS.items()):
         if only and eid not in only: continue
+        if i % shs != sh: continue
         tmp = Path(tempfile.mkdtemp()); st = [(eid, PARAMS.get(eid, {}))]
         t0 = time.time()
         try:
@@ -30,6 +33,8 @@ async def main():
             print(f"ok {eid} {time.time()-t0:.1f}s {r['kind']} {r['w']}x{r['h']}")
         except Exception as ex:
             fails.append(f"{eid}: {type(ex).__name__} {str(ex)[-200:]}")
+    if shs > 1 and sh != 0:
+        print('OK', ok, 'FAIL', len(fails)); [print('FAIL', f) for f in fails]; return
     # مكدس مركّب
     tmp = Path(tempfile.mkdtemp())
     st = [("trim", PARAMS["trim"]), ("teal_orange", {}), ("snow", {}), ("text", PARAMS["text"]), ("speed2", {}), ("music", PARAMS["music"]), ("fade_io", {}), ("r1080", {})]

@@ -236,11 +236,11 @@ reg("stab", "edit", "تثبيت الاهتزاز", _stab, noprev=True)
 
 def _text(c: Ctx):
     png = art.text_png(c.p["text"], c.w, c.h, c.p["pos"], c.name(), box=c.p.get("box", False))
-    return [cx("[{i}][{n}:v]overlay=0:0:format=auto[{o}]", [["-loop", "1", "-framerate", "30", "-i", png]])]
+    return [cx("[{i}][{n}:v]overlay=0:0:format=auto:shortest=1[{o}]", [["-loop", "1", "-framerate", "30", "-i", png]])]
 
 
 reg("text", "edit", "إضافة نص / ترجمة", _text, steps=[("text", "✍️ اكتب النص (عربي أو إنجليزي):"), ("choice", "مكان النص:", [("⬆️ أعلى", "top"), ("⏺ وسط", "mid"), ("⬇️ أسفل", "bot")], "pos")])
-reg("watermark", "edit", "علامة مائية باسمك", lambda c: [cx("[{i}][{n}:v]overlay=0:0:format=auto[{o}]", [["-loop", "1", "-framerate", "30", "-i", art.text_png(c.p["text"], c.w, c.h, "bot", c.name(), size_ratio=0.04)]])], steps=[("text", "✍️ اكتب نص العلامة (مثل @اسمك):")])
+reg("watermark", "edit", "علامة مائية باسمك", lambda c: [cx("[{i}][{n}:v]overlay=0:0:format=auto:shortest=1[{o}]", [["-loop", "1", "-framerate", "30", "-i", art.text_png(c.p["text"], c.w, c.h, "bot", c.name(), size_ratio=0.04)]])], steps=[("text", "✍️ اكتب نص العلامة (مثل @اسمك):")])
 
 # =============== تأثيرات الحركة ===============
 simple("glitch", "fx", "غليتش (اهتزاز رقمي)", "rgbashift=rh=-10:bh=10:gv=4,noise=alls=12:allf=t,eq=saturation=1.3:contrast=1.1", motion=True)
