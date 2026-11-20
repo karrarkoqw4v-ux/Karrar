@@ -139,7 +139,8 @@ async def _beat_for(stack, src: str, meta: dict):
         if e == "music" and p.get("audio"):
             b = await beats.analyze(p["audio"])
             if b:
-                return b
+                st = float(p.get("start", 0) or 0)
+                return dict(b, phase=(b["phase"] - st) % b["period"]) if st else b
     if meta.get("beat") is not None:
         return meta["beat"] or None
     if meta.get("audio"):
@@ -187,8 +188,11 @@ async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: s
     amap = None
     if midx is not None and mode == "final":
         vol = pl.music[1]
-        mus = f"[{midx}:a]volume={vol}[mus]"
-        if use_audio:
+        mstart = pl.music[2] if len(pl.music) > 2 else 0.0
+        mrep = pl.music[3] if len(pl.music) > 3 else False
+        fade = f",afade=t=in:d=0.4,afade=t=out:st={max(0.0, out_dur - 1.2):.2f}:d=1.2"
+        mus = f"[{midx}:a]atrim=start={mstart:.2f},asetpts=PTS-STARTPTS,volume={vol}{fade}[mus]"
+        if use_audio and not mrep:
             graph.append(f"[0:a]{a_chain or 'anull'}[a0]")
             graph.append(mus)
             graph.append("[a0][mus]amix=inputs=2:duration=first:normalize=0[aout]")

@@ -42,7 +42,7 @@ def drop(uid: int):
 
 def in_session(uid: int) -> bool:
     j = PJOBS.get(uid)
-    return bool(j) and bool(j["stack"] or j.get("pend") or j.get("busy"))
+    return bool(j) and bool(j["stack"] or j.get("pend") or j.get("vpend") or j.get("busy"))
 
 
 # ---------------------------------------------------------------- الأزرار
@@ -53,6 +53,7 @@ def kb_home(j) -> InlineKeyboardMarkup:
         [("⟦layers⟧ وضع البورتريه", "pe:bg_bokeh"), ("⟦brush⟧ تنعيم البشرة", "pe:skin")],
     ]
     rows.append([(f"⟦star⟧ قوالب جاهزة بنقرة ({len(P.PHOTO_TEMPLATES)})", "ptl:0")])
+    rows.append([("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv")])
     cats = [(f"⟦{ic}⟧ {title}", f"pc:{k}:0") for k, (ic, _fb, title) in P.CATS.items()]
     rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
     n = len(j["stack"])
@@ -284,6 +285,7 @@ async def cb_home(cb: CallbackQuery):
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
     j["pend"] = None
+    j["vpend"] = None
     await cb.answer()
     try:
         await cb.message.edit_reply_markup(reply_markup=kb_home(j))
@@ -496,6 +498,167 @@ async def cb_export(cb: CallbackQuery, bot: Bot):
         j["busy"] = False
         try:
             await db.log_job(cb.from_user.id, ok, time.time() - t0, ["photo:" + n for n in names])
+        except Exception:  # noqa: BLE001
+            pass
+
+
+
+# ---------------------------------------------------------------- صورة ← فيديو بموسيقى (حركة كين بيرنز)
+VSTYLES = [("🔍 زوم للداخل", "zin"), ("🔎 زوم للخارج", "zout"), ("➡️ بان يمين", "pr"), ("⬅️ بان يسار", "pl"), ("💓 زوم نبضي (على الإيقاع)", "pulse")]
+VDURS = [("8 ثوانٍ", 8), ("15 ثانية", 15), ("30 ثانية", 30)]
+
+
+def _vq(step: int):
+    if step == 0:
+        return "🎬 اختر حركة الفيديو:", [(lab, f"pvs:style:{v}") for lab, v in VSTYLES]
+    return "⏱ اختر مدة الفيديو:", [(lab, f"pvs:dur:{v}") for lab, v in VDURS]
+
+
+@router.callback_query(F.data == "pv")
+async def cb_video_start(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if j["busy"]:
+        return await cb.answer("لحظة...")
+    j["vpend"] = {"stage": "style", "p": {}}
+    await cb.answer()
+    t, items = _vq(0)
+    rows = [[b] for b in items] + [[("↩️ إلغاء", "pcancel")]]
+    await bot.send_message(j["chat"], t, reply_markup=kb(rows))
+
+
+@router.callback_query(F.data.startswith("pvs:"))
+async def cb_video_choice(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j or not j.get("vpend"):
+        return await cb.answer(EXPIRED, show_alert=True)
+    _, key, val = cb.data.split(":")
+    vp = j["vpend"]
+    vp["p"][key] = val
+    await cb.answer()
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
+    if key == "style":
+        vp["stage"] = "dur"
+        t, items = _vq(1)
+        return await bot.send_message(j["chat"], t, reply_markup=kb([[b] for b in items] + [[("↩️ إلغاء", "pcancel")]]))
+    vp["stage"] = "audio"
+    await bot.send_message(j["chat"], "🎧 أرسل الآن ملف الموسيقى (MP3 أو أي ملف صوتي) أو رسالة صوتية، حتى 20MB.\nأو اضغط «بدون موسيقى».",
+                           reply_markup=kb([[("🔇 بدون موسيقى", "pvskip")], [("↩️ إلغاء", "pcancel")]]))
+
+
+def _wants_audio(m: Message) -> bool:
+    j = PJOBS.get(m.from_user.id) if m.from_user else None
+    return bool(j and j.get("vpend") and j["vpend"]["stage"] == "audio")
+
+
+@router.message(F.audio | F.voice | (F.document & F.document.mime_type.startswith("audio/")), _wants_audio)
+async def on_video_audio(msg: Message, bot: Bot):
+    j = PJOBS[msg.from_user.id]
+    a = msg.audio or msg.voice or msg.document
+    if a.file_size and a.file_size > MAX_DL:
+        return await msg.answer("⚠️ الملف أكبر من 20MB.")
+    dest = j["dir"] / "music.bin"
+    await _download(bot, a.file_id, dest)
+    j["vpend"]["p"]["audio"] = str(dest)
+    await render_video(bot, j)
+
+
+@router.callback_query(F.data == "pvskip")
+async def cb_video_skip(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j or not j.get("vpend"):
+        return await cb.answer(EXPIRED, show_alert=True)
+    await cb.answer()
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
+    await render_video(bot, j)
+
+
+async def _ffmpeg(*args) -> tuple[int, str]:
+    pr = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-loglevel", "error", *args, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+    try:
+        _, err = await asyncio.wait_for(pr.communicate(), 600)
+    except asyncio.TimeoutError:
+        pr.kill()
+        return 1, "timeout"
+    return pr.returncode, err.decode(errors="ignore")[-300:]
+
+
+async def render_video(bot: Bot, j: dict):
+    vp = j["vpend"]
+    j["vpend"] = None
+    p = vp["p"]
+    style, dur = p.get("style", "zin"), int(p.get("dur", 8))
+    chat = j["chat"]
+    j["busy"] = True
+    t0 = time.time()
+    wait = await bot.send_message(chat, "✅ تم استلام طلبك بنجاح\n\n🪄 جاري تحويل الصورة إلى فيديو...")
+    ok = False
+    try:
+        async with sem:
+            def prep():
+                full = P.load(j["src"], 2048)
+                st = P.apply_stack(full, j["stack"])
+                img = st[0]
+                h, w = img.shape[:2]
+                path = str(j["dir"] / "kb.png")
+                import cv2
+                cv2.imwrite(path, img)
+                return path, w, h
+            path, w, h = await asyncio.to_thread(prep)
+            asp = w / h
+            if asp < 0.85:
+                W, H = 720, 1280
+            elif asp > 1.15:
+                W, H = 1280, 720
+            else:
+                W, H = 1080, 1080
+            fps, N = 30, dur * 30
+            beat = None
+            if p.get("audio"):
+                import beats
+                beat = await beats.analyze(p["audio"])
+            pulse = ""
+            if style == "pulse" and beat:
+                per, ph = beat["period"], beat["phase"]
+                pulse = f"+0.05*exp(-7*mod(on/{fps}-{ph:.3f}+{per * 100:.2f},{per:.4f}))"
+            z = {"zin": f"1+0.35*on/{N}", "zout": f"1.35-0.35*on/{N}", "pr": "1.3", "pl": "1.3",
+                 "pulse": f"1.12+0.12*on/{N}"}[style] + pulse
+            x = {"pr": f"(iw-iw/zoom)*on/{N}", "pl": f"(iw-iw/zoom)*(1-on/{N})"}.get(style, "iw/2-(iw/zoom/2)")
+            y = "ih/2-(ih/zoom/2)"
+            vf = (f"scale={2 * W}:{2 * H}:force_original_aspect_ratio=increase,crop={2 * W}:{2 * H},"
+                  f"zoompan=z='{z}':x='{x}':y='{y}':d={N}:s={W}x{H}:fps={fps},format=yuv420p")
+            out = str(j["dir"] / "kb.mp4")
+            args = ["-loop", "1", "-framerate", str(fps), "-i", path]
+            if p.get("audio"):
+                args += ["-stream_loop", "-1", "-i", p["audio"], "-af", f"afade=t=in:d=0.5,afade=t=out:st={dur - 1.5}:d=1.5", "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "160k"]
+            args += ["-vf", vf, "-t", str(dur), "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-movflags", "+faststart", out]
+            rc, err = await _ffmpeg(*args)
+            if rc != 0:
+                raise RuntimeError(err)
+        cap = f"تم اكمال طلبك بنجاح ✅\n\nالمده اللي انتهت : {fmt(time.time() - t0)}\n\nشكرا على استخدامك ♥️"
+        await bot.send_video(chat, FSInputFile(out), caption=cap, width=W, height=H, duration=dur, supports_streaming=True)
+        ok = True
+        try:
+            await wait.delete()
+        except TelegramBadRequest:
+            pass
+    except Exception:  # noqa: BLE001
+        log.exception("photo->video failed")
+        try:
+            await wait.edit_text("⚠️ تعذّر تحويل الصورة إلى فيديو. جرّب مرة ثانية أو بدون موسيقى.")
+        except TelegramBadRequest:
+            pass
+    finally:
+        j["busy"] = False
+        try:
+            await db.log_job(j["uid"], ok, time.time() - t0, ["photo2video"])
         except Exception:  # noqa: BLE001
             pass
 

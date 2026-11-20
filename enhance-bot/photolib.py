@@ -696,6 +696,45 @@ def _neonframe(img):
     return _u(out)
 
 
+_art("a_spin_blur", "ضبابية دوّارة", lambda i: _spinblur(i))
+_art("a_pixel_slice", "شرائح بكسل (غليتش)", lambda i: _slices(i))
+_art("a_trail", "أثر حركة", lambda i: _u(np.clip((_f(i) + _f(np.roll(i, int(_S(i) * 0.02), 1)) * 0.6 + _f(np.roll(i, int(_S(i) * 0.04), 1)) * 0.35) / 1.95, 0, 1)))
+_art("a_rgb_pop", "انقسام RGB قوي", lambda i: _rgbpop(i))
+_flt("f_invert_soft", "نيجاتيف ناعم", lambda i: _u(1 - _f(i) * 0.85))
+
+
+def _spinblur(img):
+    h, w = img.shape[:2]
+    acc = _f(img)
+    n = 9
+    for k in range(1, n):
+        M = cv2.getRotationMatrix2D((w / 2, h / 2), k * 0.6, 1.0)
+        acc += _f(cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT))
+    blur_img = _u(acc / n)
+    m = vignette_map(img, 1.2, 1.0)[..., None]
+    return _u(_f(img) * m + _f(blur_img) * (1 - m))
+
+
+def _slices(img):
+    h, w = img.shape[:2]
+    rng = np.random.default_rng(55)
+    out = img.copy()
+    for _ in range(14):
+        y = int(rng.integers(0, h - 8))
+        t = int(rng.integers(max(3, h // 80), max(6, h // 20)))
+        out[y:y + t] = np.roll(out[y:y + t], int(rng.integers(-w // 10, w // 10)), 1)
+    return _glitch(out)
+
+
+def _rgbpop(img):
+    s = max(3, int(_S(img) * 0.02))
+    out = img.copy()
+    out[..., 2] = np.roll(img[..., 2], s, 1)
+    out[..., 0] = np.roll(img[..., 0], -s, 1)
+    out[..., 1] = np.roll(img[..., 1], s, 0)
+    return cvlib.sharpen(grade(out, sat=1.25, con=1.12), 0.4, 1.0, 0.1, 2.0)
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
@@ -718,6 +757,10 @@ PHOTO_TEMPLATES = [
     ("👑 ستوديو فاخر", ["e_portrait", "bg_studio", "a_vignette"]),
     ("🔥 نيون بإطار متوهج", ["f_cyber", "a_neon_frame"]),
     ("📸 مجلة أزياء", ["auto", "f_matte", "l_b_white"]),
+    ("🌀 ريمكس سبين", ["f_cin", "a_spin_blur", "a_rgb_pop"]),
+    ("👻 أثر وغليتش", ["f_cyber", "a_trail", "a_pixel_slice"]),
+    ("🔁 نيجاتيف ناعم", ["f_moody", "f_invert_soft", "a_chroma"]),
+    ("💥 بوب RGB", ["auto", "a_rgb_pop", "a_glow"]),
 ]
 
 
@@ -871,6 +914,18 @@ def t_text(img, a, p=None):
 def t_text_big(img, a, p=None):
     p = dict(p or {"text": "نص", "pos": "mid"}, size=0.13)
     return _text_draw(img, p), a
+
+
+@tool("tag", "txt", "وسم / تاج تعديل (EDIT • REC • LIVE)", steps=[
+    ("text", "✍️ اكتب نص الوسم (مثل EDIT أو @اسمك):"),
+    ("choice", "شكل الوسم:", [("🏷 EDIT", "edit"), ("🔴 REC", "rec"), ("🔴 LIVE", "live"), ("💠 نيون", "neon"), ("⚪ شارة", "badge"), ("🟡 ذهبي", "gold")], "style"),
+    ("choice", "مكان الوسم:", [("↖ أعلى يسار", "tl"), ("↗ أعلى يمين", "tr"), ("↙ أسفل يسار", "bl"), ("↘ أسفل يمين", "br")], "pos")])
+def t_tag(img, a, p=None):
+    p = p or {}
+    h, w = img.shape[:2]
+    lay = art.tag_layer(p.get("style", "edit"), p.get("text", "EDIT"), w, h, p.get("pos", "tl"))
+    im = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)).convert("RGBA")
+    return cv2.cvtColor(np.array(Image.alpha_composite(im, lay).convert("RGB")), cv2.COLOR_RGB2BGR), a
 
 
 @tool("watermark", "txt", "علامة مائية باسمك", steps=[("text", "✍️ اكتب اسمك/حسابك للعلامة المائية:")])

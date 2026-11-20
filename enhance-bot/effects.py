@@ -249,6 +249,43 @@ reg("bloom_beat", "ed", "توهج نبضي على الإيقاع", _bloombeat, m
 reg("contrast_pulse", "ed", "نبض تباين وألوان", _contrastpulse, motion=True)
 reg("zoom_out_beat", "ed", "زوم عكسي (يبتعد) على الضربة", _zoomout, motion=True)
 reg("film_burn", "ed", "حرق فيلم دافئ", _filmburn, motion=True)
+def _spin(c: Ctx):
+    m, P = _tt(c)
+    return [vf(f"rotate=a='0.16*exp(-7*{m})*sin(9*t)':c=black:ow={c.w}:oh={c.h},scale=trunc({c.w}*1.18/2)*2:trunc({c.h}*1.18/2)*2,crop={c.w}:{c.h}")]
+
+
+def _whipzoom(c: Ctx):
+    m, P = _tt(c, 2.0)
+    en = f"lt({m},{min(0.2, P / 3):.3f})"
+    return [vf(f"scale=w='iw*(1+0.4*exp(-8*{m}))':h='ih*(1+0.4*exp(-8*{m}))':eval=frame,crop={c.w}:{c.h},avgblur=sizeX=2:sizeY=45:enable='{en}'")]
+
+
+def _pixelbeat(c: Ctx):
+    m, P = _tt(c, 2.0)
+    return [cx(f"[{{i}}]split[a][b];[b]scale=iw/26:ih/26:flags=area,scale={c.w}:{c.h}:flags=neighbor[p];[a][p]overlay=0:0:enable='lt({m},{min(0.22, P / 3):.3f})'[{{o}}]")]
+
+
+def _invert(c: Ctx):
+    m, P = _tt(c, 2.0)
+    return [vf(f"negate=enable='lt({m},{min(0.12, P / 4):.3f})'")]
+
+
+def _tag(c: Ctx):
+    p = c.p
+    png = art.tag_png(p.get("style", "edit"), p.get("text", "EDIT"), c.w, c.h, p.get("pos", "tl"), c.name())
+    return [cx("[{i}][{n}:v]overlay=0:0:format=auto:shortest=1[{o}]", [["-loop", "1", "-framerate", "30", "-i", png]])]
+
+
+reg("spin_beat", "ed", "دوران نبضي على الإيقاع", _spin, motion=True)
+reg("whip_zoom", "ed", "زوم خاطف مع ضبابية (Whip)", _whipzoom, motion=True)
+reg("pixel_beat", "ed", "بكسلة خاطفة على الضربة", _pixelbeat, motion=True)
+reg("invert_beat", "ed", "وميض نيجاتيف على الإيقاع", _invert, motion=True)
+reg("trail", "fx", "أثر حركة (Trail)", lambda c: [vf("tmix=frames=5:weights='1 1 1 1 1',eq=saturation=1.1")], motion=True)
+reg("tag", "edit", "وسم / تاج تعديل (EDIT • REC • LIVE)", _tag,
+    steps=[("text", "✍️ اكتب نص الوسم (مثل EDIT أو @اسمك):"),
+           ("choice", "شكل الوسم:", [("🏷 EDIT", "edit"), ("🔴 REC", "rec"), ("🔴 LIVE", "live"), ("💠 نيون", "neon"), ("⚪ شارة", "badge"), ("🟡 ذهبي", "gold")], "style"),
+           ("choice", "مكان الوسم:", [("↖ أعلى يسار", "tl"), ("↗ أعلى يمين", "tr"), ("↙ أسفل يسار", "bl"), ("↘ أسفل يمين", "br")], "pos")],
+    desc="علامة/وسم على شكل حبّة فوق الفيديو بأشكال مختلفة.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)
@@ -506,8 +543,11 @@ reg("echo", "aud", "صدى", lambda c: [af("aecho=0.8:0.88:60|120:0.4|0.3")], no
 reg("bass", "aud", "تعزيز الجهير", lambda c: [af("bass=g=9,alimiter=limit=0.95")], noprev=True)
 reg("voice_deep", "aud", "صوت غليظ", lambda c: [af("aresample=44100,asetrate=35280,aresample=44100,atempo=1.25")], noprev=True)
 reg("voice_high", "aud", "صوت رفيع", lambda c: [af("aresample=44100,asetrate=57330,aresample=44100,atempo=0.7692")], noprev=True)
-reg("music", "aud", "إضافة موسيقى", lambda c: [Piece("music", (c.p["audio"], c.p["vol"]))],
-    steps=[("audio", "🎧 أرسل ملف الموسيقى (MP3/صوت) حتى 20MB:"), ("choice", "مستوى الموسيقى:", [("🔈 منخفض", 0.4), ("🔉 متوسط", 0.8), ("🔊 عالٍ", 1.4)], "vol")], noprev=True)
+reg("music", "aud", "إضافة موسيقى (ملف أو رسالة صوتية)", lambda c: [Piece("music", (c.p["audio"], c.p["vol"], float(c.p.get("start", 0) or 0), bool(c.p.get("rep", 0))))],
+    steps=[("audio", "🎧 أرسل ملف الموسيقى (MP3/صوت) أو رسالة صوتية حتى 20MB:"),
+           ("choice", "مستوى الموسيقى:", [("🔈 منخفض", 0.4), ("🔉 متوسط", 0.8), ("🔊 عالٍ", 1.4)], "vol"),
+           ("choice", "ابدأ الموسيقى من:", [("البداية", 0), ("الثانية 10", 10), ("الثانية 30", 30), ("الثانية 60", 60)], "start"),
+           ("choice", "الصوت الأصلي للفيديو:", [("🎚 دمج مع الموسيقى", 0), ("🔇 استبدال بالموسيقى", 1)], "rep")], noprev=True)
 
 # =============== تصدير خاص ===============
 reg("out_gif", "out", "تحويل إلى GIF متحرك", lambda c: [Piece("out", "gif")], noprev=True)

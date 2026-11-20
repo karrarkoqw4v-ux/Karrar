@@ -50,6 +50,7 @@ async def main():
     await click("pe:bg_remove"); assert cnt("edit_message_media") == 3 and "شفافة" in last("edit_message_media")[1]["media"]["caption"]; print("bg_remove alpha OK")
     n0 = cnt("edit_message_media"); await click("ptl:0"); await click("pt:1"); assert cnt("edit_message_media") == n0 + 1 and "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; print("photo template OK")
     await click("pu"); await click("pr"); await click("pk"); await click("pd:0"); assert cnt("edit_message_media") >= 7; print("photo undo/redo/delete OK")
+    await click("pv"); await click("pvs:style:pulse"); await click("pvs:dur:8"); await say(audio={"file_id": "A", "file_unique_id": "a", "duration": 5, "file_size": len(FILES["A"])}); assert last("send_video")[1]["duration"] == 8; print("photo->video with music OK")
     await click("pg"); assert last("send_document")[1]["caption"]; print("photo export OK")
     await say("/start"); assert "لديك جلسة صور" in last("send_message")[1]["text"]; await click("cx_cancel"); assert not B.photo.PJOBS; print("photo conflict cancel OK")
     PC = list(CALLS); CALLS.clear()

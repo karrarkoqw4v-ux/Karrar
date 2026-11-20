@@ -72,4 +72,19 @@ NEW_TEMPLATES = [
     ("💥 انفجار ألوان", [T("hue_pulse"), T("rgb_beat"), T("zoom_beat"), T("strobe")]),
     ("🎬 ترايلر درامي", [T("teal_dark"), T("letterbox"), T("zoom_out_beat"), T("film_burn"), T("vignette")]),
 ]
-TEMPLATE_SETS = {"n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 4), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
+# قوالب بروح تطبيقات المونتاج العالمية (تنفيذ أصلي بالكامل)
+CAPCUT_TEMPLATES = [
+    ("⚡ ريمكس سريع", [T("auto_vivid"), T("whip_zoom"), T("rgb_beat"), T("flash_beat")]),
+    ("🌀 سبين نبضي", [T("teal_orange"), T("spin_beat"), T("zoom_beat"), T("vignette")]),
+    ("👻 ظل متحرك", [T("cyber"), T("trail"), T("glitch_burst")]),
+    ("🔁 نيجاتيف خاطف", [T("moody"), T("invert_beat"), T("strobe")]),
+    ("🧩 بكسل بيت", [T("vivid"), T("pixel_beat"), T("bloom_beat")]),
+    ("🐌 سلو-فاست ذهبي", [T("ramp_cine"), T("golden_hour"), T("bloom_beat"), T("filmgrain")]),
+    ("🏷 تاج إيديت", [T("auto_grade"), T("zoom_beat"), T("tag", text="EDIT", style="edit", pos="tl")]),
+    ("🔴 REC فيلم", [T("vintage"), T("vhs"), T("tag", text="REC", style="rec", pos="tl")]),
+    ("💠 نيون بيت + وسم", [T("tokyo"), T("hue_pulse"), T("glow"), T("tag", text="NEON", style="neon", pos="tr")]),
+    ("🎬 هوليوود ريمكس", [T("cin_cool"), T("letterbox"), T("whip_zoom"), T("film_burn")]),
+    ("📱 تيك توك ترند + وسم", [T("ratio916"), T("vivid"), T("punch"), T("tag", text="NEW", style="live", pos="tl")]),
+    ("💥 غليتش وايب", [T("cyber"), T("glitch_burst"), T("rgb_beat"), T("blur_burst")]),
+]
+TEMPLATE_SETS = {"c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 4), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}

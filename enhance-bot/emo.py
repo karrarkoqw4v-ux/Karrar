@@ -192,7 +192,7 @@ def tg(e: str) -> str:
 def style_for(b: InlineKeyboardButton) -> str | None:
     """ألوان الأزرار (Bot API الأحدث): success أخضر • danger أحمر • primary أزرق"""
     d = b.callback_data or ""
-    if d in ("go", "pg"):
+    if d in ("go", "pg", "pv"):
         return "success"
     if d in ("clr", "stepcancel", "pz", "pcancel") or d.startswith(("del:", "pd:")):
         return "danger"

@@ -278,3 +278,48 @@ def page_grid(images: list, titles: list, start_no: int, cols: int, portrait: bo
     buf = io.BytesIO()
     sheet.save(buf, "JPEG", quality=90)
     return buf.getvalue()
+
+
+# ---------------- وسوم/تاغات التعديل (EDIT • REC • LIVE ...) ----------------
+def tag_layer(style: str, text: str, w: int, h: int, pos: str = "tl") -> Image.Image:
+    """طبقة RGBA بحجم الصورة/الفيديو فيها وسم على شكل حبّة (pill) بالأسلوب والموضع المطلوبين"""
+    from PIL import ImageFilter
+    size = max(14, int(min(w, h) * 0.045))
+    f = font(size)
+    t = shape(text or "EDIT")
+    lay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    bb = d.textbbox((0, 0), t, font=f, **_kw())
+    tw, th = bb[2] - bb[0], bb[3] - bb[1]
+    padx, pady = int(size * 0.7), int(size * 0.45)
+    dot = style in ("rec", "live")
+    extra = int(size * 1.0) if dot else 0
+    bw, bh = tw + padx * 2 + extra, th + pady * 2
+    m = int(min(w, h) * 0.04)
+    x = {"tl": m, "bl": m, "tr": w - bw - m, "br": w - bw - m, "top": (w - bw) // 2, "bot": (w - bw) // 2}.get(pos, m)
+    y = {"tl": m, "tr": m, "top": m, "bl": h - bh - m, "br": h - bh - m, "bot": h - bh - m}.get(pos, m)
+    r = bh // 2
+    box = (x, y, x + bw, y + bh)
+    if style == "neon":
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(glow).rounded_rectangle(box, r, outline=(0, 255, 240, 255), width=max(3, size // 6))
+        lay.alpha_composite(glow.filter(ImageFilter.GaussianBlur(size * 0.35)))
+        d = ImageDraw.Draw(lay)
+        d.rounded_rectangle(box, r, fill=(0, 20, 30, 150), outline=(120, 255, 250, 255), width=max(2, size // 12))
+        col = (170, 255, 250, 255)
+    else:
+        fill = {"edit": (0, 0, 0, 175), "rec": (0, 0, 0, 175), "live": (225, 20, 40, 235), "badge": (255, 255, 255, 235), "gold": (245, 197, 66, 240)}.get(style, (0, 0, 0, 175))
+        d.rounded_rectangle(box, r, fill=fill)
+        col = (20, 20, 20, 255) if style in ("badge", "gold") else (255, 255, 255, 255)
+    tx = x + padx + extra
+    if dot:
+        cy = y + bh // 2
+        rr = int(size * 0.28)
+        d.ellipse((x + padx, cy - rr, x + padx + 2 * rr, cy + rr), fill=(255, 40, 50, 255) if style == "rec" else (255, 255, 255, 255))
+    d.text((tx - bb[0], y + pady - bb[1]), t, font=f, fill=col, **_kw())
+    return lay
+
+
+def tag_png(style: str, text: str, w: int, h: int, pos: str, out: str) -> str:
+    tag_layer(style, text, w, h, pos).save(out)
+    return out
