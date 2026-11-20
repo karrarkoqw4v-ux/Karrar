@@ -182,7 +182,86 @@ def tonemap(frame, method="drago", gamma_out=1.0, sat=1.15):
     return saturation(clahe(out, 1.3, 8, 0.4), sat)
 
 
+# ---------------- دقة الآيفون ----------------
+import os
+import threading
+from pathlib import Path
+
+_MODELS = Path(__file__).parent / "models"
+_tls = threading.local()
+
+
+def _sr_model(scale: int):
+    """شبكة تكبير خفيفة (ESPCN) لكل خيط — تُستخدم إن توفّر opencv-contrib والملف"""
+    key = f"sr{scale}"
+    m = getattr(_tls, key, None)
+    if m is None:
+        m = False
+        f = _MODELS / f"ESPCN_x{scale}.pb"
+        if f.exists() and hasattr(cv2, "dnn_superres"):
+            try:
+                m = cv2.dnn_superres.DnnSuperResImpl_create()
+                m.readModel(str(f))
+                m.setModel("espcn", scale)
+            except Exception:
+                m = False
+        setattr(_tls, key, m)
+    return m or None
+
+
+def upscale_smart(frame, target_short=1080):
+    """تكبير حتى الجانب القصير = target_short: شبكة ESPCN ×2/×3 ثم تصغير بالمساحة (supersampling)، وإلا Lanczos"""
+    h, w = frame.shape[:2]
+    s = min(w, h)
+    if s >= target_short:
+        return frame
+    need = target_short / s
+    scale = 2 if need <= 2 else 3
+    m = _sr_model(scale)
+    up = m.upsample(frame) if m is not None else cv2.resize(frame, (w * scale, h * scale), interpolation=cv2.INTER_LANCZOS4)
+    k = target_short / min(up.shape[:2])
+    if k < 1:
+        up = cv2.resize(up, (int(up.shape[1] * k) // 2 * 2, int(up.shape[0] * k) // 2 * 2), interpolation=cv2.INTER_AREA)
+    return up
+
+
+def _fusion_soft(frame, w=0.35):
+    """دمج تعريضات (Mertens) بدون CLAHE — يرفع الظلال ويحمي الإضاءات بلا تشريط على التدرجات"""
+    f = _f(frame)
+    exps = [_u(np.clip(f ** g, 0, 1)) for g in (0.6, 1.0, 1.6)]
+    fused = np.clip(np.nan_to_num(cv2.createMergeMertens(1.0, 1.0, 1.0).process(exps), nan=0.5), 0, 1)
+    return _u(f * (1 - w) + fused * w)
+
+
+def iphone(frame, strength=1.0, target_short=1080):
+    """مظهر «كاميرا آيفون»: تنظيف ضغط خفيف + تكبير ذكي (ESPCN) + HDR ذكي ناعم + ألوان طبيعية + حدة دقيقة + حبيبات دقيقة تمنع التشريط"""
+    h, w = frame.shape[:2]
+    # 1) تنظيف خفيف لآثار الضغط (لا نمسح الملمس)
+    f = cv2.bilateralFilter(frame, 5, 14 if min(w, h) > 900 else 18, 4)
+    # 2) تكبير ذكي
+    f = upscale_smart(f, target_short)
+    # 3) Smart HDR ناعم (بدون تباين محلي عنيف)
+    f = _fusion_soft(f, 0.38 * strength)
+    # 4) ألوان طبيعية: توازن أبيض جزئي + دفء خفيف + حيوية معتدلة
+    f = white_balance(f, 0.3)
+    fl = f.astype(np.float32)
+    fl[..., 2] *= 1.02
+    fl[..., 0] *= 0.98
+    f = vibrance(np.clip(fl, 0, 255).astype(np.uint8), 0.28 * strength)
+    # 5) حدة دقيقة نصف قطر صغير فقط (تفاصيل بدون هالات)
+    f = sharpen(f, 0.45 * strength, 0.9, 0.12 * strength, 2.0)
+    # 6) منحنى نغمي ناعم: كتف للإضاءات + تباين خفيف
+    x = f.astype(np.float32) / 255.0
+    x = np.where(x > 0.86, 0.86 + (x - 0.86) * 0.72, x)
+    x = x + 0.035 * strength * np.sin(np.pi * (x - 0.5)) * (x * (1 - x)) * 4
+    # 7) حبيبات دقيقة جداً (dithering) تمنع ظهور التشريط على البشرة والسماء
+    x = x + np.random.default_rng().normal(0, 1.1 / 255, x.shape).astype(np.float32)
+    return _u(x)
+
+
 CV_FUNCS = {
+    "cv_iphone": (lambda f: iphone(f, 1.0, 1080), "📱 دقة الآيفون (Full HD)"),
+    "cv_iphone_2k": (lambda f: iphone(f, 1.1, 1440), "📱 دقة الآيفون برو (2K)"),
     "cv_tm_drago": (lambda f: tonemap(f, "drago"), "تحويل نغمي HDR (Drago)"),
     "cv_tm_reinhard": (lambda f: tonemap(f, "reinhard"), "تحويل نغمي HDR (Reinhard)"),
     "cv_tm_mantiuk": (lambda f: tonemap(f, "mantiuk", 1.0, 1.2), "تحويل نغمي HDR (Mantiuk) تفاصيل أعلى"),
@@ -198,4 +277,12 @@ CV_FUNCS = {
     "cv_super2": (lambda f: super_res(f, 2.0), "تكبير 2× + تنقية + توضيح"),
     "cv_filmic": (filmic, "ألوان فيلمية (ACES)"),
     "cv_ultra": (ultra, "واقعية فائقة (كل الأدوات معاً)"),
+}
+
+
+# نسخ المعاينة السريعة: بدون تكبير (المعاينة على نسخة مصغّرة)، النتيجة النهائية تستخدم النسخ الكاملة
+PREVIEW_FUNCS = {
+    "cv_iphone": lambda f: iphone(f, 1.0, 0),
+    "cv_iphone_2k": lambda f: iphone(f, 1.1, 0),
+    "cv_super2": lambda f: sharpen(denoise_fast(f), 0.9, 1.0, 0.35, 3.0),
 }

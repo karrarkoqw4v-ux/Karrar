@@ -4,6 +4,6 @@ aiohttp-socks
 uvloop; sys_platform != "win32"
 pillow
 numpy
-opencv-python-headless
+opencv-contrib-python-headless<5
 arabic-reshaper
 python-bidi

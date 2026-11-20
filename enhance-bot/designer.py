@@ -25,7 +25,7 @@ FAMILIES = [
     ("reels", "📱 ريلز وستوري", ["auto_vivid", "vivid", "auto_hdr", "highkey", "teal_orange"],
      ["zoom_beat", "punch", "confetti", "flash_beat", "hearts", "stars", "color_flicker", "glow"], ["cv_sharp", "enh_colors", "cv_clahe"]),
     ("real", "🔬 واقعية HDR", ["auto_hdr", "auto_grade", "hdr_nat", "hdr_strong", "hdr_cine", "hdr_gold", "enh_light"],
-     ["vignette", "filmgrain", "glow", "zoom_in"], ["cv_tm_drago", "cv_tm_reinhard", "cv_tm_mantiuk", "cv_hdr", "cv_hdr_max", "cv_ultra", "cv_dehaze", "cv_super2", "cv_detail"]),
+     ["vignette", "filmgrain", "glow", "zoom_in"], ["cv_iphone", "cv_iphone", "cv_tm_drago", "cv_tm_reinhard", "cv_tm_mantiuk", "cv_hdr", "cv_hdr_max", "cv_ultra", "cv_dehaze", "cv_super2", "cv_detail"]),
 ]
 PER = 15
 _SHORT = {"ratio916": "طولي"}

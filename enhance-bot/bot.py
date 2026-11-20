@@ -87,6 +87,7 @@ def kb_home(j: dict) -> InlineKeyboardMarkup:
     rec = j.get("rec") if not j["stack"] else None
     if rec:
         rows.append([(f"💡 مقترح: {E.EFFECTS[e].title}", f"e:{e}") for e in rec[:2]])
+    rows.append([("📱 دقة الآيفون", "e:cv_iphone"), ("📱 آيفون برو 2K", "e:cv_iphone_2k")])
     rows.append([("🏆 قوالب مصممين (150)", "dz")])
     rows.append([("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")])
     cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
@@ -148,6 +149,9 @@ def recommend(st: dict) -> list[str]:
 def video_info(w, h, dur, has_a, size, st, beat) -> str:
     kb = f"{size / 1048576:.1f}MB" if size else "—"
     lines = [f"📐 {w}×{h} • ⏱ {fmt(dur)} • {'🔊 بصوت' if has_a else '🔇 بلا صوت'} • 📦 {kb}"]
+    mbps = (size or 0) * 8 / max(dur, 0.1) / 1e6
+    if min(w, h) < 720 or (size and mbps < 1.5):
+        lines.append(f"⚠️ الفيديو وصلني مضغوطاً ({min(w, h)}p • {mbps:.1f} Mbps). لأعلى دقة أرسله كـ «ملف» 📎 بدل فيديو، لأن تيليجرام يضغط الفيديو العادي.")
     if st:
         lines.append(f"🔆 السطوع {int(st['luma'] * 100)}% • 🎨 التشبع {int(st['sat'] * 100)}% • 🌫 التشويش {'مرتفع' if st['noise'] > 2.5 else 'منخفض'} • 🔍 الحدة {'ضعيفة' if st['sharp'] < 120 else 'جيدة'}")
     if beat:
@@ -264,9 +268,9 @@ async def on_video(msg: Message, bot: Bot):
         proxy = d / "proxy.mp4"
         ss = max(0.0, min(dd / 2 - 2, dd - 4.0)) if dd > 4 else 0
         ok = await _sh("ffmpeg", "-y", "-loglevel", "error", "-ss", f"{ss:.2f}", "-t", "4", "-i", str(src),
-                       "-vf", "scale='if(gt(iw,ih),-2,360)':'if(gt(iw,ih),360,-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25",
+                       "-vf", "scale='if(gt(iw,ih),-2,min(540,iw))':'if(gt(iw,ih),min(540,ih),-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25",
                        "-map", "0:v:0", *(["-map", "0:a:0", "-c:a", "aac", "-b:a", "64k"] if has_a else ["-an"]),
-                       "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(proxy))
+                       "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(proxy))
         pm = process.info(await process.probe(str(proxy)))
         if not ok or not pm[0]:
             raise ValueError("proxy")

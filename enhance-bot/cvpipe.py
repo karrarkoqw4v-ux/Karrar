@@ -41,8 +41,8 @@ def _apply(buf: bytes, w: int, h: int, funcs) -> np.ndarray:
     return np.ascontiguousarray(fr)
 
 
-async def cv_pass(src: str, dst: str, func_ids: list[str], on_progress=None, budget_mb: float = 46.0, max_seconds: float = 480.0, crf: int = 17, preview_frames: int | None = None, cap: tuple = (1920, 1080)) -> dict:
-    funcs = [cvlib.CV_FUNCS[i][0] for i in func_ids]
+async def cv_pass(src: str, dst: str, func_ids: list[str], on_progress=None, budget_mb: float = 46.0, max_seconds: float = 480.0, crf: int = 17, preview_frames: int | None = None, cap: tuple = (1920, 1080), preview: bool = False) -> dict:
+    funcs = [(cvlib.PREVIEW_FUNCS.get(i) if preview else None) or cvlib.CV_FUNCS[i][0] for i in func_ids]
     d = await probe(src)
     w, h, dur, has_a = info(d)
     fps = _fps(d)
@@ -83,11 +83,14 @@ async def cv_pass(src: str, dst: str, func_ids: list[str], on_progress=None, bud
                     args += ["-i", src, "-map", "0:v", "-map", "1:a:0"]
                 args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(crf), "-maxrate", f"{v_kbps}k", "-bufsize", f"{v_kbps * 2}k", "-profile:v", "high", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
                 if has_a and not preview_frames:
-                    args += ["-c:a", "aac", "-b:a", "128k", "-shortest"]
+                    args += ["-c:a", "aac", "-b:a", "128k", "-t", f"{dur:.3f}"]
                 wr = await asyncio.create_subprocess_exec(*args, dst, stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-            for fr in res:
-                wr.stdin.write(fr.tobytes())
-            await wr.stdin.drain()
+            try:
+                for fr in res:
+                    wr.stdin.write(fr.tobytes())
+                await wr.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError):
+                break  # الكاتب أنهى (وصل للمدة)؛ نتحقق من النتيجة بعد الإغلاق
             done += len(res)
             if on_progress:
                 await on_progress(min(0.99, done / total))
@@ -96,8 +99,13 @@ async def cv_pass(src: str, dst: str, func_ids: list[str], on_progress=None, bud
                 raise TooHeavy(f"المعالجة ستستغرق نحو {int(el / done * total / 60) + 1} دقائق. قصّر الفيديو أو اختر أداة أخف.")
         if wr is None:
             raise RuntimeError("no frames")
-        wr.stdin.close()
+        try:
+            wr.stdin.close()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
         await wr.wait()
+        if wr.returncode != 0:
+            raise RuntimeError("encode failed")
     except BaseException:
         for p in (rd, wr):
             if p and p.returncode is None:
@@ -109,8 +117,8 @@ async def cv_pass(src: str, dst: str, func_ids: list[str], on_progress=None, bud
     return {"kind": "video", "w": out_w, "h": out_h, "dur": dur, "size": Path(dst).stat().st_size, "fps": fps}
 
 
-def frame_fn(func_ids: list[str]):
-    funcs = [cvlib.CV_FUNCS[i][0] for i in func_ids]
+def frame_fn(func_ids: list[str], preview: bool = False):
+    funcs = [(cvlib.PREVIEW_FUNCS.get(i) if preview else None) or cvlib.CV_FUNCS[i][0] for i in func_ids]
 
     def run(fr):
         for fn in funcs:

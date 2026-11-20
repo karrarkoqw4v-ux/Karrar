@@ -201,7 +201,7 @@ async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: s
     if mode == "pimg":
         args += ["-frames:v", "1", dst]
     elif mode == "pclip":
-        args += ["-t", "4", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-pix_fmt", "yuv420p"]
+        args += ["-t", "4", "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p"]
         args += (["-map", amap, "-c:a", "aac", "-b:a", "64k"] if amap else ["-an"])
         args += ["-movflags", "+faststart", dst]
     elif pl.out == "gif":
@@ -226,7 +226,7 @@ async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: s
     return {"kind": pl.out, "w": ow or pl.w, "h": oh or pl.h, "dur": od or out_dur, "size": Path(dst).stat().st_size}
 
 
-HEAVY_RES = {"r2k", "r4k", "r2x"}
+HEAVY_RES = {"r2k", "r4k", "r2x", "cv_iphone_2k"}
 
 
 async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "final", on_progress=None, budget_mb: float = 46.0) -> dict:
@@ -243,13 +243,13 @@ async def render(src: str, dst: str, stack, meta: dict, tmp: Path, mode: str = "
         mid = str(tmp / "cv_in.png")
         await _render_base(src, mid, base_stack, meta, tmp, "pimg")
         img = cv2.imread(mid)
-        run = cvpipe.frame_fn(cv_ids)
+        run = cvpipe.frame_fn(cv_ids, preview=True)
         cv2.imwrite(dst, run(img))
         return {"kind": "video", "w": img.shape[1], "h": img.shape[0], "dur": 0, "size": Path(dst).stat().st_size}
     inter = str(tmp / f"cv_inter_{mode}.mp4")
     if mode == "pclip":
         await _render_base(src, inter, base_stack, meta, tmp, "pclip")
-        return await cvpipe.cv_pass(inter, dst, cv_ids, None, budget_mb, 60, 24, cap=cap)
+        return await cvpipe.cv_pass(inter, dst, cv_ids, None, budget_mb, 60, 22, cap=cap, preview=True)
 
     async def p1(p):
         if on_progress:
