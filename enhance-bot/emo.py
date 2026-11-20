@@ -196,7 +196,7 @@ def style_for(b: InlineKeyboardButton) -> str | None:
         return "success"
     if d in ("clr", "stepcancel", "pz", "pcancel") or d.startswith(("del:", "pd:")):
         return "danger"
-    if d in ("pe:auto", "pe:iphone", "pe:bg_remove", "pe:bg_blur", "pe:bg_bokeh", "pe:skin", "pk"):
+    if d.startswith("ptl:") or d in ("pe:auto", "pe:iphone", "pe:bg_remove", "pe:bg_blur", "pe:bg_bokeh", "pe:skin", "pk"):
         return "primary"
     if b.web_app or d in ("dz", "dzfam", "e:cv_iphone", "e:cv_iphone_2k", "e:text", "stk") or d.startswith(("tpl:", "dzf:")):
         return "primary"

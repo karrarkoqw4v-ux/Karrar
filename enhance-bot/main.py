@@ -125,7 +125,7 @@ def kb_home(j: dict) -> InlineKeyboardMarkup:
         rows.append([(f"💡 مقترح: {E.EFFECTS[e].title}", f"e:{e}") for e in rec[:2]])
     rows.append([("📱 دقة الآيفون", "e:cv_iphone"), ("🔝 آيفون برو 2K", "e:cv_iphone_2k")])
     rows.append([("🏆 قوالب مصممين (150)", "dz")])
-    rows.append([("🎵 قوالب ستايل تيك توك (8)", "tpl:k")])
+    rows.append([("🎵 قوالب ستايل تيك توك (8)", "tpl:k"), ("🆕 قوالب إيقاع جديدة (12)", "tpl:n")])
     rows.append([("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")])
     cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
     rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]

@@ -52,6 +52,7 @@ def kb_home(j) -> InlineKeyboardMarkup:
         [("⟦layers⟧ إزالة الخلفية", "pe:bg_remove"), ("⟦layers⟧ تضبيب الخلفية", "pe:bg_blur")],
         [("⟦layers⟧ وضع البورتريه", "pe:bg_bokeh"), ("⟦brush⟧ تنعيم البشرة", "pe:skin")],
     ]
+    rows.append([(f"⟦star⟧ قوالب جاهزة بنقرة ({len(P.PHOTO_TEMPLATES)})", "ptl:0")])
     cats = [(f"⟦{ic}⟧ {title}", f"pc:{k}:0") for k, (ic, _fb, title) in P.CATS.items()]
     rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
     n = len(j["stack"])
@@ -74,6 +75,21 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     rows.append(nav)
     rows.append([("⟦undo⟧ تراجع", "pu"), ("⟦home⟧ القائمة", "ph")])
     rows.append([("⟦download⟧ معالجة وتصدير", "pg")])
+    return kb(rows)
+
+
+def kb_tpl(page: int) -> InlineKeyboardMarkup:
+    per = 10
+    items = [(P.PHOTO_TEMPLATES[i][0], f"pt:{i}") for i in range(page * per, min(len(P.PHOTO_TEMPLATES), (page + 1) * per))]
+    rows = [items[i:i + 2] for i in range(0, len(items), 2)]
+    nav = []
+    if page > 0:
+        nav.append(("⟦left⟧ السابق", f"ptl:{page - 1}"))
+    nav.append((f"{page + 1}/{-(-len(P.PHOTO_TEMPLATES) // per)}", "noop"))
+    if (page + 1) * per < len(P.PHOTO_TEMPLATES):
+        nav.append(("التالي ⟦right⟧", f"ptl:{page + 1}"))
+    rows.append(nav)
+    rows.append([("⟦undo⟧ تراجع", "pu"), ("⟦home⟧ القائمة", "ph")])
     return kb(rows)
 
 
@@ -219,6 +235,47 @@ async def cb_cat(cb: CallbackQuery):
         await cb.message.edit_reply_markup(reply_markup=kb_cat(cat, int(page)))
     except TelegramBadRequest:
         pass
+
+
+@router.callback_query(F.data.startswith("ptl:"))
+async def cb_tpl_list(cb: CallbackQuery):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    await cb.answer()
+    try:
+        await cb.message.edit_reply_markup(reply_markup=kb_tpl(int(cb.data[4:])))
+    except TelegramBadRequest:
+        pass
+
+
+@router.callback_query(F.data.startswith("pt:"))
+async def cb_tpl_apply(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if j["busy"]:
+        return await cb.answer("لحظة، يتم تطبيق الأداة السابقة")
+    name, ids = P.PHOTO_TEMPLATES[int(cb.data[3:])]
+    await cb.answer(f"⏳ تطبيق: {name}"[:60])
+    j["busy"] = True
+    try:
+        async with sem:
+            def work():
+                st = j["cur"]
+                for tid in ids:
+                    st = P.apply_one(st, tid, None)
+                return st
+            j["cur"] = await asyncio.to_thread(work)
+        j["stack"].extend((tid, {}) for tid in ids)
+        j["redo"].clear()
+        j["ts"] = time.time()
+        await refresh(bot, j, kb_home(j), f"✅ طُبّق القالب: {name}")
+    except Exception:  # noqa: BLE001
+        log.exception("photo template failed")
+        await bot.send_message(j["chat"], "⚠️ تعذّر تطبيق هذا القالب على الصورة.")
+    finally:
+        j["busy"] = False
 
 
 @router.callback_query(F.data == "ph")

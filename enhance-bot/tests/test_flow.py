@@ -48,7 +48,8 @@ async def main():
     await click("pe:text"); assert "اكتب النص" in last("send_message")[1]["text"]
     await say("مرحبا"); await click("ps:2"); assert cnt("edit_message_media") == 2; print("photo text step OK")
     await click("pe:bg_remove"); assert cnt("edit_message_media") == 3 and "شفافة" in last("edit_message_media")[1]["media"]["caption"]; print("bg_remove alpha OK")
-    await click("pu"); await click("pr"); await click("pk"); await click("pd:0"); assert cnt("edit_message_media") >= 6; print("photo undo/redo/delete OK")
+    n0 = cnt("edit_message_media"); await click("ptl:0"); await click("pt:1"); assert cnt("edit_message_media") == n0 + 1 and "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; print("photo template OK")
+    await click("pu"); await click("pr"); await click("pk"); await click("pd:0"); assert cnt("edit_message_media") >= 7; print("photo undo/redo/delete OK")
     await click("pg"); assert last("send_document")[1]["caption"]; print("photo export OK")
     await say("/start"); assert "لديك جلسة صور" in last("send_message")[1]["text"]; await click("cx_cancel"); assert not B.photo.PJOBS; print("photo conflict cancel OK")
     PC = list(CALLS); CALLS.clear()

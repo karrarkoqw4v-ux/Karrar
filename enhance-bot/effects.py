@@ -211,6 +211,44 @@ def _redflash(c: Ctx):
     return [vf(f"drawbox=x=0:y=0:w=iw:h=ih:color=0xE0143C@0.32:t=fill:enable='lt({m},{min(0.2, P / 3):.3f})'")]
 
 
+def _rgbbeat(c: Ctx):
+    m, P = _tt(c)
+    en = f"lt({m},{min(0.22, P / 3):.3f})"
+    return [vf(f"rgbashift=rh=-14:bh=14:rv=3:bv=-3:edge=smear:enable='{en}'")]
+
+
+def _bwflash(c: Ctx):
+    m, P = _tt(c, 2.0)
+    return [vf(f"hue=s='if(lt({m},{min(0.25, P / 3):.3f}),0,1)'")]
+
+
+def _bloombeat(c: Ctx):
+    m, P = _tt(c)
+    mT = m.replace("mod(t-", "mod(T-")
+    return [cx(f"[{{i}}]split[a][b];[b]lutyuv=y='if(gt(val,150),val,0)':u=128:v=128,gblur=sigma=22[g];[a][g]blend=c0_expr='A+(255-A)*B/255*(0.15+0.7*exp(-6*{mT}))':c1_expr=A:c2_expr=A[{{o}}]")]
+
+
+def _contrastpulse(c: Ctx):
+    m, P = _tt(c)
+    return [vf(f"eq=contrast='1+0.35*exp(-7*{m})':saturation='1+0.4*exp(-7*{m})':eval=frame")]
+
+
+def _zoomout(c: Ctx):
+    m, P = _tt(c)
+    return [vf(f"scale=w='iw*(1.18-0.18*(1-exp(-6*{m})))':h='ih*(1.18-0.18*(1-exp(-6*{m})))':eval=frame,crop={c.w}:{c.h}")]
+
+
+def _filmburn(c: Ctx):
+    m, P = _tt(c, 4.0)
+    return [vf(f"colorbalance=rs=0.0:bs=0.0,drawbox=x=0:y=0:w=iw:h=ih:color=0xFF8A1E@0.0:t=fill,eq=brightness='0.18*exp(-3*{m})':saturation='1+0.3*exp(-3*{m})':eval=frame")]
+
+
+reg("rgb_beat", "ed", "انقسام ألوان RGB على الضربة", _rgbbeat, motion=True)
+reg("bw_flash", "ed", "وميض أبيض وأسود على الإيقاع", _bwflash, motion=True)
+reg("bloom_beat", "ed", "توهج نبضي على الإيقاع", _bloombeat, motion=True)
+reg("contrast_pulse", "ed", "نبض تباين وألوان", _contrastpulse, motion=True)
+reg("zoom_out_beat", "ed", "زوم عكسي (يبتعد) على الضربة", _zoomout, motion=True)
+reg("film_burn", "ed", "حرق فيلم دافئ", _filmburn, motion=True)
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)
@@ -242,6 +280,12 @@ simple("desert", "col", "صحراء", "colorbalance=rs=.2:gs=.08:bs=-.18,eq=satu
 simple("pinkish", "col", "وردي حالم", "colorbalance=rs=.12:bs=.08:gs=-.05,eq=saturation=1.15")
 simple("violet_night", "col", "ليل بنفسجي سينمائي", "colorbalance=rs=.03:gs=-.04:bs=.12:rm=.03:bm=.1:bh=.04,eq=contrast=1.1:saturation=0.9,curves=all='0/0.02 0.5/0.5 1/1':b='0/0.03 0.5/0.55 1/1',vignette=PI/5")
 simple("teal_dark", "col", "تيل داكن بارد", "colorbalance=rs=-.06:gs=.02:bs=.05:rm=-.04:bm=.04,eq=contrast=1.12:saturation=0.85,vignette=PI/4.5")
+simple("golden_hour", "col", "ساعة ذهبية", "colorbalance=rs=.08:gs=.02:bs=-.08:rm=.1:gm=.03:bm=-.08:rh=.06:bh=-.06,eq=saturation=1.2:contrast=1.06")
+simple("moonlight", "col", "ضوء القمر", "colorbalance=rs=-.08:bs=.16:rm=-.05:bm=.1:bh=.05,eq=brightness=-0.04:saturation=0.8:contrast=1.1")
+simple("dark_academia", "col", "أكاديمي داكن دافئ", "colorbalance=rs=.05:gs=.02:bs=-.05:rm=.04:bm=-.04,eq=saturation=0.75:contrast=1.12:brightness=-0.04,vignette=PI/4.5")
+simple("tokyo", "col", "نيون طوكيو", "colorbalance=rs=.14:gs=-.08:bs=.2:rh=-.05:bh=.1,eq=saturation=1.35:contrast=1.15")
+simple("clean_bright", "col", "ساطع نظيف", "eq=brightness=0.05:contrast=1.08:saturation=1.12,unsharp=5:5:0.5")
+simple("autumn", "col", "خريفي", "colorbalance=rs=.1:gs=.02:bs=-.1:rm=.08:bm=-.08,eq=saturation=1.2:contrast=1.05")
 simple("ice", "col", "جليدي", "colorbalance=bs=.15:gs=.03:rs=-.1,eq=saturation=0.95:brightness=0.03")
 simple("forest", "col", "أخضر الغابة", "colorbalance=gs=.1:rs=-.05:bs=-.03,eq=saturation=1.15")
 simple("colorpop", "col", "احتفظ بالأحمر فقط", "colorhold=color=0xE53935:similarity=0.3:blend=0.12")

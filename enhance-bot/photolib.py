@@ -613,6 +613,114 @@ _art("a_solar", "سولاريزيشن", lambda i: np.where(i < 128, i, 255 - i).
 _art("a_edge", "حواف نيون", lambda i: _u(np.clip(cv2.GaussianBlur(cv2.Canny(i, 60, 140), (0, 0), 1.3).astype(np.float32)[..., None] / 255 * np.array([1.0, .5, .1]) * 2 + _f(i) * 0.15, 0, 1)))
 
 
+# ---- أدوات إضافية (جولة التحسين)
+_enh("e_portrait", "بورتريه احترافي (تنعيم + تحسين)", lambda i: cvlib.sharpen(_skin(_auto(i), 0.8), 0.35, 1.0, 0.1, 2.0), "تحسين تلقائي مع تنعيم بشرة طبيعي ووضوح للعينين.")
+_enh("e_food", "طعام شهي", lambda i: cvlib.vibrance(grade(cvlib.sharpen(i, 0.5, 1.0, 0.2, 2.5), con=1.12, sat=1.15, hi=(-.02, .0, .04)), 0.5))
+_enh("e_night", "تحسين التصوير الليلي", lambda i: cvlib.sharpen(cvlib.denoise(cvlib.retinex(i, 0.6), 3.0), 0.5, 1.0, 0.15, 2.0))
+_enh("e_landscape", "مناظر طبيعية HDR", lambda i: cvlib.vibrance(cvlib.dehaze(cvlib.hdr_fusion(i, 1.0), 0.6, 0.35), 0.5))
+_enh("e_clean", "تنظيف وتنقية", lambda i: cvlib.sharpen(cv2.bilateralFilter(i, 7, 25, 7), 0.4, 1.0, 0.1, 2.0))
+_enh("e_teeth_eyes", "إضاءة الوجه (Face Light)", lambda i: _facelight(i))
+
+_flt("f_golden_hour", "ساعة ذهبية", lambda i: grade(i, sh=(-.04, .0, .06), mid=(-.08, .01, .1), hi=(-.1, .0, .1), sat=1.2, con=1.06))
+_flt("f_moonlight", "ضوء القمر", lambda i: grade(i, sh=(.1, .0, -.06), mid=(.1, .0, -.06), hi=(.06, .0, -.02), sat=.8, con=1.1, bright=-.04))
+_flt("f_academia", "أكاديمي داكن", lambda i: grade(i, sh=(-.02, .02, .05), mid=(-.05, .02, .06), sat=.75, con=1.12, bright=-.04))
+_flt("f_tokyo", "نيون طوكيو", lambda i: grade(i, sh=(.2, -.08, .12), hi=(.1, -.02, -.04), sat=1.35, con=1.15))
+_flt("f_clean", "ساطع نظيف", lambda i: grade(i, sat=1.1, con=1.08, bright=.05))
+_flt("f_autumn", "خريفي", lambda i: grade(i, sh=(-.04, .02, .08), mid=(-.1, .02, .1), sat=1.2, con=1.05))
+_flt("f_noir", "نوار سينمائي", lambda i: grain(grade(gray3(i), con=1.5, bright=-.04), 0.04))
+_flt("f_dream_pink", "وردي حالم", lambda i: grade(cv2.addWeighted(i, 0.7, cv2.GaussianBlur(i, (0, 0), max(3, _S(i) * 0.015)), 0.4, 0), sh=(.02, -.02, .06), hi=(.02, .0, .05), sat=1.1, bright=.04))
+_flt("f_summer", "صيفي مشمس", lambda i: grade(i, sh=(-.02, .02, .03), hi=(-.04, .03, .06), sat=1.3, con=1.08, bright=.03))
+_flt("f_cold_blue", "أزرق ثلجي حاد", lambda i: grade(i, sh=(.12, .02, -.08), hi=(.08, .03, -.02), sat=.95, con=1.15))
+
+_art("a_light_streak", "خطوط ضوء", lambda i: _streaks(i))
+_art("a_softfocus", "تركيز ناعم (Soft Focus)", lambda i: _u(_f(i) * 0.65 + _f(cv2.GaussianBlur(i, (0, 0), max(3, _S(i) * 0.012))) * 0.5))
+_art("a_sparkle", "لمعان وبريق", lambda i: _stars(_glow(i, 0.7)))
+_art("a_fog", "ضباب سينمائي", lambda i: _fog(i))
+_art("a_ghost", "ظل شبحي", lambda i: _u(np.clip(_f(i) * 0.8 + _f(np.roll(cv2.GaussianBlur(i, (0, 0), 4), int(_S(i) * 0.05), 1)) * 0.35, 0, 1)))
+_art("a_split_tone", "تلوين ثنائي ناعم", lambda i: grade(i, sh=(.12, .0, .06), hi=(-.06, .03, .08), sat=1.1))
+_art("a_dust", "غبار وخدوش فيلم", lambda i: _dust(i))
+_art("a_neon_frame", "إطار نيون متوهج", lambda i: _neonframe(i))
+
+
+def _facelight(img):
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    d = np.sqrt(((xx - w * 0.5) / (w * 0.6)) ** 2 + ((yy - h * 0.38) / (h * 0.45)) ** 2)
+    g = np.clip(1 - d, 0, 1)[..., None] ** 1.5
+    return _u(np.clip(_f(img) * (1 + 0.28 * g) + 0.02 * g, 0, 1))
+
+
+def _streaks(img):
+    h, w = img.shape[:2]
+    ov = np.zeros((h, w), np.float32)
+    rng = np.random.default_rng(21)
+    for _ in range(6):
+        x0 = int(rng.integers(0, w))
+        cv2.line(ov, (x0, 0), (x0 - int(h * 0.45), h), float(rng.uniform(0.5, 1)), max(2, _S(img) // 60))
+    ov = cv2.GaussianBlur(ov, (0, 0), max(4, _S(img) * 0.02)) * 0.7
+    col = np.array([.6, .85, 1.0], np.float32)
+    return _u(1 - (1 - _f(img)) * (1 - ov[..., None] * col))
+
+
+def _fog(img):
+    h, w = img.shape[:2]
+    rng = np.random.default_rng(33)
+    n = cv2.resize(rng.random((max(4, h // 90), max(4, w // 90))).astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
+    n = cv2.GaussianBlur(n, (0, 0), max(6, _S(img) * 0.03))
+    n = (n - n.min()) / max(n.max() - n.min(), 1e-6)
+    lift = (0.18 + 0.3 * n)[..., None]
+    return _u(np.clip(_f(img) * (1 - lift * 0.55) + lift * 0.55 * np.array([.85, .88, .95], np.float32), 0, 1))
+
+
+def _dust(img):
+    h, w = img.shape[:2]
+    rng = np.random.default_rng(44)
+    ov = np.zeros((h, w), np.float32)
+    for _ in range(int(w * h / 12000)):
+        cv2.circle(ov, (int(rng.integers(0, w)), int(rng.integers(0, h))), int(rng.integers(1, max(2, _S(img) // 300 + 2))), 1.0, -1)
+    for _ in range(6):
+        x = int(rng.integers(0, w))
+        cv2.line(ov, (x, 0), (x + int(rng.integers(-4, 4)), h), 0.35, 1)
+    ov = cv2.GaussianBlur(ov, (0, 0), 0.7)
+    return grain(_u(np.clip(_f(img) + ov[..., None] * 0.5, 0, 1)), 0.03)
+
+
+def _neonframe(img):
+    b = max(6, int(_S(img) * 0.018))
+    out = img.copy()
+    glow = np.zeros(img.shape[:2], np.float32)
+    cv2.rectangle(glow, (b * 2, b * 2), (img.shape[1] - b * 2, img.shape[0] - b * 2), 1.0, max(2, b // 2))
+    g = cv2.GaussianBlur(glow, (0, 0), b)
+    col = np.array([1.0, 0.45, 0.9], np.float32)
+    out = np.clip(_f(img) + g[..., None] * col * 1.4 + glow[..., None] * 0.9, 0, 1)
+    return _u(out)
+
+
+# ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
+PHOTO_TEMPLATES = [
+    ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
+    ("🌅 غروب ذهبي", ["auto", "f_golden_hour", "a_glow", "a_vignette"]),
+    ("🌙 ليلي بنفسجي", ["f_violet", "a_stars", "a_glow", "a_grain"]),
+    ("🖤 نوار سينمائي", ["f_noir", "a_vignette"]),
+    ("🌃 نيون طوكيو", ["f_tokyo", "a_glow", "a_chroma"]),
+    ("📷 دقة الآيفون + إطار", ["iphone", "l_b_white"]),
+    ("🎞 فيلم قديم", ["f_kodak", "a_grain", "a_dust", "a_vignette"]),
+    ("💕 وردي حالم", ["f_dream_pink", "a_softfocus", "a_sparkle"]),
+    ("🏔 طبيعة HDR", ["e_landscape", "f_summer"]),
+    ("🍽 طعام شهي", ["e_food", "a_vignette"]),
+    ("❄️ جليدي بارد", ["f_cold_blue", "a_snow"]),
+    ("🎥 سينمائي تيل", ["f_cin", "a_grain", "l_cinema"]),
+    ("🌧 مطر حزين", ["f_teal", "a_rain", "a_vignette"]),
+    ("🍂 خريف دافئ", ["f_autumn", "a_softfocus", "a_vignette"]),
+    ("✨ بورتريه بوكيه", ["bg_bokeh", "e_portrait", "a_glow"]),
+    ("🧊 ستيكر شفاف", ["auto", "bg_sticker"]),
+    ("📱 ستوري مضبب", ["auto", "l_fit_story"]),
+    ("👑 ستوديو فاخر", ["e_portrait", "bg_studio", "a_vignette"]),
+    ("🔥 نيون بإطار متوهج", ["f_cyber", "a_neon_frame"]),
+    ("📸 مجلة أزياء", ["auto", "f_matte", "l_b_white"]),
+]
+
+
 # ================================================================ الإطارات والقياسات
 def _lay(id, title, fn):
     @tool(id, "lay", title)

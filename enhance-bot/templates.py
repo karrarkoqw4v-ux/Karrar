@@ -57,4 +57,19 @@ TT_TEMPLATES = [
     ("⚡ ضبابية وغليتش", [T("teal_dark"), T("blur_burst"), T("glitch_burst"), T("shake_beat")]),
     ("🔥 كاين إيديت مظلم", [T("teal_dark"), T("blur_burst"), T("red_flash"), T("flash_beat"), T("vignette")]),
 ]
-TEMPLATE_SETS = {"k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
+# قوالب إيقاع وسينما جديدة (أساليب أصلية)
+NEW_TEMPLATES = [
+    ("🌅 ساعة ذهبية سينمائية", [T("golden_hour"), T("glow"), T("vignette"), T("filmgrain"), T("letterbox")]),
+    ("🌙 قمر هادئ", [T("moonlight"), T("stars"), T("dreamy"), T("vignette")]),
+    ("📚 أكاديمي داكن", [T("dark_academia"), T("filmgrain"), T("vignette"), T("zoom_in")]),
+    ("🌃 طوكيو الليل", [T("tokyo"), T("bloom_beat"), T("glitch_burst"), T("rgb_beat")]),
+    ("⚡ نبض التباين", [T("auto_vivid"), T("contrast_pulse"), T("zoom_beat")]),
+    ("🎞 حرق فيلم", [T("kodak"), T("film_burn"), T("filmgrain"), T("vignette")]),
+    ("🖤 وميض أبيض وأسود", [T("teal_dark"), T("bw_flash"), T("flash_beat"), T("vignette")]),
+    ("🌀 زوم عكسي إيقاعي", [T("cin_cool"), T("zoom_out_beat"), T("rgb_beat"), T("glow")]),
+    ("🍂 خريف دافئ", [T("autumn"), T("dreamy"), T("vignette"), T("filmgrain")]),
+    ("✨ ساطع نظيف", [T("clean_bright"), T("cv_sharp"), T("bloom_beat")]),
+    ("💥 انفجار ألوان", [T("hue_pulse"), T("rgb_beat"), T("zoom_beat"), T("strobe")]),
+    ("🎬 ترايلر درامي", [T("teal_dark"), T("letterbox"), T("zoom_out_beat"), T("film_burn"), T("vignette")]),
+]
+TEMPLATE_SETS = {"n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 4), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
