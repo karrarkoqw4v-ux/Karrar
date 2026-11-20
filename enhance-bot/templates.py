@@ -46,4 +46,15 @@ EDIT_TEMPLATES = [
     ("👑 ذهبي فاخر", [T("golden"), T("flash_beat"), T("glow"), T("letterbox")]),
 ]
 assert len(EDIT_TEMPLATES) == 12
-TEMPLATE_SETS = {"l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
+# قوالب مستوحاة من أسلوبين شائعين على تيك توك (ألوان وحركة، وليست نسخاً لعمل أحد)
+TT_TEMPLATES = [
+    ("🌌 ليل بنفسجي حالم", [T("violet_night"), T("stars"), T("glow"), T("filmgrain"), T("zoom_in")]),
+    ("🌙 قمر وغموض", [T("violet_night"), T("dreamy"), T("vignette"), T("filmgrain")]),
+    ("🔮 سينمائي بنفسجي هادئ", [T("violet_night"), T("cv_clahe"), T("letterbox"), T("zoom_in")]),
+    ("🌃 حديقة الليل", [T("night"), T("violet_night"), T("stars"), T("glow")]),
+    ("🖤 تيل داكن حزين", [T("teal_dark"), T("vignette"), T("filmgrain"), T("zoom_in")]),
+    ("🩸 أحمر وأبيض درامي", [T("teal_dark"), T("red_flash"), T("glow"), T("zoom_beat")]),
+    ("⚡ ضبابية وغليتش", [T("teal_dark"), T("blur_burst"), T("glitch_burst"), T("shake_beat")]),
+    ("🔥 كاين إيديت مظلم", [T("teal_dark"), T("blur_burst"), T("red_flash"), T("flash_beat"), T("vignette")]),
+]
+TEMPLATE_SETS = {"k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}

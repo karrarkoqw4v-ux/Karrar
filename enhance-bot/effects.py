@@ -198,6 +198,21 @@ reg("flip_alt", "ed", "قلب أفقي متناوب", _flipalt, motion=True)
 reg("zoom_cut", "ed", "قطع زوم متناوب", _zoomcut, motion=True)
 reg("glitch_burst", "ed", "غليتش دفعات", _glitchburst, motion=True)
 reg("tilt", "ed", "ميلان متمايل", _tilt, motion=True)
+
+
+def _blurburst(c: Ctx):
+    m, P = _tt(c, 2.0)
+    en = f"lt({m},{min(0.3, P / 3):.3f})"
+    return [vf(f"avgblur=sizeX=2:sizeY=61:enable='{en}',eq=brightness=-0.05:enable='{en}'")]
+
+
+def _redflash(c: Ctx):
+    m, P = _tt(c, 2.0)
+    return [vf(f"drawbox=x=0:y=0:w=iw:h=ih:color=0xE0143C@0.32:t=fill:enable='lt({m},{min(0.2, P / 3):.3f})'")]
+
+
+reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
+reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)
 reg("ramp_cine", "ed", "سلو-فاست سينمائي (يكتم الصوت)", _ramp([(0.3, 1.0), (0.25, 0.4), (0.45, 1.8)]), motion=True)
 reg("ramp_pulse", "ed", "سرعة متقطعة بطيء/سريع (يكتم الصوت)", _ramp([(0.2, 1.6), (0.15, 0.45), (0.2, 1.8), (0.15, 0.45), (0.3, 1.5)]), motion=True)
@@ -225,13 +240,15 @@ simple("pastel", "col", "باستيل", "eq=saturation=0.7:brightness=0.06:contr
 simple("underwater", "col", "تحت الماء", "colorbalance=rs=-.35:gs=.05:bs=.3,eq=saturation=0.9:contrast=1.05,gblur=sigma=0.7")
 simple("desert", "col", "صحراء", "colorbalance=rs=.2:gs=.08:bs=-.18,eq=saturation=0.85:contrast=1.15:brightness=0.03")
 simple("pinkish", "col", "وردي حالم", "colorbalance=rs=.12:bs=.08:gs=-.05,eq=saturation=1.15")
+simple("violet_night", "col", "ليل بنفسجي سينمائي", "colorbalance=rs=.03:gs=-.04:bs=.12:rm=.03:bm=.1:bh=.04,eq=contrast=1.1:saturation=0.9,curves=all='0/0.02 0.5/0.5 1/1':b='0/0.03 0.5/0.55 1/1',vignette=PI/5")
+simple("teal_dark", "col", "تيل داكن بارد", "colorbalance=rs=-.06:gs=.02:bs=.05:rm=-.04:bm=.04,eq=contrast=1.12:saturation=0.85,vignette=PI/4.5")
 simple("ice", "col", "جليدي", "colorbalance=bs=.15:gs=.03:rs=-.1,eq=saturation=0.95:brightness=0.03")
 simple("forest", "col", "أخضر الغابة", "colorbalance=gs=.1:rs=-.05:bs=-.03,eq=saturation=1.15")
 simple("colorpop", "col", "احتفظ بالأحمر فقط", "colorhold=color=0xE53935:similarity=0.3:blend=0.12")
 simple("invert", "col", "عكس الألوان", "negate")
-split_fx("dreamy", "col", "حالم ناعم", "[{i}]split[a][b];[b]gblur=sigma=18[g];[a][g]blend=all_mode=screen:all_opacity=0.5,eq=saturation=1.2:brightness=0.03[{o}]")
-split_fx("glow", "col", "توهج", "[{i}]split[a][b];[b]lutyuv=y='if(gt(val,165),val,0)',gblur=sigma=25[g];[a][g]blend=all_mode=screen[{o}]")
-split_fx("neon", "col", "حواف نيون", "[{i}]split[a][b];[b]edgedetect=low=0.08:high=0.2,gblur=sigma=3,format=rgb24,colorchannelmixer=rr=0.1:gg=0.9:bb=1[e];[a]eq=brightness=-0.25:saturation=0.8,format=rgb24[d];[d][e]blend=all_mode=screen[{o}]")
+split_fx("dreamy", "col", "حالم ناعم", "[{i}]split[a][b];[b]gblur=sigma=18[g];[a][g]blend=c0_mode=screen:c0_opacity=0.5:c1_opacity=0:c2_opacity=0,eq=saturation=1.2:brightness=0.03[{o}]")
+split_fx("glow", "col", "توهج", "[{i}]split[a][b];[b]lutyuv=y='if(gt(val,165),val,0)':u=128:v=128,gblur=sigma=25[g];[a][g]blend=c0_mode=screen:c1_opacity=0:c2_opacity=0[{o}]")
+split_fx("neon", "col", "حواف نيون", "[{i}]split[a][b];[b]edgedetect=low=0.08:high=0.2,gblur=sigma=3,format=rgb24,colorchannelmixer=rr=0.1:gg=0.9:bb=1[e];[a]eq=brightness=-0.25:saturation=0.8,format=rgb24[d];[d][e]blend=c0_mode=screen:c1_opacity=0:c2_opacity=0[{o}]")
 
 # =============== HDR والتحسين (عدة أنماط ليختار المستخدم) ===============
 simple("hdr_nat", "hdr", "HDR طبيعي", f"unsharp=13:13:0.45:13:13:0.0,curves=all='0/0.02 0.25/0.28 0.5/0.52 0.8/0.82 1/0.98',vibrance=intensity=0.45,eq=saturation=1.12:contrast=1.05")

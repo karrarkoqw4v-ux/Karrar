@@ -47,7 +47,7 @@ async def main():
     await click("e:teal_orange"); assert cnt("edit_message_media") == 2
     await click("e:snow"); assert cnt("edit_message_media") == 3
     await click("u"); assert cnt("edit_message_media") == 4; print("undo OK")
-    await click("tpl:l"); ph = last("send_photo"); assert "قوالب" in ph[1]["caption"]
+    await click("tpl:k"); assert "تيك توك" in last("send_photo")[1]["caption"]; await click("tpl:l"); ph = last("send_photo"); assert "قوالب" in ph[1]["caption"]
     nb = [b["text"] for r in ph[1]["reply_markup"]["inline_keyboard"] for b in r]; print("TEMPLATE BUTTONS:", len(nb)); await click("tpl:e"); assert "الإيديت" in last("send_photo")[1]["caption"]; await click("t:e:2"); print("edit template OK")
     await click("t:l:7"); assert cnt("edit_message_media") >= 5; print("template applied live OK")
     await click("e:text"); assert "اكتب النص" in last("send_message")[1]["text"]
