@@ -82,6 +82,7 @@ CATS = {
     "lay": ("grid", "▦", "إطارات وقياسات"),
     "trf": ("move", "↔", "تحويل وقص"),
     "txt": ("chat", "💬", "نصوص وعلامة مائية"),
+    "pro": ("gem", "🏆", "أدوات المصممين المحترفين"),
 }
 
 
@@ -793,6 +794,63 @@ def _prism(img):
 _art("a_prism", "منشور ضوئي (Prism)", _prism)
 
 
+_SHB = {"teal": (.10, .04, -.08), "blue": (.14, .0, -.06), "purple": (.12, -.06, .05), "green": (-.04, .10, -.04)}
+_HIB = {"orange": (-.10, .02, .10), "gold": (-.10, .05, .08), "pink": (.04, -.03, .08), "white": (.03, .03, .03)}
+
+
+@tool("pro_split_tone", "pro", "تلوين ثنائي احترافي (ظلال/إضاءات)", steps=[
+    ("choice", "لون الظلال:", [("تيل", "teal"), ("أزرق", "blue"), ("بنفسجي", "purple"), ("أخضر", "green")], "sh"),
+    ("choice", "لون الإضاءات:", [("برتقالي", "orange"), ("ذهبي", "gold"), ("وردي", "pink"), ("أبيض", "white")], "hi")])
+def pro_split_tone(img, a, p=None):
+    p = p or {}
+    return grade(img, sh=_SHB.get(p.get("sh", "teal")), hi=_HIB.get(p.get("hi", "orange")), sat=1.08, con=1.05), a
+
+
+def _pro(id, title, fn, desc=""):
+    @tool(id, "pro", title, desc=desc)
+    def _f2(img, a, _fn=fn):
+        return _fn(img), a
+    return _f2
+
+
+def _dodge_burn(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
+    L = lab[..., 0]
+    low = cv2.GaussianBlur(L, (0, 0), max(6, _S(img) * 0.03))
+    lab[..., 0] = np.clip(L + (L - low) * 0.7, 0, 255)
+    return cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
+
+
+def _luma_sharp(img):
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a_, b_ = cv2.split(lab)
+    bl = cv2.GaussianBlur(l, (0, 0), max(1.0, _S(img) * 0.0016))
+    l2 = cv2.addWeighted(l, 1.7, bl, -0.7, 0)
+    return cv2.cvtColor(cv2.merge([l2, a_, b_]), cv2.COLOR_LAB2BGR)
+
+
+_pro("pro_dodge_burn", "تباين محلي (Dodge & Burn)", _dodge_burn, "يبرز التفاصيل والأبعاد كما في الريتاتش الاحترافي.")
+_pro("pro_luma_sharp", "حدة إضاءة فقط (Luma Sharpen)", _luma_sharp, "توضيح بدون هالات ألوان.")
+_pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
+_pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
+
+
+PHOTO_PRO_PACKS = [
+    ("🏆 بورتريه استوديو", ["e_portrait", "bg_studio", "pro_dodge_burn", "a_vignette"]),
+    ("🛍 منتجات (خلفية بيضاء + ظل)", ["auto", "bg_shadow", "pro_luma_sharp"]),
+    ("📱 ستوري احترافي", ["e_portrait", "pro_color_pop", "l_fit_story"]),
+    ("🎬 سينمائي احترافي", ["pro_cine_curve", "pro_split_tone", "a_halation", "a_grain", "l_cinema"]),
+    ("🌅 غروب مصممين", ["auto", "f_golden_hour", "pro_dodge_burn", "a_halation", "a_vignette"]),
+    ("🌙 ليلي فني", ["e_night", "f_moonlight", "a_prism", "a_vignette"]),
+    ("💎 دقة آيفون برو", ["iphone_up", "pro_luma_sharp", "pro_color_pop"]),
+    ("🧊 ستيكر احترافي", ["e_portrait", "bg_sticker"]),
+    ("🎨 نيون فني", ["f_tokyo", "a_halation", "a_rgb_pop", "a_neon_frame"]),
+    ("🍂 دفء فاخر", ["f_autumn", "pro_dodge_burn", "a_softfocus"]),
+    ("🌸 بورتريه وردي", ["bg_rose", "e_portrait", "a_sparkle", "pro_color_pop"]),
+    ("📰 مجلة فاخرة", ["auto", "f_matte", "pro_luma_sharp", "l_b_white"]),
+]
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
@@ -823,6 +881,8 @@ PHOTO_TEMPLATES = [
     ("🌸 بورتريه وردي", ["bg_rose", "e_portrait", "a_sparkle"]),
     ("🏅 بورتريه ذهبي", ["bg_gold", "e_portrait", "a_glow"]),
     ("🔵 أحادي أزرق فني", ["f_mono_blue", "a_grain", "a_vignette"]),
+    ("🔺 منشور ضوئي فني", ["f_cin", "a_prism", "a_glow"]),
+    ("🎬 هالة فيلمية", ["f_expired", "a_halation", "a_vignette"]),
 ]
 
 

@@ -71,6 +71,7 @@ CATS = {
     "cv": ("🔬", "واقعية فائقة (مكتبات عالمية)"),
     "aud": ("🎵", "الصوت"),
     "out": ("📤", "تصدير خاص"),
+    "pro": ("🏆", "أدوات المصممين المحترفين (تدريج • تباين • صوت)"),
 }
 EFFECTS: dict[str, Effect] = {}
 
@@ -298,6 +299,26 @@ reg("drift_pan", "fx", "انجراف كاميرا بطيء (Drift)", lambda c: [
 reg("halation", "fx", "توهج أحمر فيلمي (Halation)", lambda c: [cx("[{i}]split[a][b];[b]lutyuv=y='if(gt(val,165),val,0)':u=128:v=128,format=gbrp,colorchannelmixer=rr=1:gg=0.18:bb=0.06,gblur=sigma=18[g];[a]format=gbrp[a2];[a2][g]blend=all_mode=screen:all_opacity=0.85[{o}]")], motion=True, desc="هالة حمراء دافئة حول الإضاءات كأفلام السينما الخام.")
 reg("chroma_wave", "col", "موجة ألوان متدرّجة", lambda c: [vf("hue=h='28*sin(1.6*t)':s='1.12'")], motion=True)
 reg("breath_zoom", "fx", "تنفّس (زوم داخل/خارج ببطء)", lambda c: [vf(f"scale=w='iw*(1.06+0.05*sin(1.3*t))':h='ih*(1.06+0.05*sin(1.3*t))':eval=frame,crop={c.w}:{c.h}")], motion=True)
+_SH = {"teal": "rs=-.10:gs=.04:bs=.08:rm=-.05:bm=.04", "blue": "rs=-.06:bs=.14:bm=.06", "purple": "rs=.05:gs=-.06:bs=.12:rm=.03:bm=.06", "green": "rs=-.04:gs=.10:bs=-.04:gm=.04"}
+_HI = {"orange": "rh=.10:gh=.02:bh=-.10", "gold": "rh=.08:gh=.05:bh=-.10", "pink": "rh=.08:gh=-.03:bh=.04", "white": "rh=.03:gh=.03:bh=.03"}
+
+
+def _splittone(c: Ctx):
+    sh = _SH.get(c.p.get("sh", "teal"), _SH["teal"])
+    hi = _HI.get(c.p.get("hi", "orange"), _HI["orange"])
+    return [vf(f"colorbalance={sh}:{hi},eq=saturation=1.08:contrast=1.05")]
+
+
+reg("pro_split_tone", "pro", "تلوين ثنائي احترافي (ظلال/إضاءات)", _splittone,
+    steps=[("choice", "لون الظلال:", [("تيل", "teal"), ("أزرق", "blue"), ("بنفسجي", "purple"), ("أخضر", "green")], "sh"),
+           ("choice", "لون الإضاءات:", [("برتقالي", "orange"), ("ذهبي", "gold"), ("وردي", "pink"), ("أبيض", "white")], "hi")],
+    desc="Split Toning كما في برامج المصممين: لون للظلال ولون للإضاءات.")
+reg("pro_scurve", "pro", "منحنى تباين سينمائي (S-Curve)", lambda c: [vf("curves=all='0/0 0.25/0.18 0.5/0.5 0.75/0.84 1/1',eq=saturation=0.97")])
+reg("pro_skin_glow", "pro", "توهج بشرة ناعم (Glow)", lambda c: [cx("[{i}]split[a][b];[b]gblur=sigma=14[g];[a][g]blend=c0_mode=screen:c0_opacity=0.22:c1_opacity=0:c2_opacity=0,colorbalance=rm=.03:bm=-.02[{o}]")])
+reg("pro_clarity", "pro", "وضوح احترافي (Clarity)", lambda c: [vf("unsharp=7:7:0.9:7:7:0.0,eq=contrast=1.05")])
+reg("pro_local_contrast", "pro", "تباين محلي (Dodge & Burn)", lambda c: [vf("curves=all='0/0 0.3/0.26 0.7/0.74 1/1',unsharp=13:13:0.7")])
+reg("pro_punch", "pro", "ألوان بارزة (Color Punch)", lambda c: [vf("curves=all='0/0.02 0.5/0.52 1/1',eq=contrast=1.1:saturation=1.18,unsharp=5:5:0.6")])
+reg("pro_audio_master", "pro", "ماستر صوت احترافي (تنقية + ضغط + ضبط مستوى)", lambda c: [af("highpass=f=70,afftdn=nf=-28,acompressor=threshold=0.12:ratio=3:attack=15:release=250,equalizer=f=3000:t=q:w=1:g=2,loudnorm=I=-14:TP=-1.5:LRA=9")], noprev=True, desc="للأصوات والتعليق: يحذف الضجيج ويوحّد المستوى.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)

@@ -74,6 +74,9 @@ NEW_TEMPLATES = [
     ("🔴 أحمر وحيد", [T("hold_red"), T("vignette_pulse"), T("zoom_beat"), T("filmgrain")]),
     ("🫥 ألوان تسقط", [T("auto_vivid"), T("sat_drop"), T("rgb_beat"), T("flash_beat")]),
     ("🪞 مرآة وإيقاع", [T("tokyo"), T("mirror_split"), T("vert_shake"), T("bloom_beat")]),
+    ("🌈 موجة حالمة", [T("chroma_wave"), T("breath_zoom"), T("dreamy"), T("filmgrain")]),
+    ("🎞 هالة سينمائية", [T("kodak"), T("halation"), T("drift_pan"), T("vignette")]),
+    ("🫁 تنفّس هادئ", [T("moonlight"), T("breath_zoom"), T("stars"), T("fade_io")]),
 ]
 # قوالب بروح تطبيقات المونتاج العالمية (تنفيذ أصلي بالكامل)
 CAPCUT_TEMPLATES = [
@@ -90,4 +93,21 @@ CAPCUT_TEMPLATES = [
     ("📱 تيك توك ترند + وسم", [T("ratio916"), T("vivid"), T("punch"), T("tag", text="NEW", style="live", pos="tl")]),
     ("💥 غليتش وايب", [T("cyber"), T("glitch_burst"), T("rgb_beat"), T("blur_burst")]),
 ]
-TEMPLATE_SETS = {"c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 5), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
+# باقات المصممين المحترفين: ماكرو متعدد الأدوات بنقرة واحدة
+PRO_PACKS = [
+    ("🎬 باقة هوليوود", [T("pro_scurve"), T("teal_orange"), T("halation"), T("vignette"), T("filmgrain"), T("letterbox")]),
+    ("📱 باقة تيك توك محترفة", [T("ratio916"), T("pro_punch"), T("whip_zoom"), T("rgb_beat"), T("flash_beat"), T("pro_audio_master")]),
+    ("⚡ باقة ريمكس كاب كات", [T("auto_vivid"), T("whip_zoom"), T("spin_beat"), T("bloom_beat"), T("invert_beat")]),
+    ("📷 باقة دقة آيفون برو", [T("cv_iphone_2k"), T("pro_clarity"), T("pro_punch")]),
+    ("🧑 باقة بورتريه", [T("pro_skin_glow"), T("golden_hour"), T("pro_local_contrast"), T("vignette")]),
+    ("🌙 باقة ليلية", [T("cv_lowlight"), T("moonlight"), T("bloom_beat"), T("filmgrain")]),
+    ("🎭 باقة دراما سينمائية", [T("dark_academia"), T("film_burn"), T("drift_pan"), T("letterbox")]),
+    ("💠 باقة نيون", [T("tokyo"), T("glow"), T("rgb_beat"), T("hue_pulse")]),
+    ("🎥 باقة فلوج", [T("clean_bright"), T("pro_clarity"), T("punch"), T("ratio916"), T("pro_audio_master")]),
+    ("📼 باقة ريترو", [T("vintage"), T("vhs"), T("tag", text="REC", style="rec", pos="tl")]),
+    ("🔬 باقة HDR واقعي", [T("cv_hdr_max"), T("pro_scurve"), T("pro_split_tone", sh="blue", hi="gold")]),
+    ("🎙 باقة صوت بودكاست", [T("pro_audio_master"), T("treble"), T("stereo_wide")]),
+    ("🌅 باقة غروب مصممين", [T("pro_split_tone", sh="purple", hi="orange"), T("golden_hour"), T("bloom_beat"), T("vignette")]),
+    ("🖤 باقة نوار فاخر", [T("noir"), T("pro_scurve"), T("filmgrain"), T("vignette"), T("letterbox")]),
+]
+TEMPLATE_SETS = {"p": ("🏆 باقات المصممين المحترفين", PRO_PACKS, 4), "c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 6), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}

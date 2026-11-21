@@ -52,8 +52,15 @@ async def main():
     await click("ad:bc"); await click("ad:bca:all"); await say("رسالة إذاعة تجريبية"); assert "ad:bcgo" in str(last("send_message")[1]); await click("ad:bcgo"); assert cnt("copy_message") >= 2 and "انتهت الإذاعة" in last("send_message", "edit_message_text")[1]["text"]; print("ADMIN PANEL OK")
     B.admin.STATE.clear()
     # ---- وضع الصور
-    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me"], qb; print("MODE CHOOSER OK")
+    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me", "mode:pro"], qb; print("MODE CHOOSER OK")
     await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]
+    await click("mode:pro"); assert [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r] == ["pro:video", "pro:photo"]
+    await click("pro:photo"); await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
+    ed = last("send_photo"); assert "المصممين المحترفين" in ed[1]["caption"]; assert "ptp:0" in str(ed[1]["reply_markup"])
+    await click("ptp:0"); await click("pq:0"); assert "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; await click("pc:pro:0"); await click("pe:pro_dodge_burn"); print("PRO PHOTO OK")
+    B.photo.drop(7); await click("mode:pro"); await click("pro:video"); await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
+    ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"] and "tpl:p" in str(ed[1]["reply_markup"]); await click("tpl:p"); await click("t:p:1"); await click("c:pro:0"); print("PRO VIDEO OK")
+    B.photo.drop(7); B.drop_job(7); PROC = list(CALLS); CALLS.clear()
     await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
     ed = last("send_photo"); assert "استوديو الصور" in ed[1]["caption"]; pk = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("PHOTO HOME:", len(pk), pk[:3])
     await click("pc:bg:0"); await click("pe:bg_blur"); assert cnt("edit_message_media") == 1; print("photo live edit OK")
@@ -98,9 +105,9 @@ async def main():
     await say("/start"); assert "مرحبا بك" in last("send_message")[1]["text"]; print("no conflict on fresh job OK")
     await say("/stats"); print(last("send_message")[1]["text"].replace("\n", " | ")[:200])
     import emo as _e
-    leak = [(n, d) for n, d in PC + CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]
+    leak = [(n, d) for n, d in PROC + PC + CALLS if _e._EMOJI.search(_e._TAG.sub("", str(d.get("text", "")) + str(d.get("caption", "")) + str((d.get("media") or {}).get("caption", ""))))]
     assert not leak, leak[:2]
-    btns = [b for n, d in PC + CALLS for r in ((d.get("reply_markup") or {}).get("inline_keyboard") or []) for b in r]
+    btns = [b for n, d in PROC + PC + CALLS for r in ((d.get("reply_markup") or {}).get("inline_keyboard") or []) for b in r]
     assert btns and not [b for b in btns if _e._EMOJI.search(b["text"])], [b for b in btns if _e._EMOJI.search(b["text"])][:3]
     print("premium icons on", sum(1 for b in btns if b.get("icon_custom_emoji_id")), "of", len(btns), "buttons")
     print("FLOW OK")

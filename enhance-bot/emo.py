@@ -206,7 +206,7 @@ def style_for(b: InlineKeyboardButton) -> str | None:
     d = b.callback_data or ""
     if d in ("au:reg", "au:start"):
         return "success"
-    if d in ("au:login", "au:gen", "au:me"):
+    if d in ("au:login", "au:gen", "au:me", "mode:pro", "pro:video") or d.startswith("ptp:"):
         return "primary"
     if d in ("au:outy",):
         return "danger"

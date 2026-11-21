@@ -82,6 +82,7 @@ router = Router()
 sem = asyncio.Semaphore(MAX_PARALLEL)
 pv_sem = asyncio.Semaphore(3)
 JOBS: dict[int, dict] = {}
+PRO_NEXT: set[int] = set()  # مستخدمون ضغطوا «مونتاج المصممين محترفين» وينتظرون رفع الملف
 
 WELCOME = (
     "👋 <b>مرحبا بك</b>\n\n"
@@ -93,7 +94,8 @@ WELCOME = (
 def kb_mode() -> InlineKeyboardMarkup:
     return _kb([[InlineKeyboardButton(text="⟦film⟧ مونتاج استوديو فيديوهات", callback_data="mode:video", style="primary")],
                 [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")],
-                [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")]])
+                [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")],
+                [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")]])
 
 
 async def send_menu(msg: Message):
@@ -101,6 +103,15 @@ async def send_menu(msg: Message):
 
 
 auth.START["fn"] = send_menu
+
+
+def _pop_pro(uid: int) -> bool:
+    on = uid in PRO_NEXT
+    PRO_NEXT.discard(uid)
+    return on
+
+
+photo.HOOK["pro"] = _pop_pro
 HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
 
 
@@ -128,14 +139,33 @@ def _kb(rows: list) -> InlineKeyboardMarkup:
 
 
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
+def kb_pro_home(j: dict) -> InlineKeyboardMarkup:
+    """واجهة «المصممين المحترفين»: كل الأدوات والقوالب مجمّعة بأقسام احترافية"""
+    rows = [[("🏆 باقات المصممين المحترفين (14)", "tpl:p")],
+            [("🎥 قوالب كاب كات (12)", "tpl:c"), ("⚡ تأثيرات كاب كات", "c:ed:0")],
+            [("🏆 قوالب مصممين (150)", "dz"), ("🆕 قوالب الإيقاع (18)", "tpl:n")],
+            [("🎵 قوالب تيك توك (8)", "tpl:k"), ("🔥 قوالب الإيديت (12)", "tpl:e")],
+            [("🎞 قوالب الأجواء (25)", "tpl:l"), ("🎨 أدوات التصميم الاحترافية", "c:pro:0")],
+            [("📱 دقة الآيفون", "e:cv_iphone"), ("🔝 آيفون برو 2K", "e:cv_iphone_2k")]]
+    cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in ("auto", "col", "hdr", "cv", "res", "aud", "edit", "fx", "part", "out")]
+    rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
+    rows.append(text_row(j))
+    n = len(j["stack"])
+    rows.append([(f"📋 المختارة ({n})", "stk"), ("↩️ تراجع", "u"), ("↪️ إعادة", "redo")])
+    rows.append([("🧹 مسح الكل", "clr"), ("🚀 معالجة وتصدير", "go")])
+    return _kb(rows)
+
+
 def kb_home(j: dict) -> InlineKeyboardMarkup:
+    if j.get("pro"):
+        return kb_pro_home(j)
     rows = []
     rec = j.get("rec") if not j["stack"] else None
     if rec:
         rows.append([(f"💡 مقترح: {E.EFFECTS[e].title}", f"e:{e}") for e in rec[:2]])
     rows.append([("📱 دقة الآيفون", "e:cv_iphone"), ("🔝 آيفون برو 2K", "e:cv_iphone_2k")])
     rows.append([("🏆 قوالب مصممين (150)", "dz")])
-    rows.append([("🎵 قوالب ستايل تيك توك (8)", "tpl:k"), ("🆕 قوالب إيقاع جديدة (15)", "tpl:n")])
+    rows.append([("🎵 قوالب ستايل تيك توك (8)", "tpl:k"), ("🆕 قوالب إيقاع جديدة (18)", "tpl:n")])
     rows.append([("🎥 قوالب بروح كاب كات (12)", "tpl:c")])
     rows.append([("🎞 قوالب الأجواء (25)", "tpl:l"), ("🔥 قوالب الإيديت (12)", "tpl:e")])
     cats = [(f"{E.CATS[c][0]} {E.CATS[c][1]}", f"c:{c}:0") for c in HOME_CATS]
@@ -210,7 +240,7 @@ def video_info(w, h, dur, has_a, size, st, beat) -> str:
 def caption(j: dict, note: str = "") -> str:
     st = j["stack"]
     lines = "\n".join(f"{i}. {E.EFFECTS[e].title}" for i, (e, _) in enumerate(st[-8:], max(1, len(st) - 7)))
-    head = "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇" + (f"\n{j['info']}" if j.get("info") and not j["stack"] else "")
+    head = ("⟦gem⟧ <b>استوديو المصممين المحترفين</b> — المعاينة مباشرة 👇" if j.get("pro") else "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇") + (f"\n{j['info']}" if j.get("info") and not j["stack"] else "")
     body = f"\n\n<b>المختارة ({len(st)}):</b>\n{lines}" if st else "\n\nاختر تأثيراً أو قالباً من الأزرار تحت الفيديو 🪄"
     tail = f"\n\n{note}" if note else ""
     return (head + body + tail)[:1000]
@@ -362,9 +392,26 @@ async def cb_cx_cancel(cb: CallbackQuery, bot: Bot):
     await bot.send_message(cb.message.chat.id, WELCOME, reply_markup=kb_mode())
 
 
+@router.callback_query(F.data == "mode:pro")
+async def cb_mode_pro(cb: CallbackQuery):
+    await cb.answer()
+    PRO_NEXT.discard(cb.from_user.id)
+    await cb.message.answer("⟦gem⟧ <b>مونتاج المصممين المحترفين</b>\n\nكل أدوات التصميم الاحترافية + قوالب وتأثيرات كاب كات + باقات جاهزة + التحسين والدقة والصوت.\n\n🪄 اختر نوع الملف الذي سترفعه:",
+                            reply_markup=_kb([[InlineKeyboardButton(text="⟦film⟧ فيديو", callback_data="pro:video", style="primary"), InlineKeyboardButton(text="⟦photos⟧ صورة", callback_data="pro:photo", style="success")]]))
+
+
+@router.callback_query(F.data.in_({"pro:video", "pro:photo"}))
+async def cb_pro_kind(cb: CallbackQuery):
+    await cb.answer()
+    PRO_NEXT.add(cb.from_user.id)
+    what = "الفيديو (حتى 20MB، يُعدَّل كاملاً بدون قص)" if cb.data == "pro:video" else "الصورة (لأعلى جودة أرسلها كـ «ملف» 📎)"
+    await cb.message.answer(f"⟦gem⟧ <b>وضع المصممين المحترفين</b>\n\n🪄 ارفع {what} الآن.")
+
+
 @router.callback_query(F.data.in_({"mode:video", "mode:photo"}))
 async def cb_mode(cb: CallbackQuery):
     await cb.answer()
+    PRO_NEXT.discard(cb.from_user.id)
     if cb.data == "mode:video":
         await cb.message.answer("⟦film⟧ <b>مونتاج استوديو فيديوهات</b>\n\n🪄 ارسل الفيديو من فضلك (حتى 20MB). يبقى الفيديو كاملاً بدون أي قص.")
     else:
@@ -437,6 +484,8 @@ async def on_video(msg: Message, bot: Bot):
          "pmeta": {"w": pm[0], "h": pm[1], "dur": pm[2], "audio": has_a, "stats": stats, "beat": pbeat}, "proxy": str(proxy), "thumb": str(thumb),
          "stack": [], "redo": [], "pend": None, "ts": time.time(), "running": False, "busy": False, "gallery": {}, "ed": None, "rend": 0,
          "chat": msg.chat.id, "wtoken": secrets.token_urlsafe(9), "dz": {}, "rec": recommend(stats), "info": video_info(w, h, dd, has_a, size, stats, beat)}
+    j["pro"] = uid in PRO_NEXT
+    PRO_NEXT.discard(uid)
     webapp.WTOKENS[j["wtoken"]] = uid
     JOBS[uid] = j
     try:

@@ -282,6 +282,8 @@ async def on_auth_text(msg: Message, bot: Bot):
         if n >= MAX_TRIES:
             FAILS[uname.lower()] = (0, time.time() + LOCK_SECS)
             STATE.pop(uid, None)
+            if db.HOOKS.get("lockout"):
+                asyncio.get_running_loop().create_task(db.HOOKS["lockout"](uid, uname))
             return await edit(bot, st, "⛔ تجاوزت عدد المحاولات. تم قفل الحساب 5 دقائق.", kb([[("↩️ رجوع", "au:back")]]))
         FAILS[uname.lower()] = (n, 0)
         st["mode"] = "login_pass"

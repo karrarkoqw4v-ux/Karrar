@@ -183,6 +183,11 @@ async def _on_new_account(uid, username):
     await notify_admins(f"🔐 <b>حساب جديد</b>\n<code>{esc(username)}</code> • تيليجرام <code>{uid}</code>", "account")
 
 
+async def _on_lockout(uid, username):
+    if db.flag("alert_fail"):
+        await notify_admins(f"🔒 <b>محاولات دخول فاشلة</b>\nتم قفل <code>{esc(username)}</code> 5 دقائق • تيليجرام <code>{uid}</code>", "security")
+
+
 def install(bot: Bot, admin_ids: set[int], ctx: dict):
     global BOT
     BOT = bot
@@ -191,6 +196,7 @@ def install(bot: Bot, admin_ids: set[int], ctx: dict):
     CTX.update(ctx)
     db.HOOKS["new_user"] = _on_new_user
     db.HOOKS["new_account"] = _on_new_account
+    db.HOOKS["lockout"] = _on_lockout
     db.HOOKS["job_done"] = _on_job
     db.load_cache()
 
@@ -560,7 +566,7 @@ async def cb_sess(cb: CallbackQuery):
 async def cb_alerts(cb: CallbackQuery):
     await cb.answer()
     rows = await db.recent_alerts(10)
-    icons = {"new_user": "👤", "fail": "⚠️", "job": "✅", "broadcast": "📣", "info": "ℹ️"}
+    icons = {"new_user": "👤", "fail": "⚠️", "job": "✅", "broadcast": "📣", "info": "ℹ️", "security": "🔒", "account": "🔐"}
     lines = [f"{icons.get(k, '•')} {ago(ts)}: {esc(t)[:110]}" for ts, k, t in rows]
 
     def tg(k, lab):

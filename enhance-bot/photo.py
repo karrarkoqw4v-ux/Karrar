@@ -17,7 +17,7 @@ log = logging.getLogger("photo")
 router = Router()
 PJOBS: dict[int, dict] = {}
 WORK: Path = Path("work")  # يضبطه main
-HOOK: dict = {"ask": None, "quota": None, "feature": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
+HOOK: dict = {"ask": None, "quota": None, "feature": None, "pro": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
 PAGE = 12
 TTL = 1800
 MAX_DL = 20 * 1024 * 1024
@@ -46,7 +46,24 @@ def in_session(uid: int) -> bool:
 
 
 # ---------------------------------------------------------------- الأزرار
+def kb_pro_home(j) -> InlineKeyboardMarkup:
+    """واجهة المصممين المحترفين للصور: باقات + أدوات التصميم + كل الأقسام"""
+    rows = [[("⟦gem⟧ باقات المصممين المحترفين (12)", "ptp:0")],
+            [("⟦brush⟧ أدوات التصميم الاحترافية", "pc:pro:0"), ("⟦star⟧ قوالب جاهزة بنقرة", "ptl:0")],
+            [("⟦gem⟧ تحسين تلقائي ذكي", "pe:auto"), ("⟦photo⟧ دقة الآيفون", "pe:iphone")],
+            [("⟦layers⟧ إزالة الخلفية", "pe:bg_remove"), ("⟦layers⟧ وضع البورتريه", "pe:bg_bokeh")],
+            [("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv")]]
+    cats = [(f"⟦{ic}⟧ {title}", f"pc:{k}:0") for k, (ic, _fb, title) in P.CATS.items() if k != "pro"]
+    rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
+    n = len(j["stack"])
+    rows.append([(f"⟦stack⟧ المختارة ({n})", "pk"), ("⟦undo⟧ تراجع", "pu"), ("⟦redo⟧ إعادة", "pr")])
+    rows.append([("⟦clear⟧ مسح الكل", "pz"), ("⟦download⟧ معالجة وتصدير", "pg")])
+    return kb(rows)
+
+
 def kb_home(j) -> InlineKeyboardMarkup:
+    if j.get("pro"):
+        return kb_pro_home(j)
     rows = [
         [("⟦gem⟧ تحسين تلقائي ذكي", "pe:auto"), ("⟦photo⟧ دقة الآيفون", "pe:iphone")],
         [("⟦layers⟧ إزالة الخلفية", "pe:bg_remove"), ("⟦layers⟧ تضبيب الخلفية", "pe:bg_blur")],
@@ -79,16 +96,17 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     return kb(rows)
 
 
-def kb_tpl(page: int) -> InlineKeyboardMarkup:
+def kb_tpl(page: int, pro: bool = False) -> InlineKeyboardMarkup:
     per = 10
-    items = [(P.PHOTO_TEMPLATES[i][0], f"pt:{i}") for i in range(page * per, min(len(P.PHOTO_TEMPLATES), (page + 1) * per))]
+    lst, pre, nav_pre = (P.PHOTO_PRO_PACKS, "pq", "ptp") if pro else (P.PHOTO_TEMPLATES, "pt", "ptl")
+    items = [(lst[i][0], f"{pre}:{i}") for i in range(page * per, min(len(lst), (page + 1) * per))]
     rows = [items[i:i + 2] for i in range(0, len(items), 2)]
     nav = []
     if page > 0:
-        nav.append(("⟦left⟧ السابق", f"ptl:{page - 1}"))
-    nav.append((f"{page + 1}/{-(-len(P.PHOTO_TEMPLATES) // per)}", "noop"))
-    if (page + 1) * per < len(P.PHOTO_TEMPLATES):
-        nav.append(("التالي ⟦right⟧", f"ptl:{page + 1}"))
+        nav.append(("⟦left⟧ السابق", f"{nav_pre}:{page - 1}"))
+    nav.append((f"{page + 1}/{-(-len(lst) // per)}", "noop"))
+    if (page + 1) * per < len(lst):
+        nav.append(("التالي ⟦right⟧", f"{nav_pre}:{page + 1}"))
     rows.append(nav)
     rows.append([("⟦undo⟧ تراجع", "pu"), ("⟦home⟧ القائمة", "ph")])
     return kb(rows)
@@ -105,7 +123,7 @@ def caption(j, note="") -> str:
     st = j["stack"]
     h, w = j["cur"][0].shape[:2]
     lines = "\n".join(f"{i}. {P.TOOLS[t].title}" for i, (t, _) in enumerate(st[-8:], max(1, len(st) - 7)))
-    head = f"⟦photos⟧ <b>استوديو الصور</b> — المعاينة مباشرة 👇\n📐 {w}×{h}" + (" • شفافة (PNG)" if j["cur"][1] is not None else "")
+    head = ("⟦gem⟧ <b>استوديو المصممين المحترفين (صور)</b>" if j.get("pro") else "⟦photos⟧ <b>استوديو الصور</b>") + f" — المعاينة مباشرة 👇\n📐 {w}×{h}" + (" • شفافة (PNG)" if j["cur"][1] is not None else "")
     body = f"\n\n<b>المختارة ({len(st)}):</b>\n{lines}" if st else "\n\nاختر أداة من الأزرار تحت الصورة 🪄"
     return (head + body + (f"\n\n{note}" if note else ""))[:1000]
 
@@ -143,7 +161,8 @@ async def open_session(bot: Bot, msg: Message, fid: str, size: int | None, as_fi
             pass
         return
     j = {"uid": uid, "dir": d, "src": str(src), "chat": msg.chat.id, "base": base, "stack": [], "redo": [], "cur": (base, None),
-         "msg_id": None, "busy": False, "pend": None, "ts": time.time(), "pending_video": None, "as_file": as_file}
+         "msg_id": None, "busy": False, "pend": None, "ts": time.time(), "pending_video": None, "as_file": as_file,
+         "pro": bool(HOOK["pro"] and HOOK["pro"](uid))}
     PJOBS[uid] = j
     try:
         await note.delete()
@@ -242,26 +261,26 @@ async def cb_cat(cb: CallbackQuery):
         pass
 
 
-@router.callback_query(F.data.startswith("ptl:"))
+@router.callback_query(F.data.startswith(("ptl:", "ptp:")))
 async def cb_tpl_list(cb: CallbackQuery):
     j = need(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
     await cb.answer()
     try:
-        await cb.message.edit_reply_markup(reply_markup=kb_tpl(int(cb.data[4:])))
+        await cb.message.edit_reply_markup(reply_markup=kb_tpl(int(cb.data[4:]), cb.data.startswith("ptp:")))
     except TelegramBadRequest:
         pass
 
 
-@router.callback_query(F.data.startswith("pt:"))
+@router.callback_query(F.data.startswith(("pt:", "pq:")))
 async def cb_tpl_apply(cb: CallbackQuery, bot: Bot):
     j = need(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
     if j["busy"]:
         return await cb.answer("لحظة، يتم تطبيق الأداة السابقة")
-    name, ids = P.PHOTO_TEMPLATES[int(cb.data[3:])]
+    name, ids = (P.PHOTO_PRO_PACKS if cb.data.startswith("pq:") else P.PHOTO_TEMPLATES)[int(cb.data[3:])]
     await cb.answer(f"⏳ تطبيق: {name}"[:60])
     j["busy"] = True
     try:
