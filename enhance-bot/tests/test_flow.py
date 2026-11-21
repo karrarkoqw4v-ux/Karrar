@@ -38,6 +38,7 @@ async def main():
         await feed({"callback_query": {"id": str(n[0]), "from": user, "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": chat, "video": {"file_id": "x", "file_unique_id": "u", "width": 1, "height": 1, "duration": 1}, "reply_markup": {"inline_keyboard": [[{"text": "a", "callback_data": "noop"}]]}}}})
     def last(*names): return [c for c in CALLS if c[0] in names][-1]
     def cnt(name): return len([c for c in CALLS if c[0] == name])
+    _a = await B.db.create_account("admintester", "x" * 64, "00" * 16, 7); await B.db.bind_session(7, _a)
     await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
     # ---- لوحة تحكم المسؤول
     await say("/admin"); assert "لوحة تحكم المسؤول" in last("send_message")[1]["text"]; hb = [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r]; print("ADMIN HOME buttons:", len(hb))

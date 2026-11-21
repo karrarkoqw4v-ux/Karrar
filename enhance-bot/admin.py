@@ -27,6 +27,7 @@ BOT: Bot | None = None
 CTX: dict = {}  # main يضع: JOBS, WORK, drop_job
 STARTED = time.time()
 STATE: dict[int, dict] = {}  # حالة إدخال المسؤول (بحث/إذاعة/رسالة)
+auth.ADMIN_STATE = STATE
 USERS_PER_PAGE = 8
 
 
@@ -109,28 +110,33 @@ async def notify_admins(text: str, kind: str = "info"):
 class Gate(BaseMiddleware):
     async def __call__(self, handler, event, data):
         u = getattr(event, "from_user", None)
-        if u and u.id not in ADMIN_IDS:
-            text = None
-            if not auth.gate_allows(event):
-                if isinstance(event, CallbackQuery):
-                    await event.answer("سجّل دخولك أولاً", show_alert=True)
-                    await event.message.answer(auth.welcome_screen()[0], reply_markup=auth.welcome_screen()[1])
-                else:
-                    await auth.send_welcome(event)
-                return None
-            if db.banned(u.id):
-                text = "🚫 تم حظرك من استخدام هذا البوت."
-            elif db.flag("maintenance"):
-                text = "🛠 البوت تحت الصيانة حالياً، عاود المحاولة بعد قليل."
-            if text:
+        if u:
+            if not auth.gate_allows(event):  # تسجيل الدخول إجباري
                 try:
                     if isinstance(event, CallbackQuery):
-                        await event.answer(text, show_alert=True)
+                        await event.answer("سجّل دخولك أولاً", show_alert=True)
+                        t, k = auth.welcome_screen()
+                        await event.message.answer(t, reply_markup=k)
                     else:
-                        await event.answer(text)
+                        await auth.send_welcome(event)
                 except Exception:  # noqa: BLE001
                     pass
                 return None
+            if u.id not in ADMIN_IDS:
+                text = None
+                if db.banned(u.id):
+                    text = "🚫 تم حظرك من استخدام هذا البوت."
+                elif db.flag("maintenance"):
+                    text = "🛠 البوت تحت الصيانة حالياً، عاود المحاولة بعد قليل."
+                if text:
+                    try:
+                        if isinstance(event, CallbackQuery):
+                            await event.answer(text, show_alert=True)
+                        else:
+                            await event.answer(text)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return None
         return await handler(event, data)
 
 

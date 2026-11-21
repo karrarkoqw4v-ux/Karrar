@@ -43,6 +43,10 @@ async def main():
         await feed({"callback_query": {"id": str(n[0]), "from": user(uid), "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": {"id": uid, "type": "private"}, "text": "x"}}})
     def btns(d): return [b["callback_data"] for r in d["reply_markup"]["inline_keyboard"] for b in r]
 
+    # المسؤول بلا تسجيل: /admin يعمل، لكن المونتاج يطلب الدخول
+    await say(7, "/admin"); assert "لوحة تحكم المسؤول" in last_text()["text"]
+    await say(7, "/start"); assert btns(last_text()) == ["au:login", "au:reg"]; print("admin also must login for editing OK")
+    await say(7, "/menu"); assert btns(last_text()) == ["au:login", "au:reg"]
     U = 55
     await say(U, "/start"); assert btns(last_text()) == ["au:login", "au:reg"]; print("welcome 2 buttons OK")
     await say(U, "hello"); assert btns(last_text()) == ["au:login", "au:reg"]; print("gate blocks unauthenticated OK")

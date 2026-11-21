@@ -61,18 +61,26 @@ def is_logged(uid: int) -> bool:
 
 
 def needs_login(uid: int) -> bool:
-    return db.flag("require_login") and uid not in ADMIN_IDS and not is_logged(uid)
+    """تسجيل الدخول إجباري للجميع (حتى المسؤول لاستخدام المونتاج)؛ المسؤول يفتح /admin بدونه"""
+    return db.flag("require_login") and not is_logged(uid)
+
+
+ADMIN_STATE: dict = {}  # حالة إدخال المسؤول (تضعها admin.py)
 
 
 def gate_allows(event) -> bool:
-    """غير المسجَّل يُسمح له فقط: /start وأزرار الحساب وكتابة بيانات التسجيل"""
+    """غير المسجَّل يُسمح له فقط: /start وأزرار الحساب وكتابة بيانات التسجيل (والمسؤول: لوحة /admin)"""
     uid = event.from_user.id
     if not needs_login(uid):
         return True
+    admin = uid in ADMIN_IDS
     if isinstance(event, CallbackQuery):
-        return (event.data or "").startswith("au:")
+        d = event.data or ""
+        return d.startswith("au:") or (admin and d.startswith("ad:"))
     txt = event.text or ""
-    return txt.startswith("/start") or uid in STATE
+    if txt.startswith("/start") or uid in STATE:
+        return True
+    return admin and (txt.startswith("/admin") or txt in ("ادمن", "الادمن", "لوحة التحكم", "لوحة") or uid in ADMIN_STATE)
 
 
 # ---------------------------------------------------------------- الشاشات
