@@ -365,15 +365,20 @@ async def screen_user(uid: int):
         sess.append("جلسة صور")
     status = "🚫 محظور" + (f" ({esc(d['ban'][0])})" if d["ban"] and d["ban"][0] else "") if d["ban"] else ("⛔ حظر البوت" if d["blocked"] else "✅ عادي")
     link = f'<a href="tg://user?id={uid}">{esc(d["name"]) or uid}</a>'
+    acc_id = db.account_of(uid)
+    acc_row = await db.account_by_id(acc_id) if acc_id else None
+    acc_line = f"الحساب: <code>{esc(acc_row[1])}</code> ✅\n" if acc_row else "الحساب: لم يسجّل دخولاً\n"
     text = (
         f"⟦user⟧ <b>تفاصيل المستخدم</b>\n\n"
-        f"الاسم: {link}\nاليوزر: {uname(d['username'])}\nالآيدي: <code>{uid}</code>\n"
+        f"الاسم: {link}\nاليوزر: {uname(d['username'])}\nالآيدي: <code>{uid}</code>\n{acc_line}"
         f"الحالة: {status}\n"
         f"انضم: {dt(d['first'])} ({ago(d['first'])})\nآخر نشاط: {ago(d['last'])}\n\n"
         f"العمليات: {d['jobs']} (ناجحة {d['ok']}) • اليوم {d['today']} • متوسط {d['avg']:.0f}ث\n"
         f"جلسات مفتوحة: {'، '.join(sess) or 'لا يوجد'}\n\n<b>آخر عملياته:</b>\n{recent}"
     )
     rows = [[("⟦chat⟧ إرسال رسالة له", f"ad:dm:{uid}")]]
+    if acc_row:
+        rows.append([(f"⟦verified⟧ حسابه {acc_row[1]}", f"ad:a:{acc_row[0]}")])
     rows.append([("✅ رفع الحظر", f"ad:unban:{uid}")] if d["ban"] else [("🚫 حظر المستخدم", f"ad:ban:{uid}")])
     if sess:
         rows.append([("⟦clear⟧ إنهاء جلساته", f"ad:kill:{uid}")])

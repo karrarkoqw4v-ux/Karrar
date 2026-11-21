@@ -952,6 +952,7 @@ def _even_skin(img):
 
 
 _pro("pro_even_skin", "توحيد لون البشرة", _even_skin, "يزيل بقع الاحمرار والاصفرار بدون تنعيم الملمس.")
+_pro("pro_deband", "إزالة التشريط (Dither)", lambda i: _u(np.clip(_f(cv2.bilateralFilter(i, 5, 8, 3)) + np.random.default_rng(3).normal(0, 0.8 / 255, i.shape).astype(np.float32), 0, 1)), "يمنع خطوط التدرج في السماء والظلال.")
 _pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
 _pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
 
