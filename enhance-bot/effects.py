@@ -294,6 +294,8 @@ reg("sat_drop", "ed", "سقوط الألوان على الضربة", lambda c: [
 reg("hold_red", "col", "إبقاء الأحمر فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0xE0182D:similarity=0.28:blend=0.12")])
 reg("hold_blue", "col", "إبقاء الأزرق فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0x2A6BE0:similarity=0.28:blend=0.12")])
 reg("hold_yellow", "col", "إبقاء الأصفر فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0xF2C318:similarity=0.28:blend=0.12")])
+reg("drift_pan", "fx", "انجراف كاميرا بطيء (Drift)", lambda c: [vf(f"scale=trunc({c.w}*1.14/2)*2:trunc({c.h}*1.14/2)*2,crop={c.w}:{c.h}:x='(iw-ow)*t/{max(c.dur, 1):.2f}':y='(ih-oh)*(0.5+0.4*sin(t/{max(c.dur, 1):.2f}*3.1416))'")], motion=True)
+reg("halation", "fx", "توهج أحمر فيلمي (Halation)", lambda c: [cx("[{i}]split[a][b];[b]lutyuv=y='if(gt(val,165),val,0)':u=128:v=128,format=gbrp,colorchannelmixer=rr=1:gg=0.18:bb=0.06,gblur=sigma=18[g];[a]format=gbrp[a2];[a2][g]blend=all_mode=screen:all_opacity=0.85[{o}]")], motion=True, desc="هالة حمراء دافئة حول الإضاءات كأفلام السينما الخام.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)

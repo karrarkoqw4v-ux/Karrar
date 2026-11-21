@@ -767,6 +767,18 @@ def _radial_focus(img):
     return comp(blur(img, 0.03), img, 1 - m)
 
 
+def _halation(img):
+    hl = np.clip((_f(img) - 0.62) * 2.6, 0, 1)
+    g = cv2.GaussianBlur(hl, (0, 0), max(4, _S(img) * 0.018))
+    lum = g.mean(axis=2, keepdims=True)
+    red = lum * np.array([0.06, 0.2, 1.0], np.float32)
+    return _u(1 - (1 - _f(img)) * (1 - np.clip(red * 1.2, 0, 1)))
+
+
+_art("a_halation", "توهج أحمر فيلمي (Halation)", _halation)
+_flt("f_expired", "فيلم منتهي الصلاحية", lambda i: grain(grade(i, sh=(.06, .08, -.02), mid=(.0, .03, .03), hi=(-.02, .04, .05), sat=.85, con=.88, bright=.05), 0.045))
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
