@@ -7,7 +7,7 @@ from aiogram.client.session.base import BaseSession
 from aiogram.types import Chat, File, Message, Update
 import bot as B
 
-CALLS = []; FILES = {"V": Path(sys.argv[1]).read_bytes(), "A": Path(sys.argv[2]).read_bytes(), "P": Path(sys.argv[3]).read_bytes()}
+CALLS = []; FILES = {"V": Path(sys.argv[1]).read_bytes(), "A": Path(sys.argv[2]).read_bytes(), "DBF": b"", "P": Path(sys.argv[3]).read_bytes()}
 
 class Fake(BaseSession):
     async def close(self): ...
@@ -42,8 +42,12 @@ async def main():
     await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
     # ---- لوحة تحكم المسؤول
     await say("/admin"); assert "لوحة تحكم المسؤول" in last("send_message")[1]["text"]; hb = [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r]; print("ADMIN HOME buttons:", len(hb))
-    for cbk in ["ad:stats", "ad:users:last:0", "ad:users:jobs:0", "ad:u:7", "ad:top", "ad:logs", "ad:sess", "ad:alerts", "ad:set", "ad:ch:daily_limit", "ad:cs:daily_limit:5", "ad:sys", "ad:exp", "ad:rep", "ad:watch", "ad:health", "ad:idle", "ad:bans", "ad:bc", "ad:clean", "ad:home"]:
+    for cbk in ["ad:stats", "ad:users:last:0", "ad:users:jobs:0", "ad:u:7", "ad:top", "ad:logs", "ad:sess", "ad:alerts", "ad:set", "ad:ch:daily_limit", "ad:cs:daily_limit:5", "ad:sys", "ad:exp", "ad:rep", "ad:data", "ad:files", "ad:watch", "ad:health", "ad:idle", "ad:bans", "ad:bc", "ad:clean", "ad:home"]:
         n0 = len(CALLS); await click(cbk); assert len(CALLS) > n0, cbk
+    await click("ad:bk"); assert last("send_document")[0] == "send_document" and "نسخة احتياطية" in last("send_document")[1]["caption"]
+    _bk = B.db.list_backups()[0]; FILES["DBF"] = Path(_bk).read_bytes(); n_users_before = (await B.db.table_counts())[0][2]
+    await click("ad:rs"); await say(document={"file_id": "DBF", "file_unique_id": "d", "file_size": len(FILES["DBF"]), "file_name": "x.db", "mime_type": "application/octet-stream"}); assert "ad:rsgo" in str(last("send_message")[1])
+    await click("ad:rsgo"); assert (await B.db.table_counts())[0][2] == n_users_before; print("BACKUP+RESTORE OK")
     await click("ad:connect"); rep_ = last("send_document"); assert "claude_host_report" in str(rep_[1]["document"].filename) and "BOT_TOKEN" not in str(rep_[1]) or True; print("CONNECT REPORT OK")
     await click("ad:ex:users"); assert last("send_document")[0] == "send_document"
     await click("ad:tg:maintenance:set"); assert B.db.flag("maintenance"); await click("ad:tg:maintenance:set"); assert not B.db.flag("maintenance")

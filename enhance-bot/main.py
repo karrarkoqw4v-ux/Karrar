@@ -1545,6 +1545,7 @@ async def main():
     admin.attach_log_buffer()
     watchdog.start_guard(idle_fn=lambda: not any(j.get("running") for j in JOBS.values()))
     asyncio.create_task(watchdog.beat_task(bot))
+    asyncio.create_task(admin.auto_backup_loop(bot))
     asyncio.create_task(watchdog.announce_recovery(bot, ADMIN_IDS))
     asyncio.create_task(admin.announce_start(bot))
     asyncio.create_task(asyncio.to_thread(photolib.ensure_models, lambda s: print(s, flush=True)))  # تنزيل نموذج فصل الخلفية الدقيق مرة واحدة

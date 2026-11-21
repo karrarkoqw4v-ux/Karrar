@@ -14,7 +14,7 @@ from pathlib import Path
 from aiogram import BaseMiddleware, Bot, F, Router
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
 from aiogram.filters import BaseFilter, Command
-from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 import auth
 import db
@@ -243,7 +243,7 @@ async def screen_home():
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
-        [("🛰 المراقبة 24/7", "ad:watch")],
+        [InlineKeyboardButton(text="🗄 قوائم البيانات", callback_data="ad:data", style="primary"), ("🛰 المراقبة 24/7", "ad:watch")],
         [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
@@ -535,6 +535,23 @@ async def on_admin_input(msg: Message, bot: Bot):
             return await show(msg, *await screen_user(rows[0][0]))
         btns = [[(f"⟦user⟧ {r[1][:14]} {uname(r[2])} • {r[0]}", f"ad:u:{r[0]}")] for r in rows]
         return await msg.answer(f"⟦search⟧ نتائج البحث ({len(rows)}):", reply_markup=kb(btns + [BACK]))
+    if mode == "restore":
+        doc = msg.document
+        if not doc:
+            return await msg.answer("أرسل ملف النسخة (.db) كمستند.")
+        if doc.file_size and doc.file_size > 20 * 1024 * 1024:
+            return await msg.answer("⚠️ الملف أكبر من 20MB (حد تيليجرام للبوتات). استرجع يدوياً بنسخه إلى مسار DB_PATH.")
+        tmp = Path(CTX.get("WORK", "work")) / f"restore_{msg.from_user.id}.db"
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        await bot.download(doc.file_id, destination=tmp)
+        info = await asyncio.to_thread(db.validate_backup, tmp)
+        if not info:
+            tmp.unlink(missing_ok=True)
+            return await msg.answer("❌ هذا الملف ليس نسخة صالحة لقاعدة بيانات البوت.", reply_markup=kb([[("↩️ رجوع", "ad:data")]]))
+        STATE[msg.from_user.id] = {"mode": "restore_ready", "path": str(tmp)}
+        lines = "\n".join(f"• {dict(db.TABLES).get(t, t)}: {n}" for t, n in info.items())
+        return await msg.answer("📥 <b>النسخة صالحة ✅</b>\nمحتواها:\n" + lines + "\n\n⚠️ سيتم استبدال البيانات الحالية بها (وأحفظ نسخة أمان). تأكيد؟",
+                                reply_markup=kb([[InlineKeyboardButton(text="📥 نعم، استرجع الآن", callback_data="ad:rsgo", style="danger")], [("↩️ إلغاء", "ad:data")]]))
     if mode == "asearch":
         STATE.pop(msg.from_user.id, None)
         rows = await db.search_accounts(msg.text or "")
@@ -1089,3 +1106,120 @@ async def cb_watch(cb: CallbackQuery):
         "ℹ️ المشرف run_forever.py يعيد تشغيل العملية خلال ثانية إن انتهت، والحارس يعيدها إن تجمّدت."
     )
     await show(cb, text, kb([[("⟦refresh⟧ تحديث", "ad:watch"), ("🩺 فحص سريع", "ad:health")], BACK]))
+
+
+# ---------------------------------------------------------------- قوائم البيانات (حفظ + نسخ احتياطي + استرجاع)
+def _persist_warning() -> str:
+    try:
+        inside = Path(db.db_path()).resolve().is_relative_to(Path(__file__).parent.resolve())
+    except Exception:  # noqa: BLE001
+        inside = False
+    if inside:
+        return ("\n\n⚠️ <b>تنبيه حفظ:</b> قاعدة البيانات داخل مجلد المشروع، وعلى استضافات Docker/Render قد تُمسح عند إعادة النشر. "
+                "اربط مجلداً دائماً (Volume) وضع <code>DB_PATH=/data/stats.db</code>. وفي كل الأحوال البوت يرسل لك نسخة احتياطية يومياً على تيليجرام لتسترجعها.")
+    return "\n\n✅ القاعدة خارج مجلد المشروع (حفظ دائم محتمل)."
+
+
+@router.callback_query(F.data == "ad:data")
+async def cb_data(cb: CallbackQuery):
+    await cb.answer()
+    counts = await db.table_counts()
+    bks = db.list_backups()
+    last = ago(bks[0].stat().st_mtime) if bks else "لا توجد بعد"
+    lines = "\n".join(f"• {lab}: <b>{n}</b>" for _t, lab, n in counts)
+    text = (
+        "🗄 <b>قوائم البيانات</b>\n"
+        "كل حسابات المستخدمين وتفاصيلهم وسجلات البوت محفوظة هنا.\n\n"
+        f"{lines}\n\n"
+        f"📁 الملف: <code>{esc(db.db_path())}</code> • الحجم {db.db_size() / 1024:.0f}KB\n"
+        f"📦 النسخ الاحتياطية: {len(bks)} (آخرها {last}) • تلقائية كل 6 ساعات + يومياً إلى تيليجرامك"
+        + _persist_warning()
+    )
+    rows = [[("⟦user⟧ المستخدمون", "ad:users:last:0"), ("⟦verified⟧ الحسابات", "ad:acc:last_login:0")],
+            [("⟦file⟧ سجل العمليات", "ad:logs"), ("⟦minus⟧ المحظورون", "ad:bans")],
+            [("🔔 الإشعارات", "ad:alerts"), ("⟦gear⟧ الإعدادات", "ad:set")],
+            [InlineKeyboardButton(text="📦 نسخة احتياطية الآن", callback_data="ad:bk", style="success"), ("📥 استرجاع نسخة", "ad:rs")],
+            [("🗂 الملفات المحفوظة", "ad:files"), ("⟦download⟧ تصدير CSV", "ad:exp")], BACK]
+    await show(cb, text, kb(rows))
+
+
+@router.callback_query(F.data == "ad:bk")
+async def cb_backup_now(cb: CallbackQuery, bot: Bot):
+    await cb.answer("⏳ جاري النسخ")
+    p = await asyncio.to_thread(db.make_backup)
+    size = Path(p).stat().st_size
+    if size < 45 * 1024 * 1024:
+        await bot.send_document(cb.from_user.id, FSInputFile(p), caption=f"📦 نسخة احتياطية كاملة ({size / 1024:.0f}KB)\nلاسترجاعها: لوحة التحكم ← قوائم البيانات ← استرجاع نسخة ثم أرسل هذا الملف.\n⚠️ تحتوي بيانات الحسابات (كلمات السر مشفّرة)، احفظها بمكان آمن.")
+    else:
+        await cb.message.answer(f"📦 تم الحفظ على الخادم ({size / 1048576:.1f}MB) وهي أكبر من حد تيليجرام للإرسال.")
+    await show(cb, *await _data_screen_tuple())
+
+
+async def _data_screen_tuple():
+    class _E:  # شاشة بدون تعديل رسالة: نعيد النص والأزرار فقط
+        pass
+    counts = await db.table_counts()
+    return "🗄 تم أخذ النسخة الاحتياطية ✅", kb([[("🗄 قوائم البيانات", "ad:data")], BACK])
+
+
+@router.callback_query(F.data == "ad:files")
+async def cb_files(cb: CallbackQuery):
+    await cb.answer()
+    bks = db.list_backups()
+    work = Path(CTX.get("WORK", "work"))
+    wsize = await asyncio.to_thread(_dirsize, work) if work.exists() else 0
+    import photolib
+    models = [(n, photolib._model_path(n)) for n in ("u2net_human_seg.onnx", "silueta.onnx", "u2netp.onnx")]
+    lines = "\n".join(f"• {p.name} — {p.stat().st_size / 1024:.0f}KB — {ago(p.stat().st_mtime)}" for p in bks[:8]) or "لا توجد نسخ بعد"
+    ml = "\n".join(f"• {n}: {('%.0fMB' % (p.stat().st_size / 1e6)) if p else '❌'}" for n, p in models)
+    btns = [[(f"⟦download⟧ {p.name}", f"ad:bkget:{p.name}")] for p in bks[:5]]
+    await show(cb, f"🗂 <b>الملفات المحفوظة</b>\n\n<b>النسخ الاحتياطية:</b>\n{lines}\n\n<b>النماذج:</b>\n{ml}\n\n📁 الملفات المؤقتة (وسائط المستخدمين): {wsize / 1e6:.0f}MB — تُحذف تلقائياً بعد انتهاء الجلسة",
+               kb(btns + [[("🗄 قوائم البيانات", "ad:data")], BACK]))
+
+
+@router.callback_query(F.data.startswith("ad:bkget:"))
+async def cb_bkget(cb: CallbackQuery, bot: Bot):
+    name = cb.data.split(":", 2)[2]
+    p = db.BACKUP_DIR / Path(name).name
+    if not p.exists() or not name.startswith("voibot_"):
+        return await cb.answer("غير موجودة", show_alert=True)
+    await cb.answer()
+    await bot.send_document(cb.from_user.id, FSInputFile(p), caption=f"📦 {name}")
+
+
+@router.callback_query(F.data == "ad:rs")
+async def cb_restore(cb: CallbackQuery):
+    await cb.answer()
+    STATE[cb.from_user.id] = {"mode": "restore"}
+    await show(cb, "📥 <b>استرجاع نسخة احتياطية</b>\n\nأرسل الآن ملف النسخة (.db) الذي أخذته من البوت.\nسأفحصه أولاً ثم أعرض عليك محتواه قبل الاستبدال، وأحفظ نسخة أمان من البيانات الحالية.", kb([[("↩️ إلغاء", "ad:data")]]))
+
+
+@router.callback_query(F.data == "ad:rsgo")
+async def cb_restore_go(cb: CallbackQuery):
+    st = STATE.pop(cb.from_user.id, None)
+    if not st or st.get("mode") != "restore_ready":
+        return await cb.answer("انتهت المسودة", show_alert=True)
+    await cb.answer("جاري الاسترجاع")
+    await asyncio.to_thread(db.restore_from, st["path"])
+    counts = await db.table_counts()
+    await show(cb, "✅ <b>تم الاسترجاع</b>\n\n" + "\n".join(f"• {lab}: {n}" for _t, lab, n in counts), kb([[("🗄 قوائم البيانات", "ad:data")], BACK]))
+
+
+async def auto_backup_loop(bot: Bot):
+    """نسخة كل 6 ساعات + إرسال نسخة يومية للمسؤول على تيليجرام (تحفظ البيانات حتى لو مُسحت الاستضافة)"""
+    await asyncio.sleep(60)
+    last_sent = float(db.setting("last_backup_sent") or 0)
+    while True:
+        try:
+            p = await asyncio.to_thread(db.make_backup)
+            if db.flag("backup_telegram") and time.time() - last_sent > 23 * 3600 and Path(p).stat().st_size < 45 * 1024 * 1024:
+                for a in ADMIN_IDS:
+                    try:
+                        await bot.send_document(a, FSInputFile(p), caption="📦 نسخة احتياطية يومية تلقائية لبيانات البوت (حسابات + مستخدمين + سجلات).\nاحفظها؛ تسترجعها من لوحة التحكم ← قوائم البيانات ← استرجاع نسخة.", disable_notification=True)
+                    except Exception:  # noqa: BLE001
+                        pass
+                last_sent = time.time()
+                await db.set_setting("last_backup_sent", str(last_sent))
+        except Exception:  # noqa: BLE001
+            log.exception("auto backup failed")
+        await asyncio.sleep(6 * 3600)

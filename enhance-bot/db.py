@@ -43,7 +43,7 @@ def _q(sql, args=(), fetch=False):
 HOOKS: dict = {}  # admin.py يضع هنا دوال التنبيه: new_user / job_failed
 _BANNED: set[int] | None = None
 SETTINGS: dict[str, str] = {}
-DEFAULTS = {"allow_link": "1", "allow_register": "1", "require_login": "1", "subscriptions": "0", "maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
+DEFAULTS = {"backup_telegram": "1", "allow_link": "1", "allow_register": "1", "require_login": "1", "subscriptions": "0", "maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
 
 
 def load_cache():
@@ -394,3 +394,88 @@ async def link_stats(days: int = 7) -> dict:
             if p in (eff or ""):
                 out[p][0 if ok else 1] += 1
     return out
+
+
+# ---------------- قوائم البيانات: نسخ احتياطي/استرجاع/إحصاءات التخزين ----------------
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", str(Path(PATH).parent / "backups")))
+TABLES = [("users", "المستخدمون"), ("accounts", "الحسابات"), ("sessions", "الجلسات المسجّلة"), ("jobs", "سجل العمليات"), ("bans", "المحظورون"), ("alerts", "الإشعارات"), ("settings", "الإعدادات")]
+
+
+def db_path() -> str:
+    return PATH
+
+
+def db_size() -> int:
+    try:
+        return Path(PATH).stat().st_size
+    except OSError:
+        return 0
+
+
+async def table_counts() -> list[tuple[str, str, int]]:
+    out = []
+    for t, label in TABLES:
+        n = (await _g(f"SELECT COUNT(*) FROM {t}"))[0][0]
+        out.append((t, label, n))
+    return out
+
+
+def backup_to(dest: str | Path) -> str:
+    """نسخة احتياطية متسقة عبر واجهة sqlite (آمنة أثناء العمل)"""
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with _lock:
+        src = _conn()
+        out = sqlite3.connect(str(dest))
+        try:
+            src.backup(out)
+        finally:
+            out.close()
+    return str(dest)
+
+
+def make_backup(keep: int = 10) -> str:
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    p = BACKUP_DIR / f"voibot_{time.strftime('%Y%m%d_%H%M%S')}.db"
+    backup_to(p)
+    files = sorted(BACKUP_DIR.glob("voibot_*.db"))
+    for old in files[:-keep]:
+        old.unlink(missing_ok=True)
+    return str(p)
+
+
+def list_backups():
+    if not BACKUP_DIR.exists():
+        return []
+    return sorted(BACKUP_DIR.glob("voibot_*.db"), reverse=True)
+
+
+def validate_backup(path: str | Path) -> dict | None:
+    """يفحص أن الملف قاعدة بيانات البوت صالحة ويعيد أعداد الجداول"""
+    try:
+        c = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        names = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        if not {"users", "jobs"} <= names:
+            return None
+        info = {t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t, _ in TABLES if t in names}
+        ok = c.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        c.close()
+        return info if ok else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def restore_from(path: str | Path):
+    """استبدال القاعدة الحالية بالنسخة (بعد أخذ نسخة أمان) وإعادة فتح الاتصال"""
+    global _c
+    make_backup()
+    with _lock:
+        if _c is not None:
+            _c.close()
+            _c = None
+        import shutil
+        shutil.copyfile(str(path), PATH)
+        for ext in ("-wal", "-shm"):
+            Path(PATH + ext).unlink(missing_ok=True)
+    _conn()
+    load_cache()
