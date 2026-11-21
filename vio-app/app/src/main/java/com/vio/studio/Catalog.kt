@@ -25,7 +25,7 @@ object Catalog {
 
     val pro = Section("pro", "الاحترافي", "جودة 4K وتحسين وتصحيح ألوان", Icons.Rounded.WorkspacePremium, C.cool, listOf(
         Cat("جودة", listOf(t("up4k", "رفع الدقة 4K", Icons.Rounded.HighQuality), t("den", "إزالة التشويش", Icons.Rounded.BlurOn, C.cool), t("sharp", "حدّة ووضوح", Icons.Rounded.Details, C.mint), t("stab", "تثبيت الصورة", Icons.Rounded.Videocam, C.warm))),
-        Cat("ألوان", listOf(t("grade", "تصحيح الألوان", Icons.Rounded.ColorLens), t("hdr", "HDR", Icons.Rounded.Hdr, C.warm), t("lut", "LUT سينمائي", Icons.Rounded.Gradient, C.cool))),
+        Cat("ألوان", listOf(t("grade", "تصحيح الألوان", Icons.Rounded.ColorLens), t("hdr", "HDR", Icons.Rounded.HdrOn, C.warm), t("lut", "LUT سينمائي", Icons.Rounded.Gradient, C.cool))),
     ), true)
 
     val ai = Section("ai", "مونتاج الذكاء الاصطناعي", "إزالة الخلفية وتأثيرات ذكية", Icons.Rounded.AutoAwesome, C.brand, listOf(
