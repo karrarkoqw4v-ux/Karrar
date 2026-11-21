@@ -1545,7 +1545,7 @@ async def main():
         await bot.set_my_commands(common)
         for a in ADMIN_IDS:  # قائمة أوامر إضافية تظهر للمسؤول فقط
             try:
-                await bot.set_my_commands([BotCommand(command="admin", description="🛠 لوحة التحكم")] + common, scope=BotCommandScopeChat(chat_id=a))
+                await bot.set_my_commands(common + [BotCommand(command="admin", description="🛠 لوحة التحكم")], scope=BotCommandScopeChat(chat_id=a))
             except Exception:  # noqa: BLE001
                 pass
     except Exception:  # noqa: BLE001
