@@ -152,7 +152,8 @@ async def audience(kind: str = "all") -> list[int]:
            "today": f"SELECT id FROM users WHERE COALESCE(blocked,0)=0 AND last>{now - 86400}",
            "week": f"SELECT id FROM users WHERE COALESCE(blocked,0)=0 AND last>{now - 7 * 86400}",
            "new": f"SELECT id FROM users WHERE COALESCE(blocked,0)=0 AND first>{now - 86400}",
-           "workers": "SELECT DISTINCT uid FROM jobs WHERE ok=1"}[kind]
+           "workers": "SELECT DISTINCT uid FROM jobs WHERE ok=1",
+           "accounts": "SELECT tg_id FROM sessions"}[kind]
     return [r[0] for r in await _g(sql)]
 
 
