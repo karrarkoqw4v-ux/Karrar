@@ -449,6 +449,7 @@ def _fit(W: int, H: int):
 
 reg("ratio916", "edit", "طولي 9:16 (ستوري/ريلز) بخلفية مموّهة", _fit(1080, 1920))
 reg("ratio11", "edit", "مربع 1:1 بخلفية مموّهة", _fit(1080, 1080))
+reg("ratio45", "edit", "منشور 4:5 (إنستغرام) بخلفية مموّهة", _fit(1080, 1350))
 reg("ratio169", "edit", "عرضي 16:9 بخلفية مموّهة", _fit(1920, 1080))
 
 
@@ -583,6 +584,9 @@ reg("hall", "aud", "صدى قاعة (Reverb)", lambda c: [af("aecho=0.8:0.9:40|8
 reg("lofi_phone", "aud", "صوت هاتف قديم (Lo-Fi)", lambda c: [af("highpass=f=350,lowpass=f=3200,acompressor=threshold=0.1:ratio=4")], noprev=True)
 reg("stereo_wide", "aud", "صوت ستيريو واسع", lambda c: [af("extrastereo=m=2.0,alimiter=limit=0.95")], noprev=True)
 reg("audio_fade", "aud", "تدرّج الصوت (دخول وخروج)", lambda c: [af(f"afade=t=in:d=0.6,afade=t=out:st={max(0.0, c.dur - 1.5):.2f}:d=1.5")], noprev=True)
+reg("voice_robot", "aud", "صوت روبوت", lambda c: [af("afftfilt=real='hypot(re,im)*cos(0)':imag='hypot(re,im)*sin(0)':win_size=512:overlap=0.75")], noprev=True)
+reg("chorus", "aud", "كورَس (تعدد الأصوات)", lambda c: [af("chorus=0.5:0.9:50|60:0.4|0.32:0.25|0.4:2|1.3")], noprev=True)
+reg("phaser", "aud", "فيزر (تموّج الصوت)", lambda c: [af("aphaser=in_gain=0.6:out_gain=0.8:delay=3:decay=0.5:speed=0.6")], noprev=True)
 reg("music", "aud", "إضافة موسيقى (ملف أو رسالة صوتية)", lambda c: [Piece("music", (c.p["audio"], c.p["vol"], float(c.p.get("start", 0) or 0), bool(c.p.get("rep", 0))))],
     steps=[("audio", "🎧 أرسل ملف الموسيقى (MP3/صوت) أو رسالة صوتية حتى 20MB:"),
            ("choice", "مستوى الموسيقى:", [("🔈 منخفض", 0.4), ("🔉 متوسط", 0.8), ("🔊 عالٍ", 1.4)], "vol"),

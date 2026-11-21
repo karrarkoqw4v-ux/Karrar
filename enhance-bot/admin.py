@@ -16,6 +16,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, Teleg
 from aiogram.filters import BaseFilter, Command
 from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+import auth
 import db
 import photo
 
@@ -110,6 +111,13 @@ class Gate(BaseMiddleware):
         u = getattr(event, "from_user", None)
         if u and u.id not in ADMIN_IDS:
             text = None
+            if not auth.gate_allows(event):
+                if isinstance(event, CallbackQuery):
+                    await event.answer("سجّل دخولك أولاً", show_alert=True)
+                    await event.message.answer(auth.welcome_screen()[0], reply_markup=auth.welcome_screen()[1])
+                else:
+                    await auth.send_welcome(event)
+                return None
             if db.banned(u.id):
                 text = "🚫 تم حظرك من استخدام هذا البوت."
             elif db.flag("maintenance"):
@@ -163,6 +171,12 @@ async def _on_job(uid, ok, secs, effects):
         await notify_admins(f"⚠️ <b>فشلت عملية</b> • <code>{uid}</code> • {secs:.0f}ث\n{esc(', '.join(effects)[:200])}", "fail")
 
 
+async def _on_new_account(uid, username):
+    if uid in ADMIN_IDS or not db.flag("alert_new"):
+        return
+    await notify_admins(f"🔐 <b>حساب جديد</b>\n<code>{esc(username)}</code> • تيليجرام <code>{uid}</code>", "account")
+
+
 def install(bot: Bot, admin_ids: set[int], ctx: dict):
     global BOT
     BOT = bot
@@ -170,6 +184,7 @@ def install(bot: Bot, admin_ids: set[int], ctx: dict):
     ADMIN_IDS.update(admin_ids)
     CTX.update(ctx)
     db.HOOKS["new_user"] = _on_new_user
+    db.HOOKS["new_account"] = _on_new_account
     db.HOOKS["job_done"] = _on_job
     db.load_cache()
 
@@ -177,6 +192,7 @@ def install(bot: Bot, admin_ids: set[int], ctx: dict):
 # ---------------------------------------------------------------- الشاشة الرئيسية
 async def screen_home():
     t = await db.totals()
+    at = await db.account_totals()
     jobs, pj = CTX.get("JOBS", {}), photo.PJOBS
     running = sum(1 for j in jobs.values() if j.get("running"))
     rate = (t["jobs_all"] / max(1, t["jobs_all"] + t["failed_all"])) * 100
@@ -194,11 +210,13 @@ async def screen_home():
         f"⟦badge⟧ <b>العمليات الناجحة:</b> {t['jobs_all']}  (اليوم {t['d1']['jobs']} • الأسبوع {t['d7']['jobs']})\n"
         f"⚠️ <b>الفاشلة:</b> {t['failed_all']}  •  نسبة النجاح {rate:.0f}%\n"
         f"⏳ <b>جلسات الآن:</b> فيديو {len(jobs)} (تصدير {running}) • صور {len(pj)}\n"
+        f"⟦verified⟧ <b>الحسابات:</b> {at['total']} (جدد اليوم {at['new_today']} • متصلون الآن {at['online']})\n"
         f"🚫 <b>محظورون:</b> {t['banned']}" + ("\n\n" + "\n".join(flags) if flags else "")
     )
     rows = [
         [("⟦badge⟧ الإحصائيات", "ad:stats"), ("⟦user⟧ المستخدمون", "ad:users:last:0")],
         [("⟦search⟧ بحث عن مستخدم", "ad:search"), ("⟦share⟧ إذاعة", "ad:bc")],
+        [("⟦verified⟧ الحسابات", "ad:acc:last_login:0"), ("⟦search⟧ بحث عن حساب", "ad:asearch")],
         [("⟦star⟧ الأكثر استخداماً", "ad:top"), ("⟦file⟧ آخر العمليات", "ad:logs")],
         [("⟦layers⟧ الجلسات النشطة", "ad:sess"), ("🔔 الإشعارات", "ad:alerts")],
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
@@ -486,6 +504,14 @@ async def on_admin_input(msg: Message, bot: Bot):
             return await show(msg, *await screen_user(rows[0][0]))
         btns = [[(f"⟦user⟧ {r[1][:14]} {uname(r[2])} • {r[0]}", f"ad:u:{r[0]}")] for r in rows]
         return await msg.answer(f"⟦search⟧ نتائج البحث ({len(rows)}):", reply_markup=kb(btns + [BACK]))
+    if mode == "asearch":
+        STATE.pop(msg.from_user.id, None)
+        rows = await db.search_accounts(msg.text or "")
+        if not rows:
+            return await msg.answer("لم أجد حسابات.", reply_markup=kb([[("⟦search⟧ بحث جديد", "ad:asearch")], BACK]))
+        if len(rows) == 1:
+            return await show(msg, *await screen_account(rows[0][0]))
+        return await msg.answer(f"⟦search⟧ نتائج ({len(rows)}):", reply_markup=kb([[(f"⟦account⟧ {r[1]}", f"ad:a:{r[0]}")] for r in rows] + [BACK]))
     if mode == "dm":
         uid = st["uid"]
         STATE.pop(msg.from_user.id, None)
@@ -554,7 +580,7 @@ async def show_settings(cb):
     text = ("⟦gear⟧ <b>الإعدادات</b>\n\n"
             "🟢 = مفعّل • ⚪ = متوقف\n"
             f"الحد اليومي لكل مستخدم: <b>{dl or 'غير محدود'}</b>\nأقصى مدة للفيديو: <b>{mm} دقيقة</b> (الفيديو يُعدَّل كاملاً بدون قص)")
-    rows = [tg("maintenance", "وضع الصيانة (يوقف البوت للجميع عدا المسؤول)"), tg("allow_video", "قسم الفيديو"), tg("allow_photo", "قسم الصور"),
+    rows = [tg("require_login", "إلزام تسجيل الدخول (حساب لكل مستخدم)"), tg("subscriptions", "نظام الاشتراك (جاهز • متوقف = مجاني)"), tg("maintenance", "وضع الصيانة (يوقف البوت للجميع عدا المسؤول)"), tg("allow_video", "قسم الفيديو"), tg("allow_photo", "قسم الصور"),
             [("⟦user⟧ الحد اليومي", "ad:ch:daily_limit"), ("⏱ أقصى مدة", "ad:ch:max_minutes")],
             [("🔔 الإشعارات", "ad:alerts")], BACK]
     await show(cb, text, kb(rows))
@@ -684,3 +710,121 @@ async def cb_export(cb: CallbackQuery, bot: Bot):
     data = ("﻿" + buf.getvalue()).encode("utf-8")
     await cb.answer("جاري التصدير")
     await bot.send_document(cb.from_user.id, BufferedInputFile(data, f"{table}_{time.strftime('%Y%m%d_%H%M')}.csv"), caption=f"📄 {len(rows)} صف")
+
+
+# ---------------------------------------------------------------- الحسابات
+ACC_ORDERS = {"last_login": "آخر دخول", "created": "الأحدث إنشاءً", "logins": "الأكثر دخولاً"}
+
+
+@router.callback_query(F.data.startswith("ad:acc:"))
+async def cb_accounts(cb: CallbackQuery):
+    await cb.answer()
+    _, _, order, page = cb.data.split(":")
+    page = int(page)
+    at = await db.account_totals()
+    rows = await db.list_accounts(page * USERS_PER_PAGE, USERS_PER_PAGE, order)
+    lines = [f"{'🟢' if r[6] else '⚪'}{'🚫' if r[5] else ''} <code>{esc(r[1])}</code> • {r[7]} عملية • {ago(r[3])}" for r in rows]
+    btns = [[(f"⟦account⟧ {r[1]}", f"ad:a:{r[0]}")] for r in rows]
+    nav = []
+    if page > 0:
+        nav.append(("⟦left⟧ السابق", f"ad:acc:{order}:{page - 1}"))
+    nav.append((f"{page + 1}/{max(1, -(-at['total'] // USERS_PER_PAGE))}", "noop"))
+    if (page + 1) * USERS_PER_PAGE < at["total"]:
+        nav.append(("التالي ⟦right⟧", f"ad:acc:{order}:{page + 1}"))
+    sorts = [(("• " if o == order else "") + lab, f"ad:acc:{o}:0") for o, lab in ACC_ORDERS.items()]
+    head = (f"⟦verified⟧ <b>الحسابات ({at['total']})</b>\n"
+            f"جدد اليوم {at['new_today']} • دخلوا اليوم {at['active_today']} • متصلون الآن {at['online']} • معطّلة {at['disabled']} • مدفوعة {at['paid']}\n\n")
+    await show(cb, head + ("\n".join(lines) or "لا حسابات بعد"), kb(btns + [nav, sorts, [("⟦search⟧ بحث عن حساب", "ad:asearch")], BACK]))
+
+
+async def screen_account(aid: int):
+    acc = await db.account_by_id(aid)
+    if not acc:
+        return "الحساب غير موجود.", kb([BACK])
+    (n, ok), recent = await db.account_jobs(aid)
+    tgs = await db.tg_of_account(aid)
+    rec = "\n".join(f"  {'✅' if r[1] else '⚠️'} {ago(r[0])} • {esc((r[3] or '')[:36])}" for r in recent) or "  —"
+    plan = "مجانية" if acc[6] == "free" else f"{esc(acc[6])}" + (f" حتى {dt(acc[7])}" if acc[7] else "")
+    text = (f"⟦account⟧ <b>الحساب <code>{esc(acc[1])}</code></b>\n\n"
+            f"المعرّف: <code>{acc[0]}</code>\nالحالة: {'🚫 معطّل' if acc[8] else '✅ مفعّل'}\nالخطة: {plan}\n"
+            f"أُنشئ: {dt(acc[4])} • آخر دخول: {ago(acc[5])} • مرات الدخول: {acc[9] or 0}\n"
+            f"مربوط بتيليجرام: {', '.join(f'<code>{t}</code>' for t in tgs) or 'لا أحد (خرج)'}\n"
+            f"الأعمال: {n} (ناجحة {ok})\n\n<b>آخر أعماله:</b>\n{rec}")
+    rows = [[("⟦key⟧ إعادة تعيين كلمة السر", f"ad:ar:{aid}"), ("⟦logout⟧ إخراجه", f"ad:ao:{aid}")],
+            [("✅ تفعيل" if acc[8] else "🚫 تعطيل", f"ad:ad:{aid}"), ("⟦star⟧ تغيير الخطة", f"ad:ap:{aid}")],
+            [InlineKeyboardButton(text="⟦trash⟧ حذف الحساب", callback_data=f"ad:ax:{aid}", style="danger")]]
+    for t in tgs[:2]:
+        rows.append([(f"⟦user⟧ مستخدم تيليجرام {t}", f"ad:u:{t}")])
+    rows += [[("⟦left⟧ الحسابات", "ad:acc:last_login:0")], BACK]
+    return text, kb(rows)
+
+
+@router.callback_query(F.data.startswith("ad:a:"))
+async def cb_account(cb: CallbackQuery):
+    await cb.answer()
+    await show(cb, *await screen_account(int(cb.data.split(":")[2])))
+
+
+@router.callback_query(F.data.startswith("ad:ar:"))
+async def cb_acc_reset(cb: CallbackQuery):
+    aid = int(cb.data.split(":")[2])
+    pwd = auth.gen_password()
+    h, salt = await asyncio.to_thread(auth.hash_pw, pwd)
+    await db.set_password(aid, h, salt)
+    await db.drop_account_sessions(aid)
+    await cb.answer("تم")
+    acc = await db.account_by_id(aid)
+    await show(cb, f"⟦key⟧ <b>كلمة سر جديدة للحساب <code>{esc(acc[1])}</code></b>\n\n<code>{esc(pwd)}</code>\n\nأُخرج من كل جلساته. أعطه كلمة السر هذه (لن تظهر مرة أخرى).", kb([[("⟦account⟧ الحساب", f"ad:a:{aid}")], BACK]))
+
+
+@router.callback_query(F.data.startswith("ad:ao:"))
+async def cb_acc_out(cb: CallbackQuery):
+    aid = int(cb.data.split(":")[2])
+    await db.drop_account_sessions(aid)
+    await cb.answer("أُخرج من كل أجهزته")
+    await show(cb, *await screen_account(aid))
+
+
+@router.callback_query(F.data.startswith("ad:ad:"))
+async def cb_acc_toggle(cb: CallbackQuery):
+    aid = int(cb.data.split(":")[2])
+    acc = await db.account_by_id(aid)
+    await db.set_account_flag(aid, not acc[8])
+    if not acc[8]:
+        await db.drop_account_sessions(aid)
+    await cb.answer("تم")
+    await show(cb, *await screen_account(aid))
+
+
+@router.callback_query(F.data.startswith("ad:ap:"))
+async def cb_acc_plan(cb: CallbackQuery):
+    parts = cb.data.split(":")
+    aid = int(parts[2])
+    if len(parts) == 3:
+        await cb.answer()
+        return await show(cb, "⟦star⟧ <b>اختر الخطة</b> (النظام الآن مجاني للجميع، هذا للتحضير للاشتراك لاحقاً):",
+                          kb([[("مجانية", f"ad:ap:{aid}:free:0"), ("Pro شهر", f"ad:ap:{aid}:pro:30")], [("Pro سنة", f"ad:ap:{aid}:pro:365"), ("VIP دائمة", f"ad:ap:{aid}:vip:0")], [("↩️ رجوع", f"ad:a:{aid}")]]))
+    plan, days = parts[3], int(parts[4])
+    await db.set_plan(aid, plan, int(time.time()) + days * 86400 if days else None)
+    await cb.answer("تم تغيير الخطة")
+    await show(cb, *await screen_account(aid))
+
+
+@router.callback_query(F.data.startswith("ad:ax:"))
+async def cb_acc_delete(cb: CallbackQuery):
+    parts = cb.data.split(":")
+    aid = int(parts[2])
+    if len(parts) == 3:
+        await cb.answer()
+        return await show(cb, "⚠️ <b>حذف الحساب نهائياً؟</b>\nتُحذف بيانات تسجيله ويُخرج من أجهزته. لا يمكن التراجع.",
+                          kb([[InlineKeyboardButton(text="⟦trash⟧ نعم احذف", callback_data=f"ad:ax:{aid}:y", style="danger"), ("↩️ إلغاء", f"ad:a:{aid}")]]))
+    await db.delete_account(aid)
+    await cb.answer("حُذف الحساب")
+    await show(cb, "✅ تم حذف الحساب.", kb([[("⟦left⟧ الحسابات", "ad:acc:last_login:0")], BACK]))
+
+
+@router.callback_query(F.data == "ad:asearch")
+async def cb_acc_search(cb: CallbackQuery):
+    await cb.answer()
+    STATE[cb.from_user.id] = {"mode": "asearch"}
+    await show(cb, "⟦search⟧ <b>بحث عن حساب</b>\n\nأرسل اسم المستخدم أو جزءاً منه.", kb([[("↩️ إلغاء", "ad:home")]]))

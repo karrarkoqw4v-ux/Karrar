@@ -126,6 +126,16 @@ PH: dict[str, tuple[str, str]] = {
     "badge": ("5258391025281408576", "📈"),
     "stack": ("4960800343433675689", "💠"),
     "user": ("5256143829672672750", "👤"),
+    "account": ("5474625972751837256", "👤"),   # وجه داخل إطار = الحساب/اسم المستخدم
+    "logout": ("6035130900075777681", "🚪"),    # باب خروج
+    "login": ("6030329749409108167", "💬"),     # سهم دخول
+    "key": ("5445095448366823628", "🔑"),       # مفتاح بنفسجي = كلمة السر
+    "ok": ("5775882727014275095", "✅"),        # علامة صح خضراء
+    "dot_green": ("5776353425365145536", "🟢"), # حالة مفعّلة
+    "dot_blue": ("5775972788183505445", "🔵"),
+    "verified": ("5776425443376766101", "✅"),  # صح ذهبي = موثّق
+    "lock": ("5863995978251507647", "🔒"),      # قفل بقلب
+    "mail": ("5863720928545871776", "💌"),
     "gear": ("5019413195186504264", "⚙️"),
 }
 _PH = re.compile(r"⟦(\w+)⟧")
@@ -194,6 +204,12 @@ def tg(e: str) -> str:
 def style_for(b: InlineKeyboardButton) -> str | None:
     """ألوان الأزرار (Bot API الأحدث): success أخضر • danger أحمر • primary أزرق"""
     d = b.callback_data or ""
+    if d in ("au:reg", "au:start"):
+        return "success"
+    if d in ("au:login", "au:gen", "au:me"):
+        return "primary"
+    if d in ("au:outy",):
+        return "danger"
     if d in ("go", "pg", "pv", "ad:bcgo") or d.startswith("ad:unban:"):
         return "success"
     if d.startswith(("ad:ban:", "ad:kill:", "ad:clean")) or d == "ad:close":

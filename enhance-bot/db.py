@@ -19,11 +19,15 @@ def _conn():
             "CREATE TABLE IF NOT EXISTS jobs(id INTEGER PRIMARY KEY AUTOINCREMENT,uid INTEGER,ts INTEGER,ok INTEGER,secs REAL,effects TEXT);"
             "CREATE TABLE IF NOT EXISTS bans(uid INTEGER PRIMARY KEY,reason TEXT,ts INTEGER);"
             "CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY,v TEXT);"
-            "CREATE TABLE IF NOT EXISTS alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,ts INTEGER,kind TEXT,text TEXT);")
-        try:
-            _c.execute("ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass
+            "CREATE TABLE IF NOT EXISTS alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,ts INTEGER,kind TEXT,text TEXT);"
+            "CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE COLLATE NOCASE,pwd TEXT,salt TEXT,created INTEGER,last_login INTEGER,"
+            "plan TEXT DEFAULT 'free',plan_expiry INTEGER,disabled INTEGER DEFAULT 0,created_tg INTEGER,logins INTEGER DEFAULT 0);"
+            "CREATE TABLE IF NOT EXISTS sessions(tg_id INTEGER PRIMARY KEY,acc INTEGER,ts INTEGER);")
+        for alter in ("ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0", "ALTER TABLE jobs ADD COLUMN acc INTEGER"):
+            try:
+                _c.execute(alter)
+            except sqlite3.OperationalError:
+                pass
         _c.commit()
     return _c
 
@@ -39,7 +43,7 @@ def _q(sql, args=(), fetch=False):
 HOOKS: dict = {}  # admin.py يضع هنا دوال التنبيه: new_user / job_failed
 _BANNED: set[int] | None = None
 SETTINGS: dict[str, str] = {}
-DEFAULTS = {"maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
+DEFAULTS = {"require_login": "1", "subscriptions": "0", "maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
 
 
 def load_cache():
@@ -49,6 +53,7 @@ def load_cache():
     SETTINGS.clear()
     SETTINGS.update(DEFAULTS)
     SETTINGS.update({k: v for k, v in _q("SELECT k,v FROM settings", (), True)})
+    load_sessions()
 
 
 def banned(uid: int) -> bool:
@@ -94,7 +99,7 @@ async def touch_user(uid: int, name: str, username: str | None):
 
 
 async def log_job(uid: int, ok: bool, secs: float, effects: list[str]):
-    await asyncio.to_thread(_q, "INSERT INTO jobs(uid,ts,ok,secs,effects) VALUES(?,?,?,?,?)", (uid, int(time.time()), int(ok), secs, ",".join(effects)))
+    await asyncio.to_thread(_q, "INSERT INTO jobs(uid,ts,ok,secs,effects,acc) VALUES(?,?,?,?,?,?)", (uid, int(time.time()), int(ok), secs, ",".join(effects), SESS.get(uid)))
     h = HOOKS.get("job_done")
     if h:
         try:
@@ -257,3 +262,111 @@ async def export_rows(table: str):
     if table == "users":
         return ["id", "name", "username", "first_seen", "last_seen", "blocked"], await _g("SELECT id,name,username,first,last,COALESCE(blocked,0) FROM users ORDER BY id")
     return ["id", "uid", "ts", "ok", "secs", "effects"], await _g("SELECT id,uid,ts,ok,secs,effects FROM jobs ORDER BY id")
+
+
+# ---------------- الحسابات وتسجيل الدخول ----------------
+SESS: dict[int, int] = {}  # tg_id -> account id (ذاكرة سريعة، محفوظة بالقاعدة)
+
+
+def load_sessions():
+    SESS.clear()
+    SESS.update({r[0]: r[1] for r in _q("SELECT tg_id,acc FROM sessions", (), True)})
+
+
+def account_of(tg_id: int):
+    """معرّف الحساب المسجَّل دخوله لهذا المستخدم أو None"""
+    if _BANNED is None:
+        load_cache()
+    return SESS.get(tg_id)
+
+
+async def create_account(username: str, pwd: str, salt: str, tg_id: int):
+    def work():
+        try:
+            c = _conn()
+            with _lock:
+                cur = c.execute("INSERT INTO accounts(username,pwd,salt,created,last_login,created_tg,logins) VALUES(?,?,?,?,?,?,1)", (username, pwd, salt, int(time.time()), int(time.time()), tg_id))
+                c.commit()
+                return cur.lastrowid
+        except sqlite3.IntegrityError:
+            return None
+    return await asyncio.to_thread(work)
+
+
+async def username_taken(username: str) -> bool:
+    return bool(await _g("SELECT 1 FROM accounts WHERE username=?", (username,)))
+
+
+async def account_by_name(username: str):
+    r = await _g("SELECT id,username,pwd,salt,created,last_login,plan,plan_expiry,COALESCE(disabled,0),logins FROM accounts WHERE username=?", (username,))
+    return r[0] if r else None
+
+
+async def account_by_id(aid: int):
+    r = await _g("SELECT id,username,pwd,salt,created,last_login,plan,plan_expiry,COALESCE(disabled,0),logins FROM accounts WHERE id=?", (aid,))
+    return r[0] if r else None
+
+
+async def bind_session(tg_id: int, aid: int):
+    await asyncio.to_thread(_q, "INSERT INTO sessions(tg_id,acc,ts) VALUES(?,?,?) ON CONFLICT(tg_id) DO UPDATE SET acc=excluded.acc,ts=excluded.ts", (tg_id, aid, int(time.time())))
+    await asyncio.to_thread(_q, "UPDATE accounts SET last_login=?,logins=COALESCE(logins,0)+1 WHERE id=?", (int(time.time()), aid))
+    SESS[tg_id] = aid
+
+
+async def drop_session(tg_id: int):
+    await asyncio.to_thread(_q, "DELETE FROM sessions WHERE tg_id=?", (tg_id,))
+    SESS.pop(tg_id, None)
+
+
+async def drop_account_sessions(aid: int):
+    await asyncio.to_thread(_q, "DELETE FROM sessions WHERE acc=?", (aid,))
+    for k in [k for k, v in SESS.items() if v == aid]:
+        SESS.pop(k, None)
+
+
+async def set_password(aid: int, pwd: str, salt: str):
+    await asyncio.to_thread(_q, "UPDATE accounts SET pwd=?,salt=? WHERE id=?", (pwd, salt, aid))
+
+
+async def set_account_flag(aid: int, disabled: bool):
+    await asyncio.to_thread(_q, "UPDATE accounts SET disabled=? WHERE id=?", (int(disabled), aid))
+
+
+async def set_plan(aid: int, plan: str, expiry: int | None):
+    await asyncio.to_thread(_q, "UPDATE accounts SET plan=?,plan_expiry=? WHERE id=?", (plan, expiry, aid))
+
+
+async def delete_account(aid: int):
+    await drop_account_sessions(aid)
+    await asyncio.to_thread(_q, "DELETE FROM accounts WHERE id=?", (aid,))
+    await asyncio.to_thread(_q, "UPDATE jobs SET acc=NULL WHERE acc=?", (aid,))
+
+
+async def account_jobs(aid: int):
+    r = await _g("SELECT COUNT(*),SUM(ok) FROM jobs WHERE acc=?", (aid,))
+    recent = await _g("SELECT ts,ok,secs,effects FROM jobs WHERE acc=? ORDER BY id DESC LIMIT 5", (aid,))
+    return (r[0][0] or 0, int(r[0][1] or 0)), recent
+
+
+async def list_accounts(offset: int = 0, limit: int = 8, order: str = "last_login"):
+    o = {"last_login": "a.last_login DESC", "created": "a.created DESC", "logins": "a.logins DESC"}[order]
+    return await _g(f"SELECT a.id,a.username,a.created,a.last_login,a.plan,COALESCE(a.disabled,0),(SELECT COUNT(*) FROM sessions s WHERE s.acc=a.id),(SELECT COUNT(*) FROM jobs j WHERE j.acc=a.id) FROM accounts a ORDER BY {o} LIMIT ? OFFSET ?", (limit, offset))
+
+
+async def search_accounts(q: str):
+    return await _g("SELECT id,username,created,last_login,plan,COALESCE(disabled,0) FROM accounts WHERE username LIKE ? ORDER BY last_login DESC LIMIT 10", (f"%{q.strip()}%",))
+
+
+async def account_totals() -> dict:
+    now = int(time.time())
+    g = lambda sql, a=(): _g(sql, a)  # noqa: E731
+    return {"total": (await g("SELECT COUNT(*) FROM accounts"))[0][0],
+            "new_today": (await g("SELECT COUNT(*) FROM accounts WHERE created>?", (now - 86400,)))[0][0],
+            "active_today": (await g("SELECT COUNT(*) FROM accounts WHERE last_login>?", (now - 86400,)))[0][0],
+            "online": (await g("SELECT COUNT(DISTINCT acc) FROM sessions"))[0][0],
+            "disabled": (await g("SELECT COUNT(*) FROM accounts WHERE COALESCE(disabled,0)=1"))[0][0],
+            "paid": (await g("SELECT COUNT(*) FROM accounts WHERE plan!='free'"))[0][0]}
+
+
+async def tg_of_account(aid: int) -> list[int]:
+    return [r[0] for r in await _g("SELECT tg_id FROM sessions WHERE acc=?", (aid,))]

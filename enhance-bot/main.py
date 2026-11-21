@@ -56,6 +56,7 @@ import designer
 import emo
 import photo
 import admin
+import auth
 import secrets
 import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
@@ -91,7 +92,15 @@ WELCOME = (
 
 def kb_mode() -> InlineKeyboardMarkup:
     return _kb([[InlineKeyboardButton(text="⟦film⟧ مونتاج استوديو فيديوهات", callback_data="mode:video", style="primary")],
-                [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")]])
+                [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")],
+                [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")]])
+
+
+async def send_menu(msg: Message):
+    await msg.answer(WELCOME, reply_markup=kb_mode())
+
+
+auth.START["fn"] = send_menu
 HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
 
 
@@ -211,6 +220,8 @@ def caption(j: dict, note: str = "") -> str:
 @router.message(CommandStart())
 async def start(msg: Message):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
+    if await auth.maybe_welcome(msg):
+        return
     if await ask_conflict(msg, None):
         return
     await msg.answer(WELCOME, reply_markup=kb_mode())
@@ -1189,6 +1200,8 @@ async def main():
     photo.HOOK["feature"] = admin.feature_msg
     dp.message.outer_middleware(admin.Gate())
     dp.callback_query.outer_middleware(admin.Gate())
+    auth.ADMIN_IDS = ADMIN_IDS
+    dp.include_router(auth.router)
     dp.include_router(admin.router)
     dp.include_router(photo.router)
     dp.include_router(router)
