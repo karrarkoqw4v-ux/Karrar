@@ -134,9 +134,13 @@ async def cb_country(cb: CallbackQuery):
     if not lst:
         await _show(cb, f"{head}\n\nلا توجد خوادم مستقرة لهذه الدولة الآن. جرّب دولة ثانية أو «تحديث».", _kb([[B("الدول", "tt:px")]]))
         return
-    rows = [[B(f"{i}) {e['ms']:.0f}ms • {e['ip']}", f"tt:ps:{e['key']}", "primary" if i == 1 else None)] for i, e in enumerate(lst, 1)]
+    rows = []
+    for e in lst:
+        sp = f"سرعة الخادم: {proxies.speed_pct(e['ms'])}%" if e["ok"] else "خادم غير مفحوص"
+        rows.append([B(f"{sp} - {FLAGS[cc][1]}", f"tt:ps:{e['key']}", "success" if e["ok"] and e["ms"] <= 60 else None)])
     rows.append([B("الدول", "tt:px")])
-    await _show(cb, f"{head}\n\nخوادم متصلة ومستقرة — الأسرع أولاً ({len(lst)})\nاختر الخادم المناسب:", _kb(rows))
+    note = "" if any(e["ok"] for e in lst) else "\nملاحظة: لم يتم فحص اتصال هذه الخوادم من جهاز البوت، قد لا يعمل بعضها."
+    await _show(cb, f"{head}\n\nخوادم MTProto وسيط ({len(lst)}) — الأسرع أولاً\nاختر الخادم المناسب:{note}", _kb(rows))
 
 
 @router.callback_query(F.data.startswith("tt:ps:"))
@@ -152,13 +156,15 @@ async def cb_server(cb: CallbackQuery):
         pass
     await asyncio.sleep(1.2)
     cc = e["cc"]
-    txt = (f"<b>الخادم جاهز</b>\n\n"
+    speed = f"{proxies.speed_pct(e['ms'])}%" if e["ok"] else "غير مفحوص"
+    txt = (f"<b>خادم MTProto وسيط</b>\n\n"
+           f"اسم الخادم: <b>{e['name']}</b>\n"
+           f"عنوان الخادم: <code>{e['host']}</code>\n"
+           f"منفذ الخادم: <code>{e['port']}</code>\n"
+           f"مفتاح الخادم: <code>{e['secret']}</code>\n"
            f"الدولة: {flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n"
-           f"الخادم: <code>{e['host']}</code>\n"
-           f"المنفذ: <code>{e['port']}</code>\n"
-           f"IP: <code>{e['ip']}</code>\n"
-           f"ping: <b>{e['ms']:.0f}ms</b>\n\n"
-           f"اضغط «فتح واتصال» ثم «تفعيل» داخل تيليجرام")
+           f"سرعة الخادم: <b>{speed}</b>\n\n"
+           f"اضغط تحت «فتح واتصال» لتفعيل الخادم في تيليجرام")
     await _show(cb, txt, _kb([[B("فتح واتصال", url=proxies.link(e), style="success")], [B("خوادم الدولة", f"tt:pc:{cc}"), B("الدول", "tt:px")]]))
 
 

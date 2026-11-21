@@ -34,7 +34,7 @@ class CB:
 
 
 def mk(cc, host, ms, n=0):
-    return {"key": proxies.key_of(host, 443 + n, "s"), "host": host, "port": 443 + n, "secret": "s", "ip": f"1.2.3.{n + 4}", "cc": cc, "ms": ms}
+    return {"key": proxies.key_of(host, 443 + n, "s"), "host": host, "port": 443 + n, "secret": "s", "ip": f"1.2.3.{n + 4}", "cc": cc, "ms": ms, "ok": True, "name": f"خادم {cc} {n}"}
 
 
 async def main():
@@ -61,7 +61,7 @@ async def main():
     txt, kb = cb.message.out[-1]
     assert "tg-emoji" in txt and FLAGS["IR"][0] in txt
     srv = [b for r in kb.inline_keyboard for b in r if b.callback_data.startswith("tt:ps:")]
-    assert len(srv) == 3 and "5ms" in srv[0].text and "90ms" in srv[2].text  # حتى البنق العالي يظهر
+    assert len(srv) == 3 and srv[0].text == "سرعة الخادم: 99% - إيران" and srv[2].text == "سرعة الخادم: 82% - إيران", [b.text for b in srv]  # حتى البنق العالي يظهر
     # بطاقة السيرفر
     real_sleep = asyncio.sleep
     asyncio.sleep = lambda *_a, **_k: real_sleep(0)
@@ -70,7 +70,7 @@ async def main():
     asyncio.sleep = real_sleep
     assert cb.message.out[0][0].startswith("جاري تجهيز الخادم")
     txt, kb = cb.message.out[-1]
-    assert "a.ir" in txt and "444" in txt and "ping" in txt
+    assert "اسم الخادم" in txt and "عنوان الخادم: <code>a.ir" in txt and "منفذ الخادم: <code>444" in txt and "مفتاح الخادم" in txt and "الدولة" in txt, txt
     url = [b for r in kb.inline_keyboard for b in r if b.url][0].url
     assert url.startswith("https://t.me/proxy?server=a.ir&port=444&secret=s"), url
     # دولة بلا سيرفرات
@@ -84,6 +84,7 @@ async def main():
     # القائمة الرئيسية فيها الزر
     import main as M
     assert any(b.callback_data == "tt:menu" for r in M.kb_mode().inline_keyboard for b in r)
+    assert len(proxies.load_library()) > 300
     print("OK tgtools")
 
 
