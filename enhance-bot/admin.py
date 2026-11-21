@@ -278,6 +278,7 @@ async def cb_close(cb: CallbackQuery):
 async def cb_stats(cb: CallbackQuery):
     await cb.answer()
     t = await db.totals()
+    ls = await db.link_stats(7)
     days = await db.per_day(7)
     mx = max([d[2] + d[3] for d in days] + [1])
     mxu = max([d[1] for d in days] + [1])
@@ -290,7 +291,8 @@ async def cb_stats(cb: CallbackQuery):
         f"<b>آخر 30 يوماً:</b> {t['d30']['jobs']} ناجحة • {t['d30']['failed']} فاشلة • {t['d30']['active']} نشط • {t['d30']['new']} جديد\n\n"
         f"⏱ متوسط زمن المعالجة: {t['avg']:.0f}ث • أطولها: {fmt_dur(t['max'])}\n"
         f"🕐 ساعات الذروة (آخر أسبوع): {peak}\n"
-        f"🚫 حظر تيليجرام للبوت: {t['blocked']} مستخدم\n\n"
+        f"🚫 حظر تيليجرام للبوت: {t['blocked']} مستخدم\n"
+        f"🔗 روابط آخر 7 أيام: تيك توك {ls['tiktok'][0]}✓/{ls['tiktok'][1]}✗ • إنستغرام {ls['instagram'][0]}✓/{ls['instagram'][1]}✗\n\n"
         f"<b>آخر 7 أيام (يومياً):</b>\n{lines}"
     )
     await show(cb, text, kb([[("⟦star⟧ الأكثر استخداماً", "ad:top"), ("⟦file⟧ آخر العمليات", "ad:logs")], BACK]))

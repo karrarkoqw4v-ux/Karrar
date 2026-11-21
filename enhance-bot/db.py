@@ -377,3 +377,13 @@ async def tg_of_account(aid: int) -> list[int]:
 async def inactive_accounts(days: int = 14):
     cut = int(time.time()) - days * 86400
     return await _g("SELECT a.id,a.username,a.last_login FROM accounts a WHERE COALESCE(a.last_login,a.created)<? AND a.id NOT IN (SELECT acc FROM sessions) ORDER BY a.last_login LIMIT 200", (cut,))
+
+
+async def link_stats(days: int = 7) -> dict:
+    cut = int(time.time()) - days * 86400
+    out = {"tiktok": [0, 0], "instagram": [0, 0]}
+    for ok, eff in await _g("SELECT ok,effects FROM jobs WHERE ts>? AND effects LIKE 'link:%'", (cut,)):
+        for p in out:
+            if p in (eff or ""):
+                out[p][0 if ok else 1] += 1
+    return out

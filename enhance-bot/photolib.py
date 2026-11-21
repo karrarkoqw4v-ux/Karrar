@@ -832,6 +832,12 @@ def _luma_sharp(img):
 _pro("pro_dodge_burn", "تباين محلي (Dodge & Burn)", _dodge_burn, "يبرز التفاصيل والأبعاد كما في الريتاتش الاحترافي.")
 _pro("pro_luma_sharp", "حدة إضاءة فقط (Luma Sharpen)", _luma_sharp, "توضيح بدون هالات ألوان.")
 _pro("pro_bleach", "تدريج ملوّن باهت (Bleach Bypass)", lambda i: grade(cvlib.sharpen(i, 0.4, 1.0, 0.1, 2.0), sat=.5, con=1.35, bright=-.03), "مظهر أفلام الأكشن: ألوان خافتة وتباين قوي.")
+def _edge_burn(img):
+    m = vignette_map(img, 1.1, 0.5)[..., None]
+    return _u(_f(img) * m * 1.08)
+
+
+_pro("pro_edge_burn", "حرق الأطراف الاحترافي (Edge Burn)", _edge_burn, "يوجّه النظر للمركز كما يفعل المصورون.")
 _pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
 _pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
 
