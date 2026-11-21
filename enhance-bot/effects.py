@@ -72,6 +72,7 @@ CATS = {
     "aud": ("🎵", "الصوت"),
     "out": ("📤", "تصدير خاص"),
     "pro": ("🏆", "أدوات المصممين المحترفين (تدريج • تباين • صوت)"),
+    "ai": ("🤖", "أدوات الذكاء الاصطناعي"),
 }
 EFFECTS: dict[str, Effect] = {}
 
@@ -635,7 +636,7 @@ reg("out_cover", "out", "صورة غلاف من الفيديو", lambda c: [Piec
 import cvlib
 
 for _id, (_fn, _name) in cvlib.CV_FUNCS.items():
-    reg(_id, "cv", _name, lambda c, _i=_id: [Piece("cv", _i)], desc="معالجة إطار بإطار بمكتبة OpenCV (أبطأ من الباقي لكن نتيجتها أكثر واقعية).")
+    reg(_id, "ai" if _id.startswith("cv_ai_") else "cv", _name, lambda c, _i=_id: [Piece("cv", _i)], desc="معالجة إطار بإطار بمكتبة OpenCV (أبطأ من الباقي لكن نتيجتها أكثر واقعية).")
 
 
 def by_cat(cat: str) -> list[Effect]:

@@ -57,6 +57,7 @@ import emo
 import photo
 import photolib
 import activity
+import manual
 import admin
 import watchdog
 import auth
@@ -88,6 +89,7 @@ pv_sem = asyncio.Semaphore(3)
 JOBS: dict[int, dict] = {}
 LINK_WAIT: set[int] = set()  # ينتظرون رابطاً (تيك توك/إنستغرام)
 LINKS: dict[int, dict] = {}  # الفيديو المجلوب بانتظار قرار المستخدم (تعديل/تحميل)
+AI_NEXT: set[int] = set()  # ضغطوا «مونتاج الذكاء الاصطناعي» وينتظرون رفع الملف
 PRO_NEXT: set[int] = set()  # مستخدمون ضغطوا «مونتاج المصممين محترفين» وينتظرون رفع الملف
 
 WELCOME = (
@@ -102,7 +104,8 @@ def kb_mode() -> InlineKeyboardMarkup:
                 [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")],
                 [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")],
                 [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")],
-                [InlineKeyboardButton(text="⟦share⟧ مونتاج من خلال الرابط", callback_data="mode:link", style="success")]])
+                [InlineKeyboardButton(text="⟦share⟧ مونتاج من خلال الرابط", callback_data="mode:link", style="success")],
+                [InlineKeyboardButton(text="🤖 مونتاج الذكاء الاصطناعي", callback_data="mode:ai", style="primary")]])
 
 
 async def send_menu(msg: Message):
@@ -119,6 +122,15 @@ def _pop_pro(uid: int) -> bool:
 
 
 photo.HOOK["pro"] = _pop_pro
+
+
+def _pop_ai(uid: int) -> bool:
+    on = uid in AI_NEXT
+    AI_NEXT.discard(uid)
+    return on
+
+
+photo.HOOK["ai"] = _pop_ai
 HOME_CATS = ["auto", "ed", "cv", "hdr", "col", "edit", "fx", "part", "res", "aud", "out"]
 
 
@@ -146,6 +158,26 @@ def _kb(rows: list) -> InlineKeyboardMarkup:
 
 
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
+AI_VIDEO_TOOLS = [("auto_grade", "🤖 تحسين تلقائي ذكي"), ("auto_hdr", "🤖 HDR ذكي"), ("cv_iphone", "🤖 دقة الآيفون"), ("cv_super2", "🤖 تكبير 2× ذكي"),
+                  ("cv_denoise", "🤖 تنقية ذكية"), ("cv_lowlight", "🤖 إضاءة الظلام"), ("cv_dehaze", "🤖 إزالة الضباب"), ("stab", "🤖 تثبيت الاهتزاز"),
+                  ("cv_ai_bgblur", "🤖 بورتريه فيديو (تضبيب الخلفية)"), ("cv_ai_bgdark", "🤖 تعتيم الخلفية"), ("cv_ai_bgbw", "🤖 الشخص ملوّن والخلفية أبيض/أسود"), ("cv_ai_bggreen", "🤖 خلفية خضراء"),
+                  ("pro_denoise_video", "🤖 تنقية فيديو احترافية"), ("pro_deband", "🤖 إزالة التشريط")]
+
+
+def kb_ai_home(j: dict) -> InlineKeyboardMarkup:
+    """واجهة «مونتاج الذكاء الاصطناعي» للفيديو: أدوات ذكية مرتبة + باقات + طلب تعديل يدوي"""
+    tools = [(lab, f"e:{eid}") for eid, lab in AI_VIDEO_TOOLS if eid in E.EFFECTS]
+    rows = [[("🤖 باقات ذكية جاهزة", "tpl:p"), ("🤖 كل أدوات الذكاء الاصطناعي", "c:ai:0")]]
+    rows += [tools[i:i + 2] for i in range(0, len(tools), 2)]
+    rows.append([("🏆 قوالب مصممين (150)", "dz"), ("🎥 قوالب كاب كات", "tpl:c")])
+    rows.append(text_row(j))
+    rows.append([("🧑‍🎨 اطلب تعديلاً يدوياً من المصمم", "rq:new")])
+    n = len(j["stack"])
+    rows.append([(f"📋 المختارة ({n})", "stk"), ("↩️ تراجع", "u"), ("↪️ إعادة", "redo")])
+    rows.append([("🧹 مسح الكل", "clr"), ("🚀 معالجة وتصدير", "go")])
+    return _kb(rows)
+
+
 def kb_pro_home(j: dict) -> InlineKeyboardMarkup:
     """واجهة «المصممين المحترفين»: كل الأدوات والقوالب مجمّعة بأقسام احترافية"""
     rows = [[("🏆 باقات المصممين المحترفين (19)", "tpl:p")],
@@ -164,6 +196,8 @@ def kb_pro_home(j: dict) -> InlineKeyboardMarkup:
 
 
 def kb_home(j: dict) -> InlineKeyboardMarkup:
+    if j.get("ai"):
+        return kb_ai_home(j)
     if j.get("pro"):
         return kb_pro_home(j)
     rows = []
@@ -253,7 +287,8 @@ def video_info(w, h, dur, has_a, size, st, beat) -> str:
 def caption(j: dict, note: str = "") -> str:
     st = j["stack"]
     lines = "\n".join(f"{i}. {E.EFFECTS[e].title}" for i, (e, _) in enumerate(st[-8:], max(1, len(st) - 7)))
-    head = ("⟦gem⟧ <b>استوديو المصممين المحترفين</b> — المعاينة مباشرة 👇" if j.get("pro") else "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇") + (f"\n{j['info']}" if j.get("info") and not j["stack"] else "")
+    head = ("🤖 <b>استوديو الذكاء الاصطناعي</b> — المعاينة مباشرة 👇" if j.get("ai") else
+            "⟦gem⟧ <b>استوديو المصممين المحترفين</b> — المعاينة مباشرة 👇" if j.get("pro") else "🎛 <b>استوديو المونتاج</b> — المعاينة مباشرة 👇") + (f"\n{j['info']}" if j.get("info") and not j["stack"] else "")
     body = f"\n\n<b>المختارة ({len(st)}):</b>\n{lines}" if st else "\n\nاختر تأثيراً أو قالباً من الأزرار تحت الفيديو 🪄"
     tail = f"\n\n{note}" if note else ""
     return (head + body + tail)[:1000]
@@ -415,6 +450,24 @@ async def cb_mode_pro(cb: CallbackQuery):
                             reply_markup=_kb([[InlineKeyboardButton(text="⟦film⟧ فيديو", callback_data="pro:video", style="primary"), InlineKeyboardButton(text="⟦photos⟧ صورة", callback_data="pro:photo", style="success")]]))
 
 
+@router.callback_query(F.data == "mode:ai")
+async def cb_mode_ai(cb: CallbackQuery):
+    await cb.answer()
+    PRO_NEXT.discard(cb.from_user.id)
+    AI_NEXT.discard(cb.from_user.id)
+    await cb.message.answer("🤖 <b>مونتاج الذكاء الاصطناعي</b>\n\nأدوات ذكية: فصل الشخص عن الخلفية، تحسين تلقائي يحلل ملفك، تكبير عصبي، تنقية، إضاءة، تحسين الوجوه، وغيرها.\n\n🪄 اختر نوع الملف:",
+                            reply_markup=_kb([[InlineKeyboardButton(text="⟦film⟧ فيديو", callback_data="ai:video", style="primary"), InlineKeyboardButton(text="⟦photos⟧ صورة", callback_data="ai:photo", style="success")]]))
+
+
+@router.callback_query(F.data.in_({"ai:video", "ai:photo"}))
+async def cb_ai_kind(cb: CallbackQuery):
+    await cb.answer()
+    AI_NEXT.add(cb.from_user.id)
+    PRO_NEXT.discard(cb.from_user.id)
+    what = "الفيديو (حتى 20MB، يُعدَّل كاملاً بدون قص)" if cb.data == "ai:video" else "الصورة (لأعلى جودة أرسلها كـ «ملف» 📎)"
+    await cb.message.answer(f"🤖 <b>وضع الذكاء الاصطناعي</b>\n\n🪄 ارفع {what} الآن.")
+
+
 @router.callback_query(F.data.in_({"pro:video", "pro:photo"}))
 async def cb_pro_kind(cb: CallbackQuery):
     await cb.answer()
@@ -434,6 +487,7 @@ def drop_link(uid: int):
 async def cb_mode_link(cb: CallbackQuery):
     await cb.answer()
     PRO_NEXT.discard(cb.from_user.id)
+    AI_NEXT.discard(cb.from_user.id)
     LINK_WAIT.add(cb.from_user.id)
     await cb.message.answer("⟦share⟧ <b>مونتاج من خلال الرابط</b>\n\n🪄 أرسل رابط فيديو من <b>تيك توك</b> أو <b>إنستغرام</b> فقط.\n"
                             "يُجلب الفيديو <b>بدون علامة مائية</b>، ثم تعدّله أو تحمّله كما هو.",
@@ -672,6 +726,8 @@ async def build_job(bot: Bot, msg: Message, uid: int, fid=None, size=None, local
          "chat": msg.chat.id, "wtoken": secrets.token_urlsafe(9), "dz": {}, "rec": recommend(stats), "info": video_info(w, h, dd, has_a, size, stats, beat)}
     j["pro"] = uid in PRO_NEXT
     PRO_NEXT.discard(uid)
+    j["ai"] = uid in AI_NEXT
+    AI_NEXT.discard(uid)
     webapp.WTOKENS[j["wtoken"]] = uid
     JOBS[uid] = j
     try:
@@ -1525,6 +1581,8 @@ async def main():
     dp.callback_query.outer_middleware(admin.Gate())
     auth.ADMIN_IDS = ADMIN_IDS
     dp.include_router(auth.router)
+    manual.CTX.update({"JOBS": JOBS, "photo": photo, "WORK": WORK})
+    dp.include_router(manual.router)
     dp.include_router(admin.router)
     dp.include_router(photo.router)
     dp.include_router(router)

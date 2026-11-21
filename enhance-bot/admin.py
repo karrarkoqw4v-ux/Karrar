@@ -19,6 +19,7 @@ from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineK
 import activity
 import auth
 import db
+import manual
 import photo
 import watchdog
 
@@ -284,7 +285,7 @@ async def screen_home():
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
         [InlineKeyboardButton(text="🗄 قوائم البيانات", callback_data="ad:data", style="primary"), ("🛰 المراقبة 24/7", "ad:watch")],
-        [InlineKeyboardButton(text="📡 التوجيهات (نشاط المستخدمين)", callback_data="ad:fwd", style="primary")],
+        [InlineKeyboardButton(text="📡 التوجيهات (نشاط المستخدمين)", callback_data="ad:fwd", style="primary"), ("🧑‍🎨 طلبات التعديل اليدوي", "ad:rq:pending")],
         [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
@@ -576,6 +577,16 @@ async def on_admin_input(msg: Message, bot: Bot):
             return await show(msg, *await screen_user(rows[0][0]))
         btns = [[(f"⟦user⟧ {r[1][:14]} {uname(r[2])} • {r[0]}", f"ad:u:{r[0]}")] for r in rows]
         return await msg.answer(f"⟦search⟧ نتائج البحث ({len(rows)}):", reply_markup=kb(btns + [BACK]))
+    if mode == "deliver":
+        rid = st["rid"]
+        if not (msg.video or msg.photo or msg.document or msg.animation or msg.video_note):
+            return await msg.answer("أرسل النتيجة كفيديو أو صورة أو ملف.")
+        STATE.pop(msg.from_user.id, None)
+        try:
+            ok = await manual.deliver(bot, rid, msg.chat.id, msg.message_id)
+        except Exception as e:  # noqa: BLE001
+            return await msg.answer(f"⚠️ فشل التسليم: {esc(str(e))[:150]}")
+        return await msg.answer("✅ سُلّمت النتيجة لصاحب الطلب." if ok else "الطلب غير موجود.", reply_markup=kb([[("⟦left⟧ الطلبات", "ad:rq:pending")], BACK]))
     if mode == "restore":
         doc = msg.document
         if not doc:
@@ -1308,3 +1319,61 @@ async def cb_fwd_toggle(cb: CallbackQuery):
     await db.set_setting(k, "0" if db.flag(k) else "1")
     await cb.answer("تم")
     await cb_fwd(cb)
+
+
+# ---------------------------------------------------------------- طلبات التعديل اليدوي
+@router.callback_query(F.data.startswith("ad:rq:"))
+async def cb_requests(cb: CallbackQuery):
+    await cb.answer()
+    st = cb.data.split(":")[2]
+    rows = await db.list_requests(None if st == "all" else st)
+    cnt = await db.request_counts()
+    lines = [f"• #{r[0]} {'🎬' if r[2] == 'video' else '🖼'} <code>{r[1]}</code> — {esc(r[3])[:40] or 'بدون ملاحظة'} ({ago(r[5])}) {'✅' if r[4] == 'done' else '⏳' if r[4] == 'pending' else '❌'}" for r in rows[:15]]
+    btns = [[(f"#{r[0]} {'🎬' if r[2] == 'video' else '🖼'} فتح", f"ad:rqv:{r[0]}")] for r in rows[:10]]
+    tabs = [(("• " if st == s else "") + lab, f"ad:rq:{s}") for s, lab in (("pending", "قيد الانتظار"), ("done", "المسلَّمة"), ("all", "الكل"))]
+    await show(cb, f"🧑‍🎨 <b>طلبات التعديل اليدوي</b>\nقيد الانتظار {cnt.get('pending', 0)} • مسلَّمة {cnt.get('done', 0)} • مرفوضة {cnt.get('rejected', 0)}\n\n" + ("\n".join(lines) or "لا طلبات"), kb(btns + [tabs, BACK]))
+
+
+@router.callback_query(F.data.startswith("ad:rqv:"))
+async def cb_request_view(cb: CallbackQuery, bot: Bot):
+    await cb.answer()
+    rid = int(cb.data.split(":")[2])
+    r = await db.get_request(rid)
+    if not r:
+        return await show(cb, "الطلب غير موجود", kb([BACK]))
+    text = (f"🧑‍🎨 <b>الطلب #{rid}</b> — {r[6]}\n\n{await activity.card(r[1])}\nالنوع: {r[2]} • {ago(r[7])}\nملاحظاته: {esc(r[4]) or '—'}\n"
+            f"المسار: <code>{esc(r[3])}</code>\nاختياراته: {esc(r[5])[:400]}")
+    await show(cb, text, kb([[InlineKeyboardButton(text="✅ تسليم النتيجة", callback_data=f"ad:rqd:{rid}", style="success"), InlineKeyboardButton(text="❌ رفض", callback_data=f"ad:rqx:{rid}", style="danger")],
+                             [("📤 إعادة إرسال الملف الأصلي لي", f"ad:rqf:{rid}")], [("⟦left⟧ الطلبات", "ad:rq:pending")], BACK]))
+
+
+@router.callback_query(F.data.startswith("ad:rqf:"))
+async def cb_request_file(cb: CallbackQuery, bot: Bot):
+    rid = int(cb.data.split(":")[2])
+    r = await db.get_request(rid)
+    if not r or not Path(r[3]).exists():
+        return await cb.answer("الملف غير موجود", show_alert=True)
+    await cb.answer()
+    await bot.send_document(cb.from_user.id, FSInputFile(r[3]), caption=f"الطلب {rid} (الملف الأصلي)")
+
+
+@router.callback_query(F.data.startswith("ad:rqd:"))
+async def cb_request_deliver(cb: CallbackQuery):
+    rid = int(cb.data.split(":")[2])
+    await cb.answer()
+    STATE[cb.from_user.id] = {"mode": "deliver", "rid": rid}
+    await show(cb, f"✅ <b>تسليم الطلب #{rid}</b>\n\nأرسل الآن النتيجة (فيديو أو صورة أو ملف) وسأوصلها لصاحب الطلب وأغلق الطلب.", kb([[("↩️ إلغاء", "ad:rq:pending")]]))
+
+
+@router.callback_query(F.data.startswith("ad:rqx:"))
+async def cb_request_reject(cb: CallbackQuery, bot: Bot):
+    rid = int(cb.data.split(":")[2])
+    r = await db.get_request(rid)
+    if r:
+        await db.set_request_status(rid, "rejected")
+        try:
+            await bot.send_message(r[1], f"⚠️ تعذّر تنفيذ طلبك رقم {rid} حالياً. جرّب الأدوات الذكية بالبوت أو أعد الطلب بوصف أوضح.")
+        except Exception:  # noqa: BLE001
+            pass
+    await cb.answer("رُفض")
+    await show(cb, "❌ رُفض الطلب وأُبلغ صاحبه.", kb([[("⟦left⟧ الطلبات", "ad:rq:pending")], BACK]))

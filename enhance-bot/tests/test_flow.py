@@ -23,7 +23,7 @@ class Fake(BaseSession):
         return True
 
 async def main():
-    ses = Fake(); import emo; ses.middleware(B.activity.ResultMirror()); ses.middleware(emo.PremiumEmoji()); B.activity.FLUSH_SECS = 0.05; bot = Bot("1:test", session=ses); dp = Dispatcher(); B.auth.ADMIN_IDS = {7}; dp.include_router(B.auth.router); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
+    ses = Fake(); import emo; ses.middleware(B.activity.ResultMirror()); ses.middleware(emo.PremiumEmoji()); B.activity.FLUSH_SECS = 0.05; bot = Bot("1:test", session=ses); dp = Dispatcher(); B.auth.ADMIN_IDS = {7}; dp.include_router(B.auth.router); B.manual.CTX.update({"JOBS": B.JOBS, "photo": B.photo, "WORK": B.WORK}); dp.include_router(B.manual.router); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
     await B.db.set_setting("fwd_self", "0")
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
@@ -58,7 +58,7 @@ async def main():
     await click("ad:bc"); await click("ad:bca:all"); await say("رسالة إذاعة تجريبية"); assert "ad:bcgo" in str(last("send_message")[1]); await click("ad:bcgo"); assert cnt("copy_message") >= 2 and "انتهت الإذاعة" in last("send_message", "edit_message_text")[1]["text"]; print("ADMIN PANEL OK")
     B.admin.STATE.clear()
     # ---- وضع الصور
-    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me", "mode:pro", "mode:link"], qb; print("MODE CHOOSER OK")
+    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me", "mode:pro", "mode:link", "mode:ai"], qb; print("MODE CHOOSER OK")
     await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]
     await click("mode:pro"); assert [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r] == ["pro:video", "pro:photo"]
     await click("pro:photo"); await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
@@ -66,6 +66,23 @@ async def main():
     await click("pg:p:0"); assert "باقات المصممين" in last("send_photo")[1]["caption"]; await click("pa:p:0"); assert "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; await click("pc:pro:0"); await click("pe:pro_dodge_burn"); print("PRO PHOTO OK")
     B.photo.drop(7); await click("mode:pro"); await click("pro:video"); await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
     ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"] and "tpl:p" in str(ed[1]["reply_markup"]); await click("tpl:p"); await click("t:p:1"); await click("c:pro:0"); await click("c:ed:0"); await click("cp:ed:0"); assert "معاينة التأثيرات" in last("send_photo")[1]["caption"]; await click("ce:flash_beat"); assert "flash_beat" in str(B.JOBS[7]["stack"]); print("video effects preview gallery OK"); print("PRO VIDEO OK")
+    # ---- مونتاج الذكاء الاصطناعي
+    B.photo.drop(7); B.drop_job(7)
+    await click("mode:ai"); assert [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r] == ["ai:video", "ai:photo"]
+    await click("ai:photo"); await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
+    ed = last("send_photo"); assert "الذكاء الاصطناعي" in ed[1]["caption"] and "pe:ai_smart_fix" in str(ed[1]["reply_markup"]) and "rq:new" in str(ed[1]["reply_markup"])
+    await click("pe:ai_smart_fix"); await click("pe:ai_face_enhance"); await click("pe:bg_remove"); await click("pc:ai:0"); print("AI PHOTO OK")
+    B.photo.drop(7)
+    await click("mode:ai"); await click("ai:video"); await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
+    ed = last("send_video"); assert "الذكاء الاصطناعي" in ed[1]["caption"] and "e:cv_ai_bgblur" in str(ed[1]["reply_markup"]); await click("e:cv_ai_bgblur"); await click("e:auto_grade"); print("AI VIDEO OK")
+    # ---- طلب تعديل يدوي: المستخدم يطلب، المسؤول يسلّم النتيجة
+    await click("rq:new"); assert "ملاحظاتك" in last("send_message")[1]["text"]
+    await say("خلّيه بستايل سينمائي"); assert "وصل طلبك رقم" in last("send_message", "edit_message_text")[1]["text"] or any("وصل طلبك رقم" in str(c[1].get("text", "")) for c in CALLS)
+    rq = await B.db.list_requests("pending"); assert rq and "سينمائي" in rq[0][3], rq; rid_ = rq[0][0]
+    await click(f"ad:rq:pending"); await click(f"ad:rqv:{rid_}"); await click(f"ad:rqd:{rid_}")
+    await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
+    assert (await B.db.get_request(rid_))[6] == "done" and any(c[0] == "copy_message" and "تم تعديل طلبك" in str(c[1].get("caption", "")) for c in CALLS); print("MANUAL REQUEST OK")
+    B.drop_job(7)
     # ---- مونتاج من الرابط (تحميل مُحاكى)
     async def fake_dl(url, dest, proxy=None):
         dest.mkdir(parents=True, exist_ok=True); p = dest / "dl.mp4"; p.write_bytes(FILES["V"])

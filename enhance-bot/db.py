@@ -22,7 +22,8 @@ def _conn():
             "CREATE TABLE IF NOT EXISTS alerts(id INTEGER PRIMARY KEY AUTOINCREMENT,ts INTEGER,kind TEXT,text TEXT);"
             "CREATE TABLE IF NOT EXISTS accounts(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE COLLATE NOCASE,pwd TEXT,salt TEXT,created INTEGER,last_login INTEGER,"
             "plan TEXT DEFAULT 'free',plan_expiry INTEGER,disabled INTEGER DEFAULT 0,created_tg INTEGER,logins INTEGER DEFAULT 0);"
-            "CREATE TABLE IF NOT EXISTS sessions(tg_id INTEGER PRIMARY KEY,acc INTEGER,ts INTEGER);")
+            "CREATE TABLE IF NOT EXISTS sessions(tg_id INTEGER PRIMARY KEY,acc INTEGER,ts INTEGER);"
+            "CREATE TABLE IF NOT EXISTS requests(id INTEGER PRIMARY KEY AUTOINCREMENT,uid INTEGER,kind TEXT,path TEXT,note TEXT,stack TEXT,status TEXT DEFAULT 'pending',ts INTEGER,done_ts INTEGER);")
         for alter in ("ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0", "ALTER TABLE jobs ADD COLUMN acc INTEGER"):
             try:
                 _c.execute(alter)
@@ -398,7 +399,7 @@ async def link_stats(days: int = 7) -> dict:
 
 # ---------------- قوائم البيانات: نسخ احتياطي/استرجاع/إحصاءات التخزين ----------------
 BACKUP_DIR = Path(os.getenv("BACKUP_DIR", str(Path(PATH).parent / "backups")))
-TABLES = [("users", "المستخدمون"), ("accounts", "الحسابات"), ("sessions", "الجلسات المسجّلة"), ("jobs", "سجل العمليات"), ("bans", "المحظورون"), ("alerts", "الإشعارات"), ("settings", "الإعدادات")]
+TABLES = [("users", "المستخدمون"), ("accounts", "الحسابات"), ("sessions", "الجلسات المسجّلة"), ("jobs", "سجل العمليات"), ("bans", "المحظورون"), ("alerts", "الإشعارات"), ("requests", "طلبات التعديل اليدوي"), ("settings", "الإعدادات")]
 
 
 def db_path() -> str:
@@ -479,3 +480,33 @@ def restore_from(path: str | Path):
             Path(PATH + ext).unlink(missing_ok=True)
     _conn()
     load_cache()
+
+
+# ---------------- طلبات التعديل اليدوي (المصمم) ----------------
+async def add_request(uid: int, kind: str, path: str, note: str, stack: str) -> int:
+    def work():
+        c = _conn()
+        with _lock:
+            cur = c.execute("INSERT INTO requests(uid,kind,path,note,stack,ts) VALUES(?,?,?,?,?,?)", (uid, kind, path, note, stack, int(time.time())))
+            c.commit()
+            return cur.lastrowid
+    return await asyncio.to_thread(work)
+
+
+async def get_request(rid: int):
+    r = await _g("SELECT id,uid,kind,path,note,stack,status,ts,done_ts FROM requests WHERE id=?", (rid,))
+    return r[0] if r else None
+
+
+async def list_requests(status: str | None = None, limit: int = 30):
+    if status:
+        return await _g("SELECT id,uid,kind,note,status,ts FROM requests WHERE status=? ORDER BY id DESC LIMIT ?", (status, limit))
+    return await _g("SELECT id,uid,kind,note,status,ts FROM requests ORDER BY id DESC LIMIT ?", (limit,))
+
+
+async def set_request_status(rid: int, status: str):
+    await asyncio.to_thread(_q, "UPDATE requests SET status=?,done_ts=? WHERE id=?", (status, int(time.time()), rid))
+
+
+async def request_counts() -> dict:
+    return {s: n for s, n in await _g("SELECT status,COUNT(*) FROM requests GROUP BY status")}

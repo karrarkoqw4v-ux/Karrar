@@ -286,3 +286,50 @@ PREVIEW_FUNCS = {
     "cv_iphone_2k": lambda f: iphone(f, 1.1, 0),
     "cv_super2": lambda f: sharpen(denoise_fast(f), 0.9, 1.0, 0.35, 3.0),
 }
+
+
+# ---------------- ذكاء اصطناعي للفيديو: فصل الشخص عن الخلفية لكل إطار (U²-Net الصغير) ----------------
+_ort_sessions = {}
+
+
+def fast_mask(frame):
+    """قناع الجسم الرئيسي لإطار فيديو (نموذج u2netp السريع، بدون TTA)"""
+    import onnxruntime as ort
+    s = _ort_sessions.get("u2netp")
+    if s is None:
+        so = ort.SessionOptions()
+        so.intra_op_num_threads = 1
+        s = ort.InferenceSession(str(_MODELS / "u2netp.onnx"), sess_options=so, providers=["CPUExecutionProvider"])
+        _ort_sessions["u2netp"] = s
+    h, w = frame.shape[:2]
+    x = cv2.cvtColor(cv2.resize(frame, (320, 320), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB).astype(np.float32)
+    x = x / max(float(x.max()), 1e-6)
+    x = (x - np.array([0.485, 0.456, 0.406], np.float32)) / np.array([0.229, 0.224, 0.225], np.float32)
+    o = s.run(None, {s.get_inputs()[0].name: x.transpose(2, 0, 1)[None]})[0][0, 0]
+    o = (o - o.min()) / max(float(o.max() - o.min()), 1e-6)
+    m = cv2.resize(o, (w, h), interpolation=cv2.INTER_CUBIC)
+    m = np.clip((m - 0.2) / 0.6, 0, 1)
+    m = m * m * (3 - 2 * m)
+    return cv2.GaussianBlur(m, (0, 0), max(1.0, min(h, w) / 300)).astype(np.float32)
+
+
+def _ai_bg(frame, mode):
+    m = fast_mask(frame)[..., None]
+    if mode == "blur":
+        bg = _blur_big(frame, max(12, min(frame.shape[:2]) * 0.03))
+    elif mode == "dark":
+        bg = (frame.astype(np.float32) * 0.25).astype(np.uint8)
+    elif mode == "bw":
+        g = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        bg = cv2.cvtColor(g, cv2.COLOR_GRAY2BGR)
+    else:  # green
+        bg = np.full_like(frame, (60, 200, 40))
+    return _u(_f(frame) * m + _f(bg) * (1 - m))
+
+
+CV_FUNCS.update({
+    "cv_ai_bgblur": (lambda f: _ai_bg(f, "blur"), "🤖 ذكاء اصطناعي: تضبيب الخلفية (بورتريه فيديو)"),
+    "cv_ai_bgdark": (lambda f: _ai_bg(f, "dark"), "🤖 ذكاء اصطناعي: تعتيم الخلفية"),
+    "cv_ai_bgbw": (lambda f: _ai_bg(f, "bw"), "🤖 ذكاء اصطناعي: الشخص بالألوان والخلفية أبيض وأسود"),
+    "cv_ai_bggreen": (lambda f: _ai_bg(f, "green"), "🤖 ذكاء اصطناعي: خلفية خضراء (كروما)"),
+})

@@ -17,7 +17,7 @@ log = logging.getLogger("photo")
 router = Router()
 PJOBS: dict[int, dict] = {}
 WORK: Path = Path("work")  # يضبطه main
-HOOK: dict = {"ask": None, "quota": None, "feature": None, "pro": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
+HOOK: dict = {"ask": None, "quota": None, "feature": None, "pro": None, "ai": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
 PAGE = 12
 TTL = 1800
 MAX_DL = 20 * 1024 * 1024
@@ -46,6 +46,23 @@ def in_session(uid: int) -> bool:
 
 
 # ---------------------------------------------------------------- الأزرار
+AI_PHOTO_TOOLS = ["ai_smart_fix", "ai_face_enhance", "bg_remove", "bg_remove_soft", "bg_blur", "bg_bokeh", "bg_sticker", "ai_crop_subject", "auto", "iphone",
+                  "hdr", "ai_upscale3", "upscale2", "skin", "pro_even_skin", "lowlight", "dehaze", "denoise"]
+
+
+def kb_ai_home(j) -> InlineKeyboardMarkup:
+    """واجهة «مونتاج الذكاء الاصطناعي» للصور"""
+    tools = [(P.TOOLS[t].title if P.TOOLS[t].title.startswith("🤖") else "🤖 " + P.TOOLS[t].title, f"pe:{t}") for t in AI_PHOTO_TOOLS if t in P.TOOLS]
+    rows = [[("🤖 باقات ذكية جاهزة", "pg:p:0"), ("🤖 كل أدوات الذكاء الاصطناعي", "pc:ai:0")]]
+    rows += [tools[i:i + 2] for i in range(0, len(tools), 2)]
+    rows.append([("🎥 قوالب كاب كات", "pg:c:0"), ("⟦film⟧ تحويل لفيديو بموسيقى", "pv")])
+    rows.append([("🧑‍🎨 اطلب تعديلاً يدوياً من المصمم", "rq:new")])
+    n = len(j["stack"])
+    rows.append([(f"⟦stack⟧ المختارة ({n})", "pk"), ("⟦undo⟧ تراجع", "pu"), ("⟦redo⟧ إعادة", "pr")])
+    rows.append([("⟦clear⟧ مسح الكل", "pz"), ("⟦download⟧ معالجة وتصدير", "pg")])
+    return kb(rows)
+
+
 def kb_pro_home(j) -> InlineKeyboardMarkup:
     """واجهة المصممين المحترفين للصور: باقات + أدوات التصميم + كل الأقسام"""
     rows = [[("⟦gem⟧ باقات المصممين المحترفين (16)", "pg:p:0")],
@@ -62,6 +79,8 @@ def kb_pro_home(j) -> InlineKeyboardMarkup:
 
 
 def kb_home(j) -> InlineKeyboardMarkup:
+    if j.get("ai"):
+        return kb_ai_home(j)
     if j.get("pro"):
         return kb_pro_home(j)
     rows = [
@@ -109,7 +128,7 @@ def caption(j, note="") -> str:
     st = j["stack"]
     h, w = j["cur"][0].shape[:2]
     lines = "\n".join(f"{i}. {P.TOOLS[t].title}" for i, (t, _) in enumerate(st[-8:], max(1, len(st) - 7)))
-    head = ("⟦gem⟧ <b>استوديو المصممين المحترفين (صور)</b>" if j.get("pro") else "⟦photos⟧ <b>استوديو الصور</b>") + f" — المعاينة مباشرة 👇\n📐 {w}×{h}" + (" • شفافة (PNG)" if j["cur"][1] is not None else "")
+    head = ("🤖 <b>استوديو الذكاء الاصطناعي (صور)</b>" if j.get("ai") else "⟦gem⟧ <b>استوديو المصممين المحترفين (صور)</b>" if j.get("pro") else "⟦photos⟧ <b>استوديو الصور</b>") + f" — المعاينة مباشرة 👇\n📐 {w}×{h}" + (" • شفافة (PNG)" if j["cur"][1] is not None else "")
     body = f"\n\n<b>المختارة ({len(st)}):</b>\n{lines}" if st else "\n\nاختر أداة من الأزرار تحت الصورة 🪄"
     return (head + body + (f"\n\n{note}" if note else ""))[:1000]
 
@@ -148,7 +167,7 @@ async def open_session(bot: Bot, msg: Message, fid: str, size: int | None, as_fi
         return
     j = {"uid": uid, "dir": d, "src": str(src), "chat": msg.chat.id, "base": base, "stack": [], "redo": [], "cur": (base, None),
          "msg_id": None, "busy": False, "pend": None, "ts": time.time(), "pending_video": None, "as_file": as_file,
-         "pro": bool(HOOK["pro"] and HOOK["pro"](uid))}
+         "pro": bool(HOOK["pro"] and HOOK["pro"](uid)), "ai": bool(HOOK["ai"] and HOOK["ai"](uid))}
     PJOBS[uid] = j
     try:
         await note.delete()

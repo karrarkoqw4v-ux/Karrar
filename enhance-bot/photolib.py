@@ -163,6 +163,7 @@ CATS = {
     "trf": ("move", "↔", "تحويل وقص"),
     "txt": ("chat", "💬", "نصوص وعلامة مائية"),
     "pro": ("gem", "🏆", "أدوات المصممين المحترفين"),
+    "ai": ("star", "🤖", "أدوات الذكاء الاصطناعي"),
 }
 
 
@@ -955,6 +956,101 @@ _pro("pro_even_skin", "توحيد لون البشرة", _even_skin, "يزيل ب
 _pro("pro_deband", "إزالة التشريط (Dither)", lambda i: _u(np.clip(_f(cv2.bilateralFilter(i, 5, 8, 3)) + np.random.default_rng(3).normal(0, 0.8 / 255, i.shape).astype(np.float32), 0, 1)), "يمنع خطوط التدرج في السماء والظلال.")
 _pro("pro_portra", "ستوك فيلم بورترا (ألوان باستيل دافئة)", lambda i: grade(i, sh=(-.03, .01, .03), mid=(-.04, .0, .04), hi=(-.02, .0, .03), sat=.92, con=.96, bright=.02), "مظهر أفلام Portra الدافئة الناعمة للبورتريه.")
 _pro("pro_airy", "مظهر مشرق هوائي (Airy)", lambda i: grade(i, sat=.88, con=.94, bright=.07, mid=(.015, .0, -.01)), "ألوان فاتحة نظيفة بأسلوب المدونين.")
+def _ai(id, title, fn, desc="", alpha=False):
+    @tool(id, "ai", title, alpha=alpha, desc=desc)
+    def _f2(img, a, _fn=fn):
+        r = _fn(img)
+        if isinstance(r, tuple):
+            return r
+        return r, a
+    return _f2
+
+
+def _smart_fix(img):
+    """تحليل ذكي: يقيس الإضاءة والتشويش والضباب والتشبع والحدة ثم يطبّق فقط ما تحتاجه الصورة"""
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    luma = float(g.mean()) / 255
+    sat = float(cv2.cvtColor(img, cv2.COLOR_BGR2HSV)[..., 1].mean()) / 255
+    sharp = float(cv2.Laplacian(g, cv2.CV_64F).var())
+    noise = float(np.std(g.astype(np.float32) - cv2.GaussianBlur(g, (0, 0), 1.2).astype(np.float32)))
+    lo, hi = np.percentile(g, [1, 99])
+    out = img
+    if noise > 6:
+        out = cvlib.denoise(out, 4.0)
+    if luma < 0.30:
+        out = cvlib.retinex(out, 0.7)
+    elif hi - lo < 120:
+        out = cvlib.hdr_fusion(out, 0.9)
+    if (hi - lo) < 140 and luma >= 0.3:
+        out = cvlib.dehaze(out, 0.6, 0.35)
+    out = _auto(out)
+    if sat < 0.2:
+        out = cvlib.vibrance(out, 0.7)
+    if sharp < 150:
+        out = cvlib.sharpen(out, 0.8, 1.0, 0.3, 2.5)
+    return out
+
+
+_CASCADE = None
+
+
+def _faces(img):
+    global _CASCADE
+    if _CASCADE is None:
+        _CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    s = 640.0 / max(g.shape)
+    gs = cv2.resize(g, None, fx=s, fy=s) if s < 1 else g
+    f = _CASCADE.detectMultiScale(gs, 1.15, 5, minSize=(40, 40))
+    return [(int(x / min(s, 1)), int(y / min(s, 1)), int(w / min(s, 1)), int(h / min(s, 1))) for x, y, w, h in f]
+
+
+def _face_enhance(img):
+    """كشف الوجوه ثم تنعيم بشرة وإضاءة ووضوح داخلها فقط + تحسين خفيف للصورة"""
+    fs = _faces(img)
+    out = _auto(img)
+    if not fs:
+        return out
+    m = np.zeros(img.shape[:2], np.float32)
+    for (x, y, w, h) in fs:
+        cv2.ellipse(m, (x + w // 2, y + h // 2), (int(w * 0.62), int(h * 0.75)), 0, 0, 360, 1.0, -1)
+    m = cv2.GaussianBlur(m, (0, 0), max(3, _S(img) * 0.012))[..., None]
+    face = _facelight(_skin(out, 1.0))
+    face = cvlib.sharpen(face, 0.35, 1.0, 0.1, 2.0)
+    return _u(_f(out) * (1 - m) + _f(face) * m)
+
+
+def _crop_subject(img):
+    m = mask(img)
+    ys, xs = np.where(m > 0.5)
+    if len(ys) < 50:
+        return img
+    h, w = img.shape[:2]
+    pad = 0.12
+    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
+    dy, dx = int((y1 - y0) * pad), int((x1 - x0) * pad)
+    return img[max(0, y0 - dy):min(h, y1 + dy), max(0, x0 - dx):min(w, x1 + dx)]
+
+
+def _upscale3(img):
+    k = min(3.0, 4096 / max(img.shape[:2]))
+    if k < 1.2:
+        return img
+    sr = cvlib._sr_model(3)
+    if sr is not None and max(img.shape[:2]) * 3 <= 4600:
+        try:
+            return cvlib.sharpen(sr.upsample(img), 0.4, 1.0, 0.1, 2.0)
+        except Exception:  # noqa: BLE001
+            pass
+    return cvlib.sharpen(cv2.resize(img, None, fx=k, fy=k, interpolation=cv2.INTER_CUBIC), 0.6, 1.0, 0.2, 2.0)
+
+
+_ai("ai_smart_fix", "🤖 إصلاح ذكي تلقائي (يحلل الصورة)", _smart_fix, "يحلل الإضاءة والتشويش والضباب والتشبع والحدة ويعالج فقط ما تحتاجه.")
+_ai("ai_face_enhance", "🤖 تحسين الوجوه بالذكاء الاصطناعي", _face_enhance, "يكتشف الوجوه ويحسّن البشرة والإضاءة والوضوح داخلها فقط.")
+_ai("ai_crop_subject", "🤖 قص ذكي حول الشخص/الجسم", _crop_subject, "يكتشف الجسم الرئيسي ويقص حوله بهامش مناسب.")
+_ai("ai_upscale3", "🤖 تكبير ×3 بالذكاء الاصطناعي", _upscale3, "شبكة ESPCN عصبية لتكبير الصورة 3 أضعاف بتفاصيل أوضح.")
+
+
 _pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
 _pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
 
