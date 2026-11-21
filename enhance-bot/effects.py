@@ -317,6 +317,7 @@ reg("pro_scurve", "pro", "منحنى تباين سينمائي (S-Curve)", lambd
 reg("pro_skin_glow", "pro", "توهج بشرة ناعم (Glow)", lambda c: [cx("[{i}]split[a][b];[b]gblur=sigma=14[g];[a][g]blend=c0_mode=screen:c0_opacity=0.22:c1_opacity=0:c2_opacity=0,colorbalance=rm=.03:bm=-.02[{o}]")])
 reg("pro_clarity", "pro", "وضوح احترافي (Clarity)", lambda c: [vf("unsharp=7:7:0.9:7:7:0.0,eq=contrast=1.05")])
 reg("pro_local_contrast", "pro", "تباين محلي (Dodge & Burn)", lambda c: [vf("curves=all='0/0 0.3/0.26 0.7/0.74 1/1',unsharp=13:13:0.7")])
+reg("pro_bleach", "pro", "تدريج ملوّن باهت (Bleach Bypass)", lambda c: [vf("eq=saturation=0.5:contrast=1.35:brightness=-0.03,unsharp=5:5:0.5")], desc="مظهر أفلام الحروب والأكشن: ألوان خافتة وتباين قوي.")
 reg("pro_punch", "pro", "ألوان بارزة (Color Punch)", lambda c: [vf("curves=all='0/0.02 0.5/0.52 1/1',eq=contrast=1.1:saturation=1.18,unsharp=5:5:0.6")])
 reg("pro_audio_master", "pro", "ماستر صوت احترافي (تنقية + ضغط + ضبط مستوى)", lambda c: [af("highpass=f=70,afftdn=nf=-28,acompressor=threshold=0.12:ratio=3:attack=15:release=250,equalizer=f=3000:t=q:w=1:g=2,loudnorm=I=-14:TP=-1.5:LRA=9")], noprev=True, desc="للأصوات والتعليق: يحذف الضجيج ويوحّد المستوى.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")

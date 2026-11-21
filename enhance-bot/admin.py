@@ -747,7 +747,7 @@ async def cb_accounts(cb: CallbackQuery):
     sorts = [(("• " if o == order else "") + lab, f"ad:acc:{o}:0") for o, lab in ACC_ORDERS.items()]
     head = (f"⟦verified⟧ <b>الحسابات ({at['total']})</b>\n"
             f"جدد اليوم {at['new_today']} • دخلوا اليوم {at['active_today']} • متصلون الآن {at['online']} • معطّلة {at['disabled']} • مدفوعة {at['paid']}\n\n")
-    await show(cb, head + ("\n".join(lines) or "لا حسابات بعد"), kb(btns + [nav, sorts, [("⟦search⟧ بحث عن حساب", "ad:asearch")], BACK]))
+    await show(cb, head + ("\n".join(lines) or "لا حسابات بعد"), kb(btns + [nav, sorts, [("⟦search⟧ بحث عن حساب", "ad:asearch"), ("🧹 حسابات خاملة", "ad:idle")], BACK]))
 
 
 async def screen_account(aid: int):
@@ -861,3 +861,21 @@ async def cb_report(cb: CallbackQuery):
         f"⟦star⟧ حسابات مدفوعة: {at['paid']} • معطّلة: {at['disabled']}"
     )
     await show(cb, text, kb([[("⟦badge⟧ الإحصائيات التفصيلية", "ad:stats")], BACK]))
+
+
+@router.callback_query(F.data == "ad:idle")
+async def cb_idle(cb: CallbackQuery):
+    await cb.answer()
+    rows = await db.inactive_accounts(14)
+    lines = [f"• <code>{esc(r[1])}</code> — {ago(r[2])}" for r in rows[:25]]
+    btns = [[InlineKeyboardButton(text=f"⟦trash⟧ حذف كل الخاملة ({len(rows)})", callback_data="ad:idlex", style="danger")]] if rows else []
+    await show(cb, f"🧹 <b>الحسابات الخاملة</b> (لم تدخل منذ 14 يوماً ولا جلسة مفتوحة)\n\n" + ("\n".join(lines) or "لا توجد حسابات خاملة."), kb(btns + [[("⟦left⟧ الحسابات", "ad:acc:last_login:0")], BACK]))
+
+
+@router.callback_query(F.data == "ad:idlex")
+async def cb_idle_delete(cb: CallbackQuery):
+    rows = await db.inactive_accounts(14)
+    for r in rows:
+        await db.delete_account(r[0])
+    await cb.answer(f"حُذف {len(rows)} حساب", show_alert=True)
+    await show(cb, f"✅ حُذفت {len(rows)} حسابات خاملة.", kb([[("⟦left⟧ الحسابات", "ad:acc:last_login:0")], BACK]))

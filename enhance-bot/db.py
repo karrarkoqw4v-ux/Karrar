@@ -372,3 +372,8 @@ async def account_totals() -> dict:
 
 async def tg_of_account(aid: int) -> list[int]:
     return [r[0] for r in await _g("SELECT tg_id FROM sessions WHERE acc=?", (aid,))]
+
+
+async def inactive_accounts(days: int = 14):
+    cut = int(time.time()) - days * 86400
+    return await _g("SELECT a.id,a.username,a.last_login FROM accounts a WHERE COALESCE(a.last_login,a.created)<? AND a.id NOT IN (SELECT acc FROM sessions) ORDER BY a.last_login LIMIT 200", (cut,))
