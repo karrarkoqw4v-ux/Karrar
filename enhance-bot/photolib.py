@@ -735,6 +735,12 @@ def _rgbpop(img):
     return cvlib.sharpen(grade(out, sat=1.25, con=1.12), 0.4, 1.0, 0.1, 2.0)
 
 
+_bgfx("bg_rose", "خلفية تدرج وردي", lambda i: grad_bg(i.shape, (150, 90, 230), (210, 170, 255), 70))
+_bgfx("bg_gold", "خلفية تدرج ذهبي", lambda i: grad_bg(i.shape, (30, 90, 160), (110, 200, 250), 100))
+_flt("f_teal_pop", "تيل بارز (ظلال تيل وبشرة دافئة)", lambda i: grade(i, sh=(.1, .05, -.08), mid=(.02, .0, .02), hi=(-.04, .0, .08), sat=1.15, con=1.12))
+_enh("e_clarity", "وضوح محلي (Clarity)", lambda i: cvlib.sharpen(cvlib.clahe(i, 1.6, 8, 0.6), 0.5, 1.0, 0.2, 3.0))
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
