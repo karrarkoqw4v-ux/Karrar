@@ -7,3 +7,5 @@ stats.db
 models/u2net_human_seg.onnx
 models/silueta.onnx
 models/*.part
+requests/
+backups/
