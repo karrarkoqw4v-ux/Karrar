@@ -10,7 +10,6 @@ import time
 
 import aiohttp
 
-import db
 from flagmap import FLAGS
 
 log = logging.getLogger("proxies")
@@ -27,13 +26,6 @@ REFRESH_EVERY = 900  # كل 15 دقيقة
 STATE: dict = {"ts": 0.0, "by_cc": {}, "all": {}, "alive": 0, "total": 0}
 _lock = asyncio.Lock()
 _geo = None
-
-
-def max_ping() -> float:
-    try:
-        return float(db.setting("px_max_ping") or 20)
-    except ValueError:
-        return 20.0
 
 
 def key_of(host: str, port: int, secret: str) -> str:
@@ -82,28 +74,27 @@ async def _fetch_sources() -> set[tuple[str, int, str]]:
     return out
 
 
-async def probe(host: str, port: int, tries: int = 3) -> tuple[str, float] | None:
-    """(عنوان IP، أقل زمن اتصال TCP بالمللي ثانية) أو None إن لم يتصل"""
+async def probe(host: str, port: int, tries: int = 5) -> tuple[str, float] | None:
+    """(عنوان IP، وسيط زمن اتصال TCP بالمللي ثانية) أو None. المستقر فقط: ينجح 4 من 5 اتصالات"""
     loop = asyncio.get_running_loop()
     try:
         ip = (await loop.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM))[0][4][0]
     except Exception:  # noqa: BLE001
         return None
-    best = None
-    ok = 0
+    times: list[float] = []
     for _ in range(tries):
         t = time.perf_counter()
         try:
-            _, w = await asyncio.wait_for(asyncio.open_connection(ip, port), 3)
-            d = (time.perf_counter() - t) * 1000
+            _, w = await asyncio.wait_for(asyncio.open_connection(ip, port), 4)
+            times.append((time.perf_counter() - t) * 1000)
             w.close()
-            ok += 1
-            best = d if best is None else min(best, d)
         except Exception:  # noqa: BLE001
             pass
-    if ok < 2:  # لازم ينجح الاتصال مرتين على الأقل (استقرار)
+        await asyncio.sleep(0.05)
+    if len(times) < tries - 1:
         return None
-    return ip, best
+    times.sort()
+    return ip, times[len(times) // 2]
 
 
 async def refresh() -> None:
@@ -151,18 +142,12 @@ async def loop_forever() -> None:
 
 
 def servers(cc: str) -> list[dict]:
-    """كل السيرفرات المتصلة لدولة (الأسرع أولاً، حتى 8)"""
-    return STATE["by_cc"].get(cc, [])[:8]
-
-
-def good(cc: str) -> list[dict]:
-    """السيرفرات القوية لدولة: ping ≤ الحد (افتراضي 20ms)"""
-    lim = max_ping()
-    return [e for e in STATE["by_cc"].get(cc, []) if e["ms"] <= lim][:8]
+    """كل السيرفرات المتصلة المستقرة لدولة (أي بنق) — الأسرع أولاً، حتى 10"""
+    return STATE["by_cc"].get(cc, [])[:10]
 
 
 def countries() -> list[tuple[str, int]]:
-    """كل دول الأعلام (68): التي فيها سيرفرات متصلة أولاً ثم الباقي أبجدياً — (الرمز، عدد المتصل)"""
+    """كل دول الأعلام (68): التي فيها سيرفرات مستقرة أولاً ثم الباقي أبجدياً — (الرمز، العدد)"""
     out = [(cc, len(STATE["by_cc"].get(cc, []))) for cc in FLAGS]
     out.sort(key=lambda x: (x[1] == 0, -x[1], FLAGS[x[0]][1]))
     return out

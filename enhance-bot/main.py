@@ -108,7 +108,7 @@ def kb_mode() -> InlineKeyboardMarkup:
                 [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")],
                 [InlineKeyboardButton(text="⟦share⟧ مونتاج من خلال الرابط", callback_data="mode:link", style="success")],
                 [InlineKeyboardButton(text="🤖 مونتاج الذكاء الاصطناعي", callback_data="mode:ai", style="primary")],
-                [InlineKeyboardButton(text="🛠 أدوات تيليجرام", callback_data="tt:menu", style="success")]])
+                [InlineKeyboardButton(text="أدوات تيليجرام", callback_data="tt:menu", style="success")]])
 
 
 async def send_menu(msg: Message):
