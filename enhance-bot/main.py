@@ -116,7 +116,16 @@ async def send_menu(msg: Message):
     await msg.answer(WELCOME, reply_markup=kb_mode())
 
 
-auth.START["fn"] = send_menu
+GREET = "انت احلى شاب بالعراق 😁😁😂😂"
+
+
+async def send_start(msg: Message):
+    """عند دخول أي شخص (/start): رسالة ترحيب مرحة ثم القائمة"""
+    await msg.answer(GREET)
+    await send_menu(msg)
+
+
+auth.START["fn"] = send_start
 
 
 def _pop_pro(uid: int) -> bool:
@@ -302,6 +311,7 @@ def caption(j: dict, note: str = "") -> str:
 @router.message(CommandStart())
 async def start(msg: Message):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
+    await msg.answer(GREET)  # رسالة ترحيب مرحة لكل من يدخل
     if await auth.maybe_welcome(msg):
         return
     if await ask_conflict(msg, None):
