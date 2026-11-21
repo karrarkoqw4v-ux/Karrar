@@ -19,6 +19,7 @@ from aiogram.types import BufferedInputFile, CallbackQuery, InlineKeyboardButton
 import auth
 import db
 import photo
+import watchdog
 
 log = logging.getLogger("admin")
 router = Router()
@@ -111,6 +112,7 @@ class Gate(BaseMiddleware):
     async def __call__(self, handler, event, data):
         u = getattr(event, "from_user", None)
         if u:
+            watchdog.touch_update()
             if not auth.gate_allows(event):  # تسجيل الدخول إجباري
                 try:
                     if isinstance(event, CallbackQuery):
@@ -241,6 +243,7 @@ async def screen_home():
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
+        [("🛰 المراقبة 24/7", "ad:watch")],
         [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
@@ -1065,3 +1068,24 @@ async def announce_start(bot: Bot):
             await bot.send_message(a, text, reply_markup=kb([[InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")], [("⟦gear⟧ لوحة التحكم", "ad:home")]]))
         except Exception:  # noqa: BLE001
             pass
+
+
+@router.callback_query(F.data == "ad:watch")
+async def cb_watch(cb: CallbackQuery):
+    await cb.answer()
+    S_ = watchdog.STATE
+    h = watchdog.health_json()
+    rec = await db.recent_alerts(30)
+    rec = [r for r in rec if r[1] == "recover"][:5]
+    lines = "\n".join(f"• {ago(ts)}: {esc(t)[:90]}" for ts, k, t in rec) or "لا توجد توقفات مسجّلة"
+    text = (
+        "🛰 <b>المراقبة 24/7</b> (نبض كل ثانية)\n\n"
+        f"{'🟢 سليم' if h['ok'] else '🔴 الحلقة متجمدة'} • نبض قبل {h['loop_age']}ث\n"
+        f"⏱ يعمل منذ: {fmt_dur(h['uptime'])} • إعادات التشغيل: {h['restarts']}\n"
+        f"📶 اتصال تيليجرام: {('%dms' % h['getme_ms']) if h['getme_ms'] is not None else '—'} • إخفاقات متتالية: {h['getme_fail']}\n"
+        f"📈 أقصى تأخر للحلقة: {S_['max_lag']:.2f}ث • الذاكرة: {h['rss_mb']}MB" + (f" / حد {watchdog.MAX_RSS_MB}MB" if watchdog.MAX_RSS_MB else "") + "\n"
+        f"⚙️ التجمد يُعاد تشغيله بعد {watchdog.STALL_SECS:.0f}ث • آخر تحديث مستلم: {ago(S_['last_update'])}\n\n"
+        f"<b>آخر التوقفات:</b>\n{lines}\n\n"
+        "ℹ️ المشرف run_forever.py يعيد تشغيل العملية خلال ثانية إن انتهت، والحارس يعيدها إن تجمّدت."
+    )
+    await show(cb, text, kb([[("⟦refresh⟧ تحديث", "ad:watch"), ("🩺 فحص سريع", "ad:health")], BACK]))

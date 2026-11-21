@@ -72,6 +72,12 @@ def flag(k: str) -> bool:
     return setting(k) == "1"
 
 
+def put_setting(k: str, v: str):
+    """كتابة إعداد بدون إعادة تحميل الذاكرة (للنبض المتكرر)"""
+    _q("INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", (k, str(v)))
+    SETTINGS[k] = str(v)
+
+
 async def set_setting(k: str, v: str):
     await asyncio.to_thread(_q, "INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", (k, str(v)))
     load_cache()

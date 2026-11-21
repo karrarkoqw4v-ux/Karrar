@@ -57,6 +57,7 @@ import emo
 import photo
 import photolib
 import admin
+import watchdog
 import auth
 import linkdl
 import secrets
@@ -1490,8 +1491,11 @@ async def health():
     if not port:
         return
     app = web.Application()
+    async def _health(r):
+        h = watchdog.health_json()
+        return web.json_response(h, status=200 if h["ok"] else 503)
     app.router.add_get("/", lambda r: web.Response(text="ok"))
-    app.router.add_get("/health", lambda r: web.Response(text="ok"))
+    app.router.add_get("/health", _health)
     webapp.BOT_TOKEN = TOKEN
     webapp.get_job = lambda uid: JOBS.get(uid)
     webapp.on_text = text_submit
@@ -1539,6 +1543,9 @@ async def main():
         pass
     asyncio.create_task(cleaner())
     admin.attach_log_buffer()
+    watchdog.start_guard(idle_fn=lambda: not any(j.get("running") for j in JOBS.values()))
+    asyncio.create_task(watchdog.beat_task(bot))
+    asyncio.create_task(watchdog.announce_recovery(bot, ADMIN_IDS))
     asyncio.create_task(admin.announce_start(bot))
     asyncio.create_task(asyncio.to_thread(photolib.ensure_models, lambda s: print(s, flush=True)))  # تنزيل نموذج فصل الخلفية الدقيق مرة واحدة
     asyncio.create_task(photo.cleaner())

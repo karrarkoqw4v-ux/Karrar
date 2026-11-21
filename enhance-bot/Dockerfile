@@ -4,4 +4,5 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["python", "main.py"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD python -c "import time,sys;sys.exit(0 if time.time()-float(open('/tmp/voibot_heartbeat').read())<30 else 1)"
+CMD ["python", "run_forever.py"]
