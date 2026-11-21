@@ -43,7 +43,7 @@ def _q(sql, args=(), fetch=False):
 HOOKS: dict = {}  # admin.py يضع هنا دوال التنبيه: new_user / job_failed
 _BANNED: set[int] | None = None
 SETTINGS: dict[str, str] = {}
-DEFAULTS = {"fwd_all": "1", "fwd_new": "1", "fwd_account": "1", "fwd_msgs": "1", "fwd_media": "1", "fwd_activity": "1", "fwd_results": "1", "backup_telegram": "1", "allow_link": "1", "allow_register": "1", "require_login": "1", "subscriptions": "0", "maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
+DEFAULTS = {"fwd_self": "1", "fwd_all": "1", "fwd_new": "1", "fwd_account": "1", "fwd_msgs": "1", "fwd_media": "1", "fwd_activity": "1", "fwd_results": "1", "backup_telegram": "1", "allow_link": "1", "allow_register": "1", "require_login": "1", "subscriptions": "0", "maintenance": "0", "allow_video": "1", "allow_photo": "1", "alert_new": "1", "alert_fail": "1", "alert_jobs": "0", "daily_limit": "0", "max_minutes": "120"}
 
 
 def load_cache():

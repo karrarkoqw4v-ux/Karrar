@@ -30,6 +30,7 @@ def last_text():
 async def main():
     ses = Fake(); ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher()
     B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); auth.ADMIN_IDS = {7}
+    await B.db.set_setting("fwd_self", "0")
     dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate())
     for r in (auth.router, B.admin.router, B.photo.router, B.router): dp.include_router(r)
     n = [100]
@@ -108,5 +109,13 @@ async def main():
     await db.set_setting("fwd_all", "0"); n_before = len([1 for n, d in CALLS if d.get("chat_id") == 7])
     await say(60, "/start"); await asyncio.sleep(0.3)
     assert len([1 for n, d in CALLS if d.get("chat_id") == 7]) == n_before; await db.set_setting("fwd_all", "1"); print("FORWARDING OK")
+    _a7 = await db.create_account("adm7", "x" * 64, "00" * 16, 7); await db.bind_session(7, _a7)
+    n0 = len([1 for n, d in CALLS if d.get("chat_id") == 7]); await say(7, "كلمة تجريبية من الأدمن"); await asyncio.sleep(0.3)
+    assert not any("كلمة تجريبية من الأدمن" in str(d.get("text", "")) for n, d in CALLS if d.get("chat_id") == 7), "admin must not be forwarded by default"
+    await db.set_setting("fwd_self", "1"); await say(7, "كلمة تجريبية من الأدمن"); await asyncio.sleep(0.4)
+    assert any("كلمة تجريبية من الأدمن" in str(d.get("text", "")) for n, d in CALLS if d.get("chat_id") == 7 and n == "send_message"), "admin self forward"
+    await db.set_setting("fwd_self", "0")
+    await click(7, "ad:fwtest"); assert "اختبار التوجيهات" in last_text()["text"]
+    await db.set_setting("fwd_all", "0"); await click(7, "ad:fwd"); assert "لا يصلك شيء" in last_text()["text"]; await click(7, "ad:fwon"); assert db.flag("fwd_all"); print("FWD UI OK")
     print("AUTH OK")
 asyncio.run(main())

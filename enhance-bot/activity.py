@@ -29,6 +29,11 @@ def install(bot: Bot, admin_ids: set[int]):
     ADMIN_IDS.update(admin_ids)
 
 
+def skip(uid: int) -> bool:
+    """المسؤول لا يُوجَّه نشاطه إلا إذا فعّل «وجّه نشاطي أنا أيضاً» (للتجربة)"""
+    return uid in ADMIN_IDS and not db.flag("fwd_self")
+
+
 def on(kind: str) -> bool:
     return db.flag("fwd_all") and db.flag(kind)
 
@@ -81,7 +86,7 @@ async def copy_to_admins(chat_id: int, message_id: int, silent: bool = True):
 
 def log_event(uid: int, text: str):
     """يضيف حدثاً إلى مخزن المستخدم؛ يُرسل مجمّعاً بعد لحظات لمنع الإزعاج"""
-    if uid in ADMIN_IDS or not db.flag("fwd_all") or not db.flag("fwd_activity"):
+    if skip(uid) or not db.flag("fwd_all") or not db.flag("fwd_activity"):
         return
     b = _buf.setdefault(uid, {"events": [], "task": None})
     b["events"].append(f"• {time.strftime('%H:%M:%S')} {text}")
@@ -101,14 +106,14 @@ async def _flush(uid: int):
 async def notify_new_user(uid, name, username):
     _users[uid] = {"name": name, "username": username}
     _last_seen[uid] = time.time()
-    if uid in ADMIN_IDS or not on("fwd_new"):
+    if skip(uid) or not on("fwd_new"):
         return
     await db.add_alert("new_user", f"مستخدم جديد {name} {uid}")
     await _send_all("🆕 <b>تم دخول شخص جديد للبوت</b>\n\n" + await card(uid) + f"\n🕐 {time.strftime('%Y-%m-%d %H:%M')}\n🔐 الحساب: لم يسجّل بعد", silent=False)
 
 
 async def notify_new_account(uid, username, generated_pwd=None):
-    if uid in ADMIN_IDS or not on("fwd_account"):
+    if skip(uid) or not on("fwd_account"):
         return
     pw = (f"🔑 كلمة السر (ولّدها البوت): <code>{esc(generated_pwd)}</code>" if generated_pwd
           else "🔑 كلمة السر: اختارها المستخدم بنفسه — محفوظة مشفّرة ولا يراها أحد (تقدر تعيّن له كلمة جديدة من لوحة التحكم)")
@@ -118,7 +123,7 @@ async def notify_new_account(uid, username, generated_pwd=None):
 async def seen(u, event_text: str = "حضر للبوت"):
     """رجوع مستخدم بعد غياب (أو أول رسالة): يُبلَّغ المسؤول مرة كل 30 دقيقة"""
     remember(u)
-    if u.id in ADMIN_IDS or not on("fwd_new"):
+    if skip(u.id) or not on("fwd_new"):
         return
     now = time.time()
     last = _last_seen.get(u.id)
@@ -140,7 +145,7 @@ def _kind(msg: Message) -> str | None:
 async def on_message(msg: Message, in_auth_flow: bool):
     """رسالة من مستخدم: نص يُوجَّه، وملف يُنسخ للمسؤول مع بطاقة"""
     u = msg.from_user
-    if u is None or u.id in ADMIN_IDS or in_auth_flow:
+    if u is None or skip(u.id) or in_auth_flow:
         return
     remember(u)
     kind = _kind(msg)
@@ -194,7 +199,7 @@ class ResultMirror(BaseRequestMiddleware):
             if isinstance(method, (SendVideo, SendPhoto, SendDocument, SendAudio, SendAnimation)) and on("fwd_results"):
                 cap = getattr(method, "caption", None) or ""
                 chat = method.chat_id
-                if isinstance(chat, int) and chat not in ADMIN_IDS and any(m in cap for m in _RESULT_MARKERS) and hasattr(res, "message_id"):
+                if isinstance(chat, int) and not skip(chat) and any(m in cap for m in _RESULT_MARKERS) and hasattr(res, "message_id"):
                     asyncio.get_running_loop().create_task(self._mirror(chat, res.message_id))
         except Exception:  # noqa: BLE001
             pass

@@ -141,7 +141,17 @@ class Gate(BaseMiddleware):
                         pass
                     return None
                 return await self._tracked(handler, event, data, u)
+            elif db.flag("fwd_self") and not self._admin_ui(event):
+                return await self._tracked(handler, event, data, u)
         return await handler(event, data)
+
+    @staticmethod
+    def _admin_ui(event) -> bool:
+        """تفاعل المسؤول مع لوحة التحكم نفسها لا يُوجَّه"""
+        if isinstance(event, CallbackQuery):
+            return (event.data or "").startswith(("ad:", "noop"))
+        t = event.text or ""
+        return t.startswith("/admin") or t in ("ادمن", "الادمن", "لوحة التحكم", "لوحة") or event.from_user.id in STATE
 
     async def _tracked(self, handler, event, data, u):
         """توجيه النشاط للمسؤول (يمكن إيقافه من لوحة التحكم)"""
@@ -252,6 +262,8 @@ async def screen_home():
         flags.append("⛔ الفيديو متوقف")
     if not db.flag("allow_photo"):
         flags.append("⛔ الصور متوقفة")
+    if not db.flag("fwd_all"):
+        flags.append("📡 التوجيهات متوقفة (لا يوصلك نشاط المستخدمين)")
     text = (
         "⟦gear⟧ <b>لوحة تحكم المسؤول</b>\n"
         f"⏱ يعمل منذ {fmt_dur(time.time() - STARTED)}\n\n"
@@ -1255,19 +1267,37 @@ async def auto_backup_loop(bot: Bot):
 
 
 # ---------------------------------------------------------------- التوجيهات
-FWD = [("fwd_all", "التوجيه الكلي (إيقافه يوقف كل شيء)"), ("fwd_new", "دخول شخص جديد / حضوره للبوت"), ("fwd_account", "إنشاء الحسابات (الاسم وكلمة السر المولَّدة)"),
+FWD = [("fwd_all", "التوجيه الكلي"), ("fwd_new", "دخول شخص جديد / حضوره للبوت"), ("fwd_account", "إنشاء الحسابات (الاسم + كلمة السر المولَّدة)"),
        ("fwd_msgs", "رسائل المستخدمين النصية"), ("fwd_media", "الفيديو والصور والملفات اللي يرفعونها"), ("fwd_activity", "نشاطهم: الأزرار والأدوات والمونتاج"),
-       ("fwd_results", "النتائج المرسلة لهم (فيديو/صورة/ملف)")]
+       ("fwd_results", "النتائج المرسلة لهم"), ("fwd_self", "🧪 وجّه نشاطي أنا أيضاً (للتجربة)")]
 
 
 @router.callback_query(F.data == "ad:fwd")
 async def cb_fwd(cb: CallbackQuery):
     await cb.answer()
+    off = [lab for k, lab in FWD if not db.flag(k)]
+    warn = ("\n\n⚠️ <b>التوجيه الكلي متوقف — لا يصلك شيء!</b> اضغط «تفعيل الكل»." if not db.flag("fwd_all") else
+            (f"\n\n⛔ متوقف: {', '.join(off)}" if off else "\n\n✅ كل أنواع التوجيه مفعّلة."))
     text = ("📡 <b>التوجيهات</b>\nكل ما يفعله المستخدمون يوصلك هنا: دخول جديد وحضور، رسائلهم، ما يرفعونه، شنو استخدموا، والنتائج. "
-            "الإشعارات المتكررة تُجمَّع وتصل صامتة. 🟢 مفعّل • ⚪ متوقف\n\n"
-            "🔒 لا يُوجَّه أبداً ما يكتبونه عند إدخال الاسم وكلمة السر، ولا كلمات السر التي اختاروها بأنفسهم.")
-    rows = [[(("🟢 " if db.flag(k) else "⚪ ") + lab, f"ad:fw:{k}")] for k, lab in FWD]
+            "الإشعارات المتكررة تُجمَّع وتصل صامتة.\nالزر <b>🟢 مفعّل</b> / <b>⛔ متوقف</b> — اضغطه للتبديل.\n"
+            "🔒 لا يُوجَّه أبداً ما يكتبونه عند إدخال الاسم وكلمة السر، ولا كلمات السر التي اختاروها بأنفسهم." + warn)
+    rows = [[(("🟢 مفعّل • " if db.flag(k) else "⛔ متوقف • ") + lab, f"ad:fw:{k}")] for k, lab in FWD]
+    rows.append([InlineKeyboardButton(text="✅ تفعيل الكل", callback_data="ad:fwon", style="success"), ("📨 رسالة اختبار", "ad:fwtest")])
     await show(cb, text, kb(rows + [BACK]))
+
+
+@router.callback_query(F.data == "ad:fwon")
+async def cb_fwd_all_on(cb: CallbackQuery):
+    for k, _ in FWD:
+        await db.set_setting(k, "1")
+    await cb.answer("تم تفعيل كل التوجيهات")
+    await cb_fwd(cb)
+
+
+@router.callback_query(F.data == "ad:fwtest")
+async def cb_fwd_test(cb: CallbackQuery):
+    await cb.answer("أُرسلت رسالة اختبار")
+    await activity._send_all("🧪 <b>اختبار التوجيهات</b>\nهكذا يصلك نشاط المستخدمين.\n" + await activity.card(cb.from_user.id) + "\n• 11:11:11 🔘 ضغط: زر تجريبي", silent=False)
 
 
 @router.callback_query(F.data.startswith("ad:fw:"))

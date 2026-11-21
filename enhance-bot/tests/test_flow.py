@@ -24,6 +24,7 @@ class Fake(BaseSession):
 
 async def main():
     ses = Fake(); import emo; ses.middleware(B.activity.ResultMirror()); ses.middleware(emo.PremiumEmoji()); B.activity.FLUSH_SECS = 0.05; bot = Bot("1:test", session=ses); dp = Dispatcher(); B.auth.ADMIN_IDS = {7}; dp.include_router(B.auth.router); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
+    await B.db.set_setting("fwd_self", "0")
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
         n[0] += 1; upd["update_id"] = n[0]
