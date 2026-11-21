@@ -629,6 +629,10 @@ reg("lofi_phone", "aud", "صوت هاتف قديم (Lo-Fi)", lambda c: [af("high
 reg("stereo_wide", "aud", "صوت ستيريو واسع", lambda c: [af("extrastereo=m=2.0,alimiter=limit=0.95")], noprev=True)
 reg("audio_fade", "aud", "تدرّج الصوت (دخول وخروج)", lambda c: [af(f"afade=t=in:d=0.6,afade=t=out:st={max(0.0, c.dur - 1.5):.2f}:d=1.5")], noprev=True)
 reg("voice_robot", "aud", "صوت روبوت", lambda c: [af("afftfilt=real='hypot(re,im)*cos(0)':imag='hypot(re,im)*sin(0)':win_size=512:overlap=0.75")], noprev=True)
+reg("megaphone", "aud", "مكبّر صوت (Megaphone)", lambda c: [af("highpass=f=400,lowpass=f=3800,acompressor=threshold=0.08:ratio=8,volume=2,alimiter=limit=0.9")], noprev=True, desc="صوتك كأنه عبر مكبّر صوت، رائج في تيك توك.")
+reg("voice_trickster", "aud", "صوت كرتوني (Trickster)", lambda c: [af("aresample=44100,asetrate=59535,aresample=44100,atempo=0.7407")], noprev=True, desc="نبرة عالية مرحة بنفس مدة الفيديو.")
+reg("voice_granny", "aud", "صوت عجوز (Granny)", lambda c: [af("aresample=44100,asetrate=50715,aresample=44100,atempo=0.8696,tremolo=f=5:d=0.4")], noprev=True, desc="نبرة مرتجفة طريفة.")
+reg("voice_lowbat", "aud", "بطارية ضعيفة (Low battery)", lambda c: [af("aresample=44100,asetrate=35280,aresample=44100,atempo=1.25,vibrato=f=7:d=0.6,lowpass=f=4000")], noprev=True, desc="صوت ثقيل مرتعش كجهاز على وشك الانطفاء.")
 reg("chorus", "aud", "كورَس (تعدد الأصوات)", lambda c: [af("chorus=0.5:0.9:50|60:0.4|0.32:0.25|0.4:2|1.3")], noprev=True)
 reg("phaser", "aud", "فيزر (تموّج الصوت)", lambda c: [af("aphaser=in_gain=0.6:out_gain=0.8:delay=3:decay=0.5:speed=0.6")], noprev=True)
 reg("music", "aud", "إضافة موسيقى (ملف أو رسالة صوتية)", lambda c: [Piece("music", (c.p["audio"], c.p["vol"], float(c.p.get("start", 0) or 0), bool(c.p.get("rep", 0))))],
