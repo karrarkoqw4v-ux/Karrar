@@ -125,6 +125,8 @@ PH: dict[str, tuple[str, str]] = {
     "star2": ("5258185631355378853", "⭐️"),
     "badge": ("5258391025281408576", "📈"),
     "stack": ("4960800343433675689", "💠"),
+    "user": ("5256143829672672750", "👤"),
+    "gear": ("5019413195186504264", "⚙️"),
 }
 _PH = re.compile(r"⟦(\w+)⟧")
 
@@ -192,8 +194,12 @@ def tg(e: str) -> str:
 def style_for(b: InlineKeyboardButton) -> str | None:
     """ألوان الأزرار (Bot API الأحدث): success أخضر • danger أحمر • primary أزرق"""
     d = b.callback_data or ""
-    if d in ("go", "pg", "pv"):
+    if d in ("go", "pg", "pv", "ad:bcgo") or d.startswith("ad:unban:"):
         return "success"
+    if d.startswith(("ad:ban:", "ad:kill:", "ad:clean")) or d == "ad:close":
+        return "danger"
+    if d in ("ad:stats", "ad:users:last:0", "ad:search", "ad:bc", "ad:set"):
+        return "primary"
     if d in ("clr", "stepcancel", "pz", "pcancel") or d.startswith(("del:", "pd:")):
         return "danger"
     if d.startswith("ptl:") or d in ("pe:auto", "pe:iphone", "pe:bg_remove", "pe:bg_blur", "pe:bg_bokeh", "pe:skin", "pk"):

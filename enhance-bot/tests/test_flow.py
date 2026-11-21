@@ -23,7 +23,7 @@ class Fake(BaseSession):
         return True
 
 async def main():
-    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict
+    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
         n[0] += 1; upd["update_id"] = n[0]
@@ -39,6 +39,17 @@ async def main():
     def last(*names): return [c for c in CALLS if c[0] in names][-1]
     def cnt(name): return len([c for c in CALLS if c[0] == name])
     await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
+    # ---- لوحة تحكم المسؤول
+    await say("/admin"); assert "لوحة تحكم المسؤول" in last("send_message")[1]["text"]; hb = [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r]; print("ADMIN HOME buttons:", len(hb))
+    for cbk in ["ad:stats", "ad:users:last:0", "ad:users:jobs:0", "ad:u:7", "ad:top", "ad:logs", "ad:sess", "ad:alerts", "ad:set", "ad:ch:daily_limit", "ad:cs:daily_limit:5", "ad:sys", "ad:exp", "ad:bans", "ad:bc", "ad:clean", "ad:home"]:
+        n0 = len(CALLS); await click(cbk); assert len(CALLS) > n0, cbk
+    await click("ad:ex:users"); assert last("send_document")[0] == "send_document"
+    await click("ad:tg:maintenance:set"); assert B.db.flag("maintenance"); await click("ad:tg:maintenance:set"); assert not B.db.flag("maintenance")
+    await click("ad:cs:daily_limit:0")
+    await B.db.touch_user(99, "تجربة", "tester"); await click("ad:ban:99"); assert B.db.banned(99); await click("ad:unban:99"); assert not B.db.banned(99)
+    await click("ad:search"); await say("tester"); assert "ad:u:99" in str(last("send_message")[1]) or "تفاصيل المستخدم" in last("send_message")[1]["text"]
+    await click("ad:bc"); await click("ad:bca:all"); await say("رسالة إذاعة تجريبية"); assert "ad:bcgo" in str(last("send_message")[1]); await click("ad:bcgo"); assert cnt("copy_message") >= 2 and "انتهت الإذاعة" in last("send_message", "edit_message_text")[1]["text"]; print("ADMIN PANEL OK")
+    B.admin.STATE.clear()
     # ---- وضع الصور
     await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo"], qb; print("MODE CHOOSER OK")
     await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]

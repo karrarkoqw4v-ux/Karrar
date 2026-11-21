@@ -55,6 +55,7 @@ import beats
 import designer
 import emo
 import photo
+import admin
 import secrets
 import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
@@ -363,13 +364,16 @@ async def cb_mode(cb: CallbackQuery):
 async def on_video(msg: Message, bot: Bot):
     uid = msg.from_user.id
     await db.touch_user(uid, msg.from_user.full_name, msg.from_user.username)
+    if fm := admin.feature_msg("video", uid):
+        return await msg.answer(fm)
     if await ask_conflict(msg, msg):
         return
     fid, size, dur = _video_of(msg)
     if size and size > MAX_DL:
         return await msg.answer("⚠️ حجم الفيديو أكبر من 20MB (حد تيليجرام للبوتات). أرسل فيديو أصغر أو قصّه.")
-    if dur and dur > MAX_DURATION:
-        return await msg.answer(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقيقة. أرسل فيديو أقصر.")
+    mx = admin.max_seconds()
+    if dur and dur > mx:
+        return await msg.answer(f"⚠️ الفيديو أطول من {mx // 60} دقيقة. أرسل فيديو أقصر.")
     drop_job(uid)
     d = WORK / f"{uid}_{uuid.uuid4().hex[:6]}"
     d.mkdir(parents=True, exist_ok=True)
@@ -388,8 +392,8 @@ async def on_video(msg: Message, bot: Bot):
         w, h, dd, has_a = process.info(await process.probe(str(src)))
         if not w or not h or dd <= 0:
             raise ValueError("bad video")
-        if dd > MAX_DURATION:
-            await note.edit_text(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقيقة.")
+        if dd > mx:
+            await note.edit_text(f"⚠️ الفيديو أطول من {mx // 60} دقيقة.")
             shutil.rmtree(d, ignore_errors=True)
             return
         # نسخة معاينة للفيديو **كاملاً بدون أي قص** (أبعاد أصغر للفيديوهات الطويلة لتبقى المعاينة سريعة)
@@ -1013,6 +1017,8 @@ async def cb_go(cb: CallbackQuery, bot: Bot):
         return await cb.answer("طلبك قيد المعالجة")
     if not j["stack"]:
         return await cb.answer("اختر تأثيراً أو قالباً واحداً على الأقل", show_alert=True)
+    if qm := await admin.quota_msg(cb.from_user.id):
+        return await cb.answer(qm, show_alert=True)
     j["running"] = True
     await cb.answer()
     chat = cb.message.chat.id
@@ -1178,6 +1184,12 @@ async def main():
     session.middleware(emo.PremiumEmoji())  # إيموجيات مميزة في كل النصوص والأزرار
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
+    admin.install(bot, ADMIN_IDS, {"JOBS": JOBS, "WORK": WORK, "drop_job": drop_job, "MAX_PARALLEL": MAX_PARALLEL, "PORT": os.getenv("PORT", "—"), "WEBAPP": bool(WEBAPP_URL)})
+    photo.HOOK["quota"] = admin.quota_msg
+    photo.HOOK["feature"] = admin.feature_msg
+    dp.message.outer_middleware(admin.Gate())
+    dp.callback_query.outer_middleware(admin.Gate())
+    dp.include_router(admin.router)
     dp.include_router(photo.router)
     dp.include_router(router)
     global BOT

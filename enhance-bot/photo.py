@@ -17,7 +17,7 @@ log = logging.getLogger("photo")
 router = Router()
 PJOBS: dict[int, dict] = {}
 WORK: Path = Path("work")  # يضبطه main
-HOOK: dict = {"ask": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
+HOOK: dict = {"ask": None, "quota": None, "feature": None}  # main يضع هنا دالة سؤال (إلغاء/تكملة) عند وجود مونتاج جارٍ
 PAGE = 12
 TTL = 1800
 MAX_DL = 20 * 1024 * 1024
@@ -159,6 +159,8 @@ async def open_session(bot: Bot, msg: Message, fid: str, size: int | None, as_fi
 @router.message(F.photo)
 async def on_photo(msg: Message, bot: Bot):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
+    if HOOK["feature"] and (fm := HOOK["feature"]("photo", msg.from_user.id)):
+        return await msg.answer(fm)
     if HOOK["ask"] and await HOOK["ask"](msg, msg):
         return
     ph = msg.photo[-1]
@@ -168,6 +170,8 @@ async def on_photo(msg: Message, bot: Bot):
 @router.message(F.document & F.document.mime_type.startswith("image/"))
 async def on_photo_doc(msg: Message, bot: Bot):
     await db.touch_user(msg.from_user.id, msg.from_user.full_name, msg.from_user.username)
+    if HOOK["feature"] and (fm := HOOK["feature"]("photo", msg.from_user.id)):
+        return await msg.answer(fm)
     if HOOK["ask"] and await HOOK["ask"](msg, msg):
         return
     d = msg.document
@@ -460,6 +464,8 @@ async def cb_export(cb: CallbackQuery, bot: Bot):
         return await cb.answer("لحظة...")
     if not j["stack"]:
         return await cb.answer("اختر أداة واحدة على الأقل", show_alert=True)
+    if HOOK["quota"] and (qm := await HOOK["quota"](cb.from_user.id)):
+        return await cb.answer(qm, show_alert=True)
     await cb.answer()
     j["busy"] = True
     t0 = time.time()
