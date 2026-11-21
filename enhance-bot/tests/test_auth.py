@@ -30,6 +30,7 @@ def last_text():
 async def main():
     ses = Fake(); ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher()
     B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); auth.ADMIN_IDS = {7}
+    await db.set_setting("require_login", "1")
     await B.db.set_setting("fwd_self", "0")
     dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate())
     for r in (auth.router, B.admin.router, B.photo.router, B.router): dp.include_router(r)
@@ -117,5 +118,10 @@ async def main():
     await db.set_setting("fwd_self", "0")
     await click(7, "ad:fwtest"); assert "اختبار التوجيهات" in last_text()["text"]
     await db.set_setting("fwd_all", "0"); await click(7, "ad:fwd"); assert "لا يصلك شيء" in last_text()["text"]; await click(7, "ad:fwon"); assert db.flag("fwd_all"); print("FWD UI OK")
+    # تسجيل الدخول اختياري: بدون إلزام يرى المستخدم القائمة مباشرة
+    await db.set_setting("require_login", "0"); Z = 80
+    await say(Z, "/start"); assert "mode:video" in str(last_text()["reply_markup"]) and "au:me" in str(last_text()["reply_markup"]), "optional login menu"
+    await say(Z, "/menu"); await click(Z, "au:me"); assert btns(last_text()) == ["au:login", "au:reg"]; print("OPTIONAL LOGIN OK")
+    await db.set_setting("require_login", "1")
     print("AUTH OK")
 asyncio.run(main())
