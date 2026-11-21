@@ -291,6 +291,9 @@ reg("film_flicker", "fx", "رجفة فيلم قديم (سطوع)", lambda c: [vf
 reg("vert_shake", "ed", "اهتزاز عمودي على الإيقاع", lambda c: [vf(f"scale=trunc({c.w}*1.08/2)*2:trunc({c.h}*1.08/2)*2,crop={c.w}:{c.h}:x='(iw-ow)/2':y='(ih-oh)/2+((ih-oh)/2-2)*exp(-8*{_tt(c)[0]})*sin(t*70)'")], motion=True)
 reg("vignette_pulse", "ed", "تعتيم أطراف نبضي", lambda c: [vf(f"vignette=angle='0.95-0.32*exp(-6*{_tt(c)[0]})':eval=frame")], motion=True)
 reg("sat_drop", "ed", "سقوط الألوان على الضربة", lambda c: [vf(f"eq=saturation='1-0.85*exp(-8*{_tt(c, 2.0)[0]})':eval=frame")], motion=True)
+reg("hold_red", "col", "إبقاء الأحمر فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0xE0182D:similarity=0.28:blend=0.12")])
+reg("hold_blue", "col", "إبقاء الأزرق فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0x2A6BE0:similarity=0.28:blend=0.12")])
+reg("hold_yellow", "col", "إبقاء الأصفر فقط (الباقي رمادي)", lambda c: [vf("colorhold=color=0xF2C318:similarity=0.28:blend=0.12")])
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)
@@ -548,6 +551,11 @@ reg("echo", "aud", "صدى", lambda c: [af("aecho=0.8:0.88:60|120:0.4|0.3")], no
 reg("bass", "aud", "تعزيز الجهير", lambda c: [af("bass=g=9,alimiter=limit=0.95")], noprev=True)
 reg("voice_deep", "aud", "صوت غليظ", lambda c: [af("aresample=44100,asetrate=35280,aresample=44100,atempo=1.25")], noprev=True)
 reg("voice_high", "aud", "صوت رفيع", lambda c: [af("aresample=44100,asetrate=57330,aresample=44100,atempo=0.7692")], noprev=True)
+reg("treble", "aud", "وضوح الأصوات (تعزيز الحدة)", lambda c: [af("treble=g=5,highpass=f=60,alimiter=limit=0.95")], noprev=True)
+reg("hall", "aud", "صدى قاعة (Reverb)", lambda c: [af("aecho=0.8:0.9:40|80|130|200:0.35|0.28|0.2|0.12")], noprev=True)
+reg("lofi_phone", "aud", "صوت هاتف قديم (Lo-Fi)", lambda c: [af("highpass=f=350,lowpass=f=3200,acompressor=threshold=0.1:ratio=4")], noprev=True)
+reg("stereo_wide", "aud", "صوت ستيريو واسع", lambda c: [af("extrastereo=m=2.0,alimiter=limit=0.95")], noprev=True)
+reg("audio_fade", "aud", "تدرّج الصوت (دخول وخروج)", lambda c: [af(f"afade=t=in:d=0.6,afade=t=out:st={max(0.0, c.dur - 1.5):.2f}:d=1.5")], noprev=True)
 reg("music", "aud", "إضافة موسيقى (ملف أو رسالة صوتية)", lambda c: [Piece("music", (c.p["audio"], c.p["vol"], float(c.p.get("start", 0) or 0), bool(c.p.get("rep", 0))))],
     steps=[("audio", "🎧 أرسل ملف الموسيقى (MP3/صوت) أو رسالة صوتية حتى 20MB:"),
            ("choice", "مستوى الموسيقى:", [("🔈 منخفض", 0.4), ("🔉 متوسط", 0.8), ("🔊 عالٍ", 1.4)], "vol"),
