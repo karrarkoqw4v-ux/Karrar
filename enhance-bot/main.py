@@ -56,6 +56,7 @@ import designer
 import emo
 import photo
 import photolib
+import activity
 import admin
 import watchdog
 import auth
@@ -1513,6 +1514,7 @@ async def main():
     if os.getenv("CA_BUNDLE"):  # شهادة مخصصة (للبيئات خلف وسيط HTTPS) — اختياري
         import ssl
         session._connector_init["ssl"] = ssl.create_default_context(cafile=os.environ["CA_BUNDLE"])
+    session.middleware(activity.ResultMirror())
     session.middleware(emo.PremiumEmoji())  # إيموجيات مميزة في كل النصوص والأزرار
     bot = Bot(TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()

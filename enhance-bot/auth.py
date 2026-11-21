@@ -87,7 +87,8 @@ def gate_allows(event) -> bool:
 def welcome_screen():
     text = ("⟦lock⟧ <b>أهلاً بك في بوت المونتاج</b>\n\n"
             "⟦key⟧ سجّل دخولك أو أنشئ حساباً <b>مجانياً</b> ليحفظ البوت بياناتك وسجل أعمالك بحسابك الخاص.\n"
-            "⟦verified⟧ تسجّل <b>مرة واحدة فقط</b> ويبقى حسابك محفوظاً على تيليجرامك.")
+            "⟦verified⟧ تسجّل <b>مرة واحدة فقط</b> ويبقى حسابك محفوظاً على تيليجرامك.\n\n"
+            "ℹ️ باستخدامك البوت توافق أن الإدارة قد تطّلع على نشاطك وما ترسله وما ينتج عنه لتحسين الخدمة. كلمة السر التي تختارها بنفسك لا يراها أحد.")
     return text, kb([[InlineKeyboardButton(text="⟦login⟧ تسجيل دخول", callback_data="au:login", style="primary"),
                       InlineKeyboardButton(text="⟦account⟧ إنشاء حساب", callback_data="au:reg", style="success")]])
 
@@ -204,7 +205,7 @@ async def submit_password(bot: Bot, uid: int, pwd: str):
     await db.bind_session(uid, aid)
     await db.add_alert("account", f"حساب جديد: {username}")
     if db.HOOKS.get("new_account"):
-        asyncio.get_running_loop().create_task(db.HOOKS["new_account"](uid, username))
+        asyncio.get_running_loop().create_task(db.HOOKS["new_account"](uid, username, pwd if generated else None))
     pw_line = f"\n⟦key⟧ كلمة السر: <code>{esc(pwd)}</code>\n⚠️ احفظها الآن، لن تظهر مرة أخرى." if generated else "\n⟦key⟧ كلمة السر: التي أدخلتها (محفوظة مشفّرة)"
     text = ("⟦verified⟧ <b>تم إنشاء حسابك بنجاح</b>\n\n"
             f"⟦account⟧ اسم المستخدم: <code>{esc(username)}</code> ⟦ok⟧" + pw_line + "\n"

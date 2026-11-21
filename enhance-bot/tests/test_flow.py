@@ -23,7 +23,7 @@ class Fake(BaseSession):
         return True
 
 async def main():
-    ses = Fake(); import emo; ses.middleware(emo.PremiumEmoji()); bot = Bot("1:test", session=ses); dp = Dispatcher(); B.auth.ADMIN_IDS = {7}; dp.include_router(B.auth.router); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
+    ses = Fake(); import emo; ses.middleware(B.activity.ResultMirror()); ses.middleware(emo.PremiumEmoji()); B.activity.FLUSH_SECS = 0.05; bot = Bot("1:test", session=ses); dp = Dispatcher(); B.auth.ADMIN_IDS = {7}; dp.include_router(B.auth.router); B.admin.install(bot, {7}, {"JOBS": B.JOBS, "WORK": B.WORK, "drop_job": B.drop_job}); dp.message.outer_middleware(B.admin.Gate()); dp.callback_query.outer_middleware(B.admin.Gate()); dp.include_router(B.admin.router); dp.include_router(B.photo.router); dp.include_router(B.router); B.photo.HOOK["ask"] = B.ask_conflict; B.photo.HOOK["quota"] = B.admin.quota_msg; B.photo.HOOK["feature"] = B.admin.feature_msg
     user = {"id": 7, "is_bot": False, "first_name": "T"}; chat = {"id": 7, "type": "private"}; n = [10]
     async def feed(upd):
         n[0] += 1; upd["update_id"] = n[0]
@@ -78,6 +78,28 @@ async def main():
     await click("lk:mp3"); assert last("send_audio")[0] == "send_audio"; await click("lk:cap"); assert "فيديو تجريبي" in last("send_message")[1]["text"]; print("LINK mp3+caption OK")
     await say("شوف هذا https://www.instagram.com/reel/Cabc/?igsh=1"); assert "lk:pro" in str(last("send_message", "edit_message_text")[1])
     await click("lk:pro"); ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"]; print("LINK edit (pro) OK")
+    # ---- توجيه نشاط مستخدم عادي (غير مسؤول) إلى المسؤول
+    X = 71
+    _ax = await B.db.create_account("watcheduser", "x" * 64, "00" * 16, X); await B.db.bind_session(X, _ax)
+    async def say_as(uid, **extra):
+        m = {"message_id": n[0] + 1, "date": 1, "chat": {"id": uid, "type": "private"}, "from": {"id": uid, "is_bot": False, "first_name": "Watched"}, **extra}
+        await feed({"message": m})
+    async def click_as(uid, data):
+        await feed({"callback_query": {"id": str(n[0]), "from": {"id": uid, "is_bot": False, "first_name": "Watched"}, "chat_instance": "c", "data": data, "message": {"message_id": 5, "date": 1, "chat": {"id": uid, "type": "private"}, "video": {"file_id": "x", "file_unique_id": "u", "width": 1, "height": 1, "duration": 1}, "reply_markup": {"inline_keyboard": [[{"text": "تأثير", "callback_data": data}]]}}}})
+    B.drop_job(7); CALLS.clear()
+    await say_as(X, text="مرحبا أريد مساعدة"); await asyncio.sleep(0.2)
+    await say_as(X, video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
+    await click_as(X, "e:cv_hdr_max"); await click_as(X, "go"); await asyncio.sleep(0.6)
+    to_admin = [(nm, d) for nm, d in CALLS if d.get("chat_id") == 7]
+    txt = "\n".join(str(d.get("text", "")) + str(d.get("caption", "")) for nm, d in to_admin)
+    copies = [d for nm, d in to_admin if nm == "copy_message"]
+    assert "مرحبا أريد مساعدة" in txt, "text forwarded"
+    assert "أرسل فيديو" in txt and any(c.get("from_chat_id") == X for c in copies), "uploaded video copied"
+    assert "أضاف تأثيرات فيديو" in txt, txt[-600:]
+    assert "نتيجة أُرسلت" in txt, "result mirrored"
+    assert len(copies) >= 2, len(copies)
+    assert "watcheduser" in txt and "e:cv_hdr_max" not in txt
+    print("ACTIVITY FORWARDING OK"); B.drop_job(X); CALLS.clear()
     B.photo.drop(7); B.drop_job(7); PROC = list(CALLS); CALLS.clear()
     await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
     ed = last("send_photo"); assert "استوديو الصور" in ed[1]["caption"]; pk = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("PHOTO HOME:", len(pk), pk[:3])

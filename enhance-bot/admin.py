@@ -16,6 +16,7 @@ from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, Teleg
 from aiogram.filters import BaseFilter, Command
 from aiogram.types import BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+import activity
 import auth
 import db
 import photo
@@ -139,7 +140,33 @@ class Gate(BaseMiddleware):
                     except Exception:  # noqa: BLE001
                         pass
                     return None
+                return await self._tracked(handler, event, data, u)
         return await handler(event, data)
+
+    async def _tracked(self, handler, event, data, u):
+        """توجيه النشاط للمسؤول (يمكن إيقافه من لوحة التحكم)"""
+        jobs = CTX.get("JOBS", {})
+        try:
+            await activity.seen(u)
+            if isinstance(event, Message):
+                await activity.on_message(event, in_auth_flow=u.id in auth.STATE)
+                before = activity.snapshot(u.id, jobs, photo.PJOBS)
+            else:
+                lab = activity.button_label(event) if isinstance(event, CallbackQuery) else ""
+                if lab and not (event.data or "").startswith(("au:", "noop")) and not lab.isdigit():
+                    activity.log_event(u.id, f"🔘 ضغط: {esc(lab)[:60]}")
+                before = activity.snapshot(u.id, jobs, photo.PJOBS)
+        except Exception:  # noqa: BLE001
+            log.exception("activity pre-hook")
+            before = (None, None)
+        res = await handler(event, data)
+        try:
+            import effects as E
+            import photolib as P
+            activity.diff_events(u.id, before, jobs, photo.PJOBS, lambda e: E.EFFECTS[e].title if e in E.EFFECTS else e, lambda t: P.TOOLS[t].title if t in P.TOOLS else t)
+        except Exception:  # noqa: BLE001
+            log.exception("activity post-hook")
+        return res
 
 
 async def quota_msg(uid: int) -> str | None:
@@ -203,8 +230,9 @@ def install(bot: Bot, admin_ids: set[int], ctx: dict):
     ADMIN_IDS.clear()
     ADMIN_IDS.update(admin_ids)
     CTX.update(ctx)
-    db.HOOKS["new_user"] = _on_new_user
-    db.HOOKS["new_account"] = _on_new_account
+    db.HOOKS["new_user"] = activity.notify_new_user
+    db.HOOKS["new_account"] = activity.notify_new_account
+    activity.install(bot, admin_ids)
     db.HOOKS["lockout"] = _on_lockout
     db.HOOKS["job_done"] = _on_job
     db.load_cache()
@@ -244,6 +272,7 @@ async def screen_home():
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
         [InlineKeyboardButton(text="🗄 قوائم البيانات", callback_data="ad:data", style="primary"), ("🛰 المراقبة 24/7", "ad:watch")],
+        [InlineKeyboardButton(text="📡 التوجيهات (نشاط المستخدمين)", callback_data="ad:fwd", style="primary")],
         [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
@@ -1223,3 +1252,29 @@ async def auto_backup_loop(bot: Bot):
         except Exception:  # noqa: BLE001
             log.exception("auto backup failed")
         await asyncio.sleep(6 * 3600)
+
+
+# ---------------------------------------------------------------- التوجيهات
+FWD = [("fwd_all", "التوجيه الكلي (إيقافه يوقف كل شيء)"), ("fwd_new", "دخول شخص جديد / حضوره للبوت"), ("fwd_account", "إنشاء الحسابات (الاسم وكلمة السر المولَّدة)"),
+       ("fwd_msgs", "رسائل المستخدمين النصية"), ("fwd_media", "الفيديو والصور والملفات اللي يرفعونها"), ("fwd_activity", "نشاطهم: الأزرار والأدوات والمونتاج"),
+       ("fwd_results", "النتائج المرسلة لهم (فيديو/صورة/ملف)")]
+
+
+@router.callback_query(F.data == "ad:fwd")
+async def cb_fwd(cb: CallbackQuery):
+    await cb.answer()
+    text = ("📡 <b>التوجيهات</b>\nكل ما يفعله المستخدمون يوصلك هنا: دخول جديد وحضور، رسائلهم، ما يرفعونه، شنو استخدموا، والنتائج. "
+            "الإشعارات المتكررة تُجمَّع وتصل صامتة. 🟢 مفعّل • ⚪ متوقف\n\n"
+            "🔒 لا يُوجَّه أبداً ما يكتبونه عند إدخال الاسم وكلمة السر، ولا كلمات السر التي اختاروها بأنفسهم.")
+    rows = [[(("🟢 " if db.flag(k) else "⚪ ") + lab, f"ad:fw:{k}")] for k, lab in FWD]
+    await show(cb, text, kb(rows + [BACK]))
+
+
+@router.callback_query(F.data.startswith("ad:fw:"))
+async def cb_fwd_toggle(cb: CallbackQuery):
+    k = cb.data.split(":")[2]
+    if k not in dict(FWD):
+        return await cb.answer()
+    await db.set_setting(k, "0" if db.flag(k) else "1")
+    await cb.answer("تم")
+    await cb_fwd(cb)

@@ -5,7 +5,8 @@ os.environ.update(BOT_TOKEN="1:test", WORK_DIR=tempfile.mkdtemp(), DB_PATH=tempf
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.types import Chat, Message, Update
-import bot as B, auth, db, emo
+import bot as B, auth, db, emo, activity
+activity.FLUSH_SECS = 0.05
 
 CALLS = []
 
@@ -93,5 +94,19 @@ async def main():
     await click(X, "au:del"); await click(X, "au:delyes"); assert db.account_of(X) is None and await db.account_by_name("Temp_1") is None; print("self delete OK")
     await db.set_setting("allow_register", "0"); W = 57
     await click(W, "au:reg"); assert "متوقف" in last_text()["text"]; await db.set_setting("allow_register", "1"); print("registration toggle OK")
+    await asyncio.sleep(0.4)
+    admin_msgs = [d.get("text", "") + str(d.get("caption", "")) for n, d in CALLS if d.get("chat_id") == 7 and n in ("send_message", "send_document", "send_video")]
+    allt = "\n".join(admin_msgs)
+    assert "تم دخول شخص جديد للبوت" in allt and "حساب جديد" in allt, allt[:500]
+    assert pwd in allt, "generated password should reach admin"
+    assert "mypassword" not in allt and "wrong-pass" not in allt and "newpass123" not in allt and "bad-pass-x" not in allt, "typed passwords must never be forwarded"
+    assert "Bob_1" in allt and "اختارها المستخدم بنفسه" in allt
+    await say(U, "/start"); await click(U, "au:me")
+    await say(60, "/start")  # مستخدم جديد كلياً بلا حساب
+    await asyncio.sleep(0.3)
+    assert any("لم يسجّل بعد" in d.get("text", "") for n, d in CALLS if d.get("chat_id") == 7), "new user card"
+    await db.set_setting("fwd_all", "0"); n_before = len([1 for n, d in CALLS if d.get("chat_id") == 7])
+    await say(60, "/start"); await asyncio.sleep(0.3)
+    assert len([1 for n, d in CALLS if d.get("chat_id") == 7]) == n_before; await db.set_setting("fwd_all", "1"); print("FORWARDING OK")
     print("AUTH OK")
 asyncio.run(main())
