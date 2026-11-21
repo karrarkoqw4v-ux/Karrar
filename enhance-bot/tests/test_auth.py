@@ -88,5 +88,7 @@ async def main():
     await click(7, f"ad:ad:{aid}"); assert (await db.account_by_id(aid))[8] == 1
     await click(7, f"ad:ap:{aid}:pro:30"); assert (await db.account_by_id(aid))[6] == "pro"
     await click(7, f"ad:ax:{aid}:y"); assert await db.account_by_id(aid) is None; print("ADMIN ACCOUNTS OK")
+    await db.set_setting("allow_register", "0"); W = 57
+    await click(W, "au:reg"); assert "متوقف" in last_text()["text"]; await db.set_setting("allow_register", "1"); print("registration toggle OK")
     print("AUTH OK")
 asyncio.run(main())

@@ -152,6 +152,8 @@ async def cb_reg(cb: CallbackQuery):
     await cb.answer()
     if is_logged(cb.from_user.id):
         return await cb_me(cb)
+    if not db.flag("allow_register"):
+        return await cb.message.edit_text("⏸ إنشاء الحسابات الجديدة متوقف حالياً من الإدارة. إن كان لديك حساب سجّل دخولك.", reply_markup=kb([[("⟦login⟧ تسجيل دخول", "au:login")]]))
     STATE[cb.from_user.id] = {"mode": "reg_user", "chat": cb.message.chat.id, "msg": cb.message.message_id}
     await cb.message.edit_text("⟦account⟧ <b>إنشاء حساب جديد</b>\n\nأرسل <b>اسم المستخدم</b> الذي تريده:\n"
                                "• من 3 إلى 20 حرفاً\n• أحرف إنجليزية أو أرقام أو _ فقط",

@@ -155,6 +155,8 @@ def feature_msg(kind: str, uid: int) -> str | None:
         return None
     if kind == "video" and not db.flag("allow_video"):
         return "🛠 قسم الفيديو متوقف مؤقتاً."
+    if kind == "link" and not db.flag("allow_link"):
+        return "🛠 المونتاج من الرابط متوقف مؤقتاً."
     if kind == "photo" and not db.flag("allow_photo"):
         return "🛠 قسم الصور متوقف مؤقتاً."
     return None
@@ -593,7 +595,7 @@ async def show_settings(cb):
     text = ("⟦gear⟧ <b>الإعدادات</b>\n\n"
             "🟢 = مفعّل • ⚪ = متوقف\n"
             f"الحد اليومي لكل مستخدم: <b>{dl or 'غير محدود'}</b>\nأقصى مدة للفيديو: <b>{mm} دقيقة</b> (الفيديو يُعدَّل كاملاً بدون قص)")
-    rows = [tg("require_login", "إلزام تسجيل الدخول (حساب لكل مستخدم)"), tg("subscriptions", "نظام الاشتراك (جاهز • متوقف = مجاني)"), tg("maintenance", "وضع الصيانة (يوقف البوت للجميع عدا المسؤول)"), tg("allow_video", "قسم الفيديو"), tg("allow_photo", "قسم الصور"),
+    rows = [tg("require_login", "إلزام تسجيل الدخول (حساب لكل مستخدم)"), tg("allow_register", "السماح بإنشاء حسابات جديدة"), tg("subscriptions", "نظام الاشتراك (جاهز • متوقف = مجاني)"), tg("maintenance", "وضع الصيانة (يوقف البوت للجميع عدا المسؤول)"), tg("allow_video", "قسم الفيديو"), tg("allow_link", "المونتاج من الرابط (تيك توك/إنستغرام)"), tg("allow_photo", "قسم الصور"),
             [("⟦user⟧ الحد اليومي", "ad:ch:daily_limit"), ("⏱ أقصى مدة", "ad:ch:max_minutes")],
             [("🔔 الإشعارات", "ad:alerts")], BACK]
     await show(cb, text, kb(rows))

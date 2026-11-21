@@ -57,6 +57,7 @@ import emo
 import photo
 import admin
 import auth
+import linkdl
 import secrets
 import webapp
 from templates import TEMPLATE_SETS, TEMPLATES
@@ -82,6 +83,8 @@ router = Router()
 sem = asyncio.Semaphore(MAX_PARALLEL)
 pv_sem = asyncio.Semaphore(3)
 JOBS: dict[int, dict] = {}
+LINK_WAIT: set[int] = set()  # ينتظرون رابطاً (تيك توك/إنستغرام)
+LINKS: dict[int, dict] = {}  # الفيديو المجلوب بانتظار قرار المستخدم (تعديل/تحميل)
 PRO_NEXT: set[int] = set()  # مستخدمون ضغطوا «مونتاج المصممين محترفين» وينتظرون رفع الملف
 
 WELCOME = (
@@ -95,7 +98,8 @@ def kb_mode() -> InlineKeyboardMarkup:
     return _kb([[InlineKeyboardButton(text="⟦film⟧ مونتاج استوديو فيديوهات", callback_data="mode:video", style="primary")],
                 [InlineKeyboardButton(text="⟦photos⟧ مونتاج وجلسة صور", callback_data="mode:photo", style="success")],
                 [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")],
-                [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")]])
+                [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")],
+                [InlineKeyboardButton(text="⟦share⟧ مونتاج من خلال الرابط", callback_data="mode:link", style="success")]])
 
 
 async def send_menu(msg: Message):
@@ -141,7 +145,7 @@ def _kb(rows: list) -> InlineKeyboardMarkup:
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
 def kb_pro_home(j: dict) -> InlineKeyboardMarkup:
     """واجهة «المصممين المحترفين»: كل الأدوات والقوالب مجمّعة بأقسام احترافية"""
-    rows = [[("🏆 باقات المصممين المحترفين (14)", "tpl:p")],
+    rows = [[("🏆 باقات المصممين المحترفين (17)", "tpl:p")],
             [("🎥 قوالب كاب كات (12)", "tpl:c"), ("⚡ تأثيرات كاب كات", "c:ed:0")],
             [("🏆 قوالب مصممين (150)", "dz"), ("🆕 قوالب الإيقاع (18)", "tpl:n")],
             [("🎵 قوالب تيك توك (8)", "tpl:k"), ("🔥 قوالب الإيديت (12)", "tpl:e")],
@@ -366,6 +370,8 @@ async def dispatch_pending(msg: Message, bot: Bot):
         return await photo.open_session(bot, msg, ph.file_id, ph.file_size, False)
     if msg.document and (msg.document.mime_type or "").startswith("image/"):
         return await photo.open_session(bot, msg, msg.document.file_id, msg.document.file_size, True)
+    if msg.text and linkdl.extract_url(msg.text):
+        return await on_link(msg, bot)
     return await on_video(msg, bot)
 
 
@@ -408,6 +414,134 @@ async def cb_pro_kind(cb: CallbackQuery):
     await cb.message.answer(f"⟦gem⟧ <b>وضع المصممين المحترفين</b>\n\n🪄 ارفع {what} الآن.")
 
 
+# ---------------- مونتاج من الرابط (تيك توك / إنستغرام بدون علامة مائية) ----------------
+def drop_link(uid: int):
+    d = LINKS.pop(uid, None)
+    if d:
+        shutil.rmtree(d["dir"], ignore_errors=True)
+
+
+@router.callback_query(F.data == "mode:link")
+async def cb_mode_link(cb: CallbackQuery):
+    await cb.answer()
+    PRO_NEXT.discard(cb.from_user.id)
+    LINK_WAIT.add(cb.from_user.id)
+    await cb.message.answer("⟦share⟧ <b>مونتاج من خلال الرابط</b>\n\n🪄 أرسل رابط فيديو من <b>تيك توك</b> أو <b>إنستغرام</b> فقط.\n"
+                            "يُجلب الفيديو <b>بدون علامة مائية</b>، ثم تعدّله أو تحمّله كما هو.",
+                            reply_markup=_kb([[("↩️ إلغاء", "lk:cancel")]]))
+
+
+@router.callback_query(F.data == "lk:cancel")
+async def cb_link_cancel(cb: CallbackQuery):
+    LINK_WAIT.discard(cb.from_user.id)
+    await cb.answer("أُلغي")
+    with _cl.suppress(Exception):
+        await cb.message.delete()
+
+
+def _link_msg(m: Message) -> bool:
+    if not (m.from_user and m.text and not m.text.startswith("/")):
+        return False
+    return linkdl.extract_url(m.text) is not None or (m.from_user.id in LINK_WAIT)
+
+
+@router.message(_link_msg)
+async def on_link(msg: Message, bot: Bot):
+    uid = msg.from_user.id
+    url = linkdl.extract_url(msg.text)
+    if not url:
+        return await msg.answer("⚠️ أرسل رابطاً من <b>تيك توك</b> أو <b>إنستغرام</b> فقط.", reply_markup=_kb([[("↩️ إلغاء", "lk:cancel")]]))
+    await db.touch_user(uid, msg.from_user.full_name, msg.from_user.username)
+    if fm := admin.feature_msg("link", uid) or admin.feature_msg("video", uid):
+        return await msg.answer(fm)
+    if await ask_conflict(msg, msg):
+        return
+    LINK_WAIT.discard(uid)
+    drop_link(uid)
+    d = WORK / f"lk{uid}_{uuid.uuid4().hex[:6]}"
+    plat = "تيك توك" if linkdl.platform_of(url) == "tiktok" else "إنستغرام"
+    note = await msg.answer(f"🔎 جاري قراءة رابط {plat}...")
+    t0 = time.time()
+    try:
+        await safe_edit(note, f"⬇️ جاري جلب الفيديو من {plat} بدون علامة مائية...")
+        info = await linkdl.download(url, d, PROXY)
+        w, h, dd, has_a = process.info(await process.probe(info["path"]))
+        if not w or dd <= 0:
+            raise linkdl.LinkError("الملف الذي جُلب ليس فيديو صالحاً.")
+        if dd > admin.max_seconds():
+            raise linkdl.LinkError(f"الفيديو أطول من {admin.max_seconds() // 60} دقيقة.")
+    except linkdl.LinkError as e:
+        shutil.rmtree(d, ignore_errors=True)
+        return await safe_edit(note, f"⚠️ {e}")
+    except Exception:  # noqa: BLE001
+        log.exception("link download failed")
+        shutil.rmtree(d, ignore_errors=True)
+        return await safe_edit(note, "⚠️ تعذّر جلب الفيديو من الرابط. تأكد أنه عام وجرّب مرة ثانية.")
+    size = Path(info["path"]).stat().st_size
+    LINKS[uid] = {"path": info["path"], "dir": d, "info": info, "dur": dd, "w": w, "h": h, "size": size, "plat": info["platform"], "ts": time.time(), "chat": msg.chat.id}
+    title = re.sub(r"\s+", " ", info.get("title") or "").strip()[:90]
+    text = (f"✅ <b>تم جلب الفيديو بدون علامة مائية</b> ({fmt(time.time() - t0)})\n\n"
+            + (f"🎬 {title}\n" if title else "") + (f"👤 {info['author']}\n" if info.get("author") else "")
+            + f"⏱ {fmt(dd)} • 📐 {w}×{h} • 📦 {size / 1048576:.1f}MB\n\nاختر ما تريد:")
+    await note.edit_text(text, reply_markup=_kb([
+        [InlineKeyboardButton(text="✂️ تعديل الفيديو (استوديو)", callback_data="lk:edit", style="primary"), InlineKeyboardButton(text="⟦gem⟧ تعديل المصممين المحترفين", callback_data="lk:pro", style="primary")],
+        [InlineKeyboardButton(text="⟦download⟧ تحميل بدون تعديل", callback_data="lk:dl", style="success")],
+        [("🔗 رابط جديد", "mode:link")]]))
+
+
+async def _fit_for_telegram(src: str, dst: str, dur: float, budget_mb: float = 46.0):
+    """ضغط (بدون قص) ليناسب حد 50MB"""
+    v_kbps = max(120, int(budget_mb * 8192 / max(dur, 1) - 96))
+    pr = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-loglevel", "error", "-i", src, "-c:v", "libx264", "-preset", "veryfast", "-b:v", f"{v_kbps}k", "-maxrate", f"{v_kbps}k",
+                                              "-bufsize", f"{v_kbps * 2}k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", dst,
+                                              stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+    _, err = await asyncio.wait_for(pr.communicate(), max(600, int(dur * 3)))
+    if pr.returncode != 0:
+        raise RuntimeError(err.decode(errors="ignore")[-300:])
+
+
+@router.callback_query(F.data == "lk:dl")
+async def cb_link_download(cb: CallbackQuery, bot: Bot):
+    uid = cb.from_user.id
+    L = LINKS.get(uid)
+    if not L:
+        return await cb.answer("انتهت المهلة، أرسل الرابط من جديد.", show_alert=True)
+    await cb.answer("⏳ جاري التجهيز")
+    t0 = time.time()
+    path = L["path"]
+    ok = False
+    try:
+        if L["size"] > 49 * 1024 * 1024:
+            wait = await cb.message.answer("📦 الفيديو أكبر من حد تيليجرام (50MB)، جاري ضغطه بدون قص...")
+            out = str(L["dir"] / "fit.mp4")
+            await _fit_for_telegram(path, out, L["dur"])
+            path = out
+            with _cl.suppress(Exception):
+                await wait.delete()
+        cap = f"⬇️ تم التحميل بدون علامة مائية ✅\n\nالمده اللي انتهت : {fmt(time.time() - t0)}\n\nشكرا على استخدامك ♥️"
+        await bot.send_video(cb.message.chat.id, FSInputFile(path), caption=cap, width=L["w"], height=L["h"], duration=int(L["dur"]), supports_streaming=True)
+        ok = True
+    except Exception:  # noqa: BLE001
+        log.exception("link send failed")
+        await cb.message.answer("⚠️ تعذّر إرسال الفيديو. جرّب مرة ثانية.")
+    await db.log_job(uid, ok, time.time() - t0, ["link:download:" + L["plat"]])
+
+
+@router.callback_query(F.data.in_({"lk:edit", "lk:pro"}))
+async def cb_link_edit(cb: CallbackQuery, bot: Bot):
+    uid = cb.from_user.id
+    L = LINKS.get(uid)
+    if not L:
+        return await cb.answer("انتهت المهلة، أرسل الرابط من جديد.", show_alert=True)
+    await cb.answer()
+    if cb.data == "lk:pro":
+        PRO_NEXT.add(uid)
+    path, d = L["path"], L["dir"]
+    await build_job(bot, cb.message, uid, size=L["size"], local=path)
+    LINKS.pop(uid, None)
+    shutil.rmtree(d, ignore_errors=True)
+
+
 @router.callback_query(F.data.in_({"mode:video", "mode:photo"}))
 async def cb_mode(cb: CallbackQuery):
     await cb.answer()
@@ -432,20 +566,32 @@ async def on_video(msg: Message, bot: Bot):
     mx = admin.max_seconds()
     if dur and dur > mx:
         return await msg.answer(f"⚠️ الفيديو أطول من {mx // 60} دقيقة. أرسل فيديو أقصر.")
+    await build_job(bot, msg, uid, fid, size)
+
+
+
+
+async def build_job(bot: Bot, msg: Message, uid: int, fid=None, size=None, local=None):
+    """يبني جلسة المونتاج من ملف تيليجرام (fid) أو من ملف محلي (الرابط)"""
+    mx = admin.max_seconds()
     drop_job(uid)
     d = WORK / f"{uid}_{uuid.uuid4().hex[:6]}"
     d.mkdir(parents=True, exist_ok=True)
     src = d / "in.mp4"
     note = await msg.answer("⏳ جاري تجهيز الأدوات الاستوديو ...")
     try:
-        for attempt in range(3):  # تيليجرام أحياناً يبطئ؛ نعيد المحاولة بدل الانتظار الطويل
-            try:
-                await asyncio.wait_for(bot.download(fid, destination=src), 60)
-                break
-            except (asyncio.TimeoutError, TelegramNetworkError):
-                if attempt == 2:
-                    raise
-                await asyncio.sleep(1)
+        if local:
+            await asyncio.to_thread(shutil.copyfile, local, src)
+            size = size or src.stat().st_size
+        else:
+            for attempt in range(3):  # تيليجرام أحياناً يبطئ؛ نعيد المحاولة بدل الانتظار الطويل
+                try:
+                    await asyncio.wait_for(bot.download(fid, destination=src), 60)
+                    break
+                except (asyncio.TimeoutError, TelegramNetworkError):
+                    if attempt == 2:
+                        raise
+                    await asyncio.sleep(1)
         await safe_edit(note, "⏳ تجهيز أدوات المونتاج ...")
         w, h, dd, has_a = process.info(await process.probe(str(src)))
         if not w or not h or dd <= 0:
@@ -1196,6 +1342,9 @@ async def cleaner():
         for uid, j in list(JOBS.items()):
             if not j.get("running") and now - j["ts"] > TTL:
                 drop_job(uid)
+        for uid, d in list(LINKS.items()):
+            if now - d["ts"] > TTL:
+                drop_link(uid)
 
 
 BOT: Bot | None = None

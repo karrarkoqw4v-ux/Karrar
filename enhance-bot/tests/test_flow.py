@@ -52,7 +52,7 @@ async def main():
     await click("ad:bc"); await click("ad:bca:all"); await say("رسالة إذاعة تجريبية"); assert "ad:bcgo" in str(last("send_message")[1]); await click("ad:bcgo"); assert cnt("copy_message") >= 2 and "انتهت الإذاعة" in last("send_message", "edit_message_text")[1]["text"]; print("ADMIN PANEL OK")
     B.admin.STATE.clear()
     # ---- وضع الصور
-    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me", "mode:pro"], qb; print("MODE CHOOSER OK")
+    await say("/start"); q = last("send_message")[1]; qb = [b["callback_data"] for r in q["reply_markup"]["inline_keyboard"] for b in r]; assert qb == ["mode:video", "mode:photo", "au:me", "mode:pro", "mode:link"], qb; print("MODE CHOOSER OK")
     await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]
     await click("mode:pro"); assert [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r] == ["pro:video", "pro:photo"]
     await click("pro:photo"); await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
@@ -60,6 +60,18 @@ async def main():
     await click("ptp:0"); await click("pq:0"); assert "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; await click("pc:pro:0"); await click("pe:pro_dodge_burn"); print("PRO PHOTO OK")
     B.photo.drop(7); await click("mode:pro"); await click("pro:video"); await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
     ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"] and "tpl:p" in str(ed[1]["reply_markup"]); await click("tpl:p"); await click("t:p:1"); await click("c:pro:0"); print("PRO VIDEO OK")
+    # ---- مونتاج من الرابط (تحميل مُحاكى)
+    async def fake_dl(url, dest, proxy=None):
+        dest.mkdir(parents=True, exist_ok=True); p = dest / "dl.mp4"; p.write_bytes(FILES["V"])
+        return {"path": str(p), "title": "فيديو تجريبي", "author": "tester", "duration": 8, "platform": "tiktok" if "tiktok" in url else "instagram"}
+    B.linkdl.download = fake_dl
+    B.drop_job(7)
+    await click("mode:link"); assert "تيك توك" in last("send_message")[1]["text"]
+    await say("مرحبا هذا مو رابط"); assert "فقط" in last("send_message")[1]["text"]
+    await say("https://vm.tiktok.com/ZSabc123/"); card = last("send_message", "edit_message_text")[1]; cb_ = [b["callback_data"] for r in card["reply_markup"]["inline_keyboard"] for b in r]; assert {"lk:edit", "lk:pro", "lk:dl"} <= set(cb_), cb_
+    await click("lk:dl"); assert "بدون علامة مائية" in last("send_video")[1]["caption"]; print("LINK download OK")
+    await say("شوف هذا https://www.instagram.com/reel/Cabc/?igsh=1"); assert "lk:pro" in str(last("send_message", "edit_message_text")[1])
+    await click("lk:pro"); ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"]; print("LINK edit (pro) OK")
     B.photo.drop(7); B.drop_job(7); PROC = list(CALLS); CALLS.clear()
     await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
     ed = last("send_photo"); assert "استوديو الصور" in ed[1]["caption"]; pk = [b["text"] for r in ed[1]["reply_markup"]["inline_keyboard"] for b in r]; print("PHOTO HOME:", len(pk), pk[:3])

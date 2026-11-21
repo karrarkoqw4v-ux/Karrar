@@ -849,6 +849,8 @@ PHOTO_PRO_PACKS = [
     ("🍂 دفء فاخر", ["f_autumn", "pro_dodge_burn", "a_softfocus"]),
     ("🌸 بورتريه وردي", ["bg_rose", "e_portrait", "a_sparkle", "pro_color_pop"]),
     ("📰 مجلة فاخرة", ["auto", "f_matte", "pro_luma_sharp", "l_b_white"]),
+    ("💥 أكشن درامي", ["pro_bleach", "pro_dodge_burn", "a_vignette"]),
+    ("🪩 حفلة نيون", ["f_tokyo", "a_light_streak", "a_sparkle", "a_neon_frame"]),
 ]
 
 
