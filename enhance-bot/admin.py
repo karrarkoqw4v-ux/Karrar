@@ -286,7 +286,8 @@ async def screen_home():
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
         [InlineKeyboardButton(text="🗄 قوائم البيانات", callback_data="ad:data", style="primary"), ("🛰 المراقبة 24/7", "ad:watch")],
         [InlineKeyboardButton(text="📡 التوجيهات (نشاط المستخدمين)", callback_data="ad:fwd", style="primary"), ("🧑‍🎨 طلبات التعديل اليدوي", "ad:rq:pending")],
-        [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
+        [InlineKeyboardButton(text="⚡ لوحة التنفيذ المباشر", callback_data="ad:dev", style="success")],
+        [InlineKeyboardButton(text="🔗 اتصال بكلاود (تقرير الاستضافة)", callback_data="ad:connect", style="primary")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
     ]

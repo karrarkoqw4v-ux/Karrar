@@ -58,6 +58,7 @@ import photo
 import photolib
 import activity
 import manual
+import devq
 import proxies
 import tgtools
 import admin
@@ -1583,6 +1584,8 @@ async def main():
     dp.message.outer_middleware(admin.Gate())
     dp.callback_query.outer_middleware(admin.Gate())
     auth.ADMIN_IDS = ADMIN_IDS
+    devq.ADMIN_IDS = set(ADMIN_IDS)
+    dp.include_router(devq.router)
     dp.include_router(auth.router)
     manual.CTX.update({"JOBS": JOBS, "photo": photo, "WORK": WORK})
     dp.include_router(manual.router)
