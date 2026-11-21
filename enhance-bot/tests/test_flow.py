@@ -42,7 +42,7 @@ async def main():
     await say("/start"); assert "مرحبا بك" in CALLS[-1][1]["text"] and "tg-emoji" in CALLS[-1][1]["text"]
     # ---- لوحة تحكم المسؤول
     await say("/admin"); assert "لوحة تحكم المسؤول" in last("send_message")[1]["text"]; hb = [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r]; print("ADMIN HOME buttons:", len(hb))
-    for cbk in ["ad:stats", "ad:users:last:0", "ad:users:jobs:0", "ad:u:7", "ad:top", "ad:logs", "ad:sess", "ad:alerts", "ad:set", "ad:ch:daily_limit", "ad:cs:daily_limit:5", "ad:sys", "ad:exp", "ad:bans", "ad:bc", "ad:clean", "ad:home"]:
+    for cbk in ["ad:stats", "ad:users:last:0", "ad:users:jobs:0", "ad:u:7", "ad:top", "ad:logs", "ad:sess", "ad:alerts", "ad:set", "ad:ch:daily_limit", "ad:cs:daily_limit:5", "ad:sys", "ad:exp", "ad:rep", "ad:bans", "ad:bc", "ad:clean", "ad:home"]:
         n0 = len(CALLS); await click(cbk); assert len(CALLS) > n0, cbk
     await click("ad:ex:users"); assert last("send_document")[0] == "send_document"
     await click("ad:tg:maintenance:set"); assert B.db.flag("maintenance"); await click("ad:tg:maintenance:set"); assert not B.db.flag("maintenance")

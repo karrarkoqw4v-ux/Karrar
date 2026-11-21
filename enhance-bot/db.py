@@ -261,6 +261,8 @@ async def recent_alerts(n: int = 12):
 async def export_rows(table: str):
     if table == "users":
         return ["id", "name", "username", "first_seen", "last_seen", "blocked"], await _g("SELECT id,name,username,first,last,COALESCE(blocked,0) FROM users ORDER BY id")
+    if table == "accounts":
+        return ["id", "username", "created", "last_login", "plan", "plan_expiry", "disabled", "logins"], await _g("SELECT id,username,created,last_login,plan,plan_expiry,COALESCE(disabled,0),COALESCE(logins,0) FROM accounts ORDER BY id")
     return ["id", "uid", "ts", "ok", "secs", "effects"], await _g("SELECT id,uid,ts,ok,secs,effects FROM jobs ORDER BY id")
 
 

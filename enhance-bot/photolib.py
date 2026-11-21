@@ -779,6 +779,20 @@ _art("a_halation", "توهج أحمر فيلمي (Halation)", _halation)
 _flt("f_expired", "فيلم منتهي الصلاحية", lambda i: grain(grade(i, sh=(.06, .08, -.02), mid=(.0, .03, .03), hi=(-.02, .04, .05), sat=.85, con=.88, bright=.05), 0.045))
 
 
+def _prism(img):
+    s = max(3, int(_S(img) * 0.014))
+    out = img.copy().astype(np.float32)
+    r = np.roll(img[..., 2], s, 1).astype(np.float32)
+    b = np.roll(img[..., 0], -s, 1).astype(np.float32)
+    out[..., 2] = r * 0.9 + out[..., 2] * 0.1
+    out[..., 0] = b * 0.9 + out[..., 0] * 0.1
+    glow = cv2.GaussianBlur(np.clip((_f(img) - 0.6) * 2, 0, 1), (0, 0), max(3, _S(img) * 0.02))
+    return _u(np.clip(out / 255 + glow * 0.5, 0, 1))
+
+
+_art("a_prism", "منشور ضوئي (Prism)", _prism)
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),

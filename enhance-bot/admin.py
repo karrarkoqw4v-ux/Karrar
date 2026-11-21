@@ -227,6 +227,7 @@ async def screen_home():
         [("⟦layers⟧ الجلسات النشطة", "ad:sess"), ("🔔 الإشعارات", "ad:alerts")],
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
+        [("📋 تقرير اليوم مقابل أمس", "ad:rep")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
     ]
@@ -701,7 +702,7 @@ async def cb_clean(cb: CallbackQuery):
 @router.callback_query(F.data == "ad:exp")
 async def cb_exp(cb: CallbackQuery):
     await cb.answer()
-    await show(cb, "⟦download⟧ <b>تصدير البيانات</b>\nملفات CSV تفتح بإكسل (UTF-8).", kb([[("⟦user⟧ المستخدمون", "ad:ex:users"), ("⟦file⟧ العمليات", "ad:ex:jobs")], BACK]))
+    await show(cb, "⟦download⟧ <b>تصدير البيانات</b>\nملفات CSV تفتح بإكسل (UTF-8).", kb([[("⟦user⟧ المستخدمون", "ad:ex:users"), ("⟦file⟧ العمليات", "ad:ex:jobs")], [("⟦verified⟧ الحسابات (بدون كلمات السر)", "ad:ex:accounts")], BACK]))
 
 
 @router.callback_query(F.data.startswith("ad:ex:"))
@@ -834,3 +835,23 @@ async def cb_acc_search(cb: CallbackQuery):
     await cb.answer()
     STATE[cb.from_user.id] = {"mode": "asearch"}
     await show(cb, "⟦search⟧ <b>بحث عن حساب</b>\n\nأرسل اسم المستخدم أو جزءاً منه.", kb([[("↩️ إلغاء", "ad:home")]]))
+
+
+@router.callback_query(F.data == "ad:rep")
+async def cb_report(cb: CallbackQuery):
+    await cb.answer()
+    days = await db.per_day(2)
+    (dy, nu_y, ok_y, bad_y), (dt_, nu_t, ok_t, bad_t) = days[0], days[1]
+    at = await db.account_totals()
+
+    def arrow(a, b):
+        return "⬆️" if b > a else ("⬇️" if b < a else "➖")
+    text = (
+        "📋 <b>تقرير اليوم مقابل أمس</b>\n\n"
+        f"👤 مستخدمون جدد: {nu_t} {arrow(nu_y, nu_t)} (أمس {nu_y})\n"
+        f"✅ عمليات ناجحة: {ok_t} {arrow(ok_y, ok_t)} (أمس {ok_y})\n"
+        f"⚠️ عمليات فاشلة: {bad_t} {arrow(bad_t, bad_y)} (أمس {bad_y})\n"
+        f"⟦verified⟧ حسابات جديدة اليوم: {at['new_today']} • دخلوا اليوم: {at['active_today']} • متصلون الآن: {at['online']}\n"
+        f"⟦star⟧ حسابات مدفوعة: {at['paid']} • معطّلة: {at['disabled']}"
+    )
+    await show(cb, text, kb([[("⟦badge⟧ الإحصائيات التفصيلية", "ad:stats")], BACK]))
