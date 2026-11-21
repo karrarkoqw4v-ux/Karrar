@@ -928,6 +928,20 @@ def _edge_burn(img):
 
 _pro("pro_edge_burn", "حرق الأطراف الاحترافي (Edge Burn)", _edge_burn, "يوجّه النظر للمركز كما يفعل المصورون.")
 _pro("pro_hdr_look", "مظهر HDR احترافي (دمج تعريضات + وضوح)", lambda i: cvlib.sharpen(cv2.LUT(cvlib.hdr_fusion(i, 1.0), curve([(0, 0.02), (.3, .33), (.7, .76), (1, .98)])), 0.5, 1.0, 0.2, 2.5))
+def _even_skin(img):
+    """توحيد لون البشرة: تنعيم قنوات اللون (a,b) فقط داخل مناطق البشرة مع بقاء الملمس"""
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a_, b_ = cv2.split(lab)
+    ycc = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    skin = ((ycc[..., 1] > 135) & (ycc[..., 1] < 180) & (ycc[..., 2] > 85) & (ycc[..., 2] < 135)).astype(np.float32)
+    skin = cv2.GaussianBlur(skin, (0, 0), max(2, _S(img) * 0.01))
+    k = max(3, _S(img) * 0.02)
+    a2 = cv2.GaussianBlur(a_, (0, 0), k).astype(np.float32) * skin + a_.astype(np.float32) * (1 - skin)
+    b2 = cv2.GaussianBlur(b_, (0, 0), k).astype(np.float32) * skin + b_.astype(np.float32) * (1 - skin)
+    return cv2.cvtColor(cv2.merge([l, np.clip(a2, 0, 255).astype(np.uint8), np.clip(b2, 0, 255).astype(np.uint8)]), cv2.COLOR_LAB2BGR)
+
+
+_pro("pro_even_skin", "توحيد لون البشرة", _even_skin, "يزيل بقع الاحمرار والاصفرار بدون تنعيم الملمس.")
 _pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
 _pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
 

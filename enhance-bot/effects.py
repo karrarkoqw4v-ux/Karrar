@@ -322,6 +322,7 @@ reg("pro_punch", "pro", "ألوان بارزة (Color Punch)", lambda c: [vf("cu
 reg("pro_voice_presence", "pro", "حضور الصوت البشري (Presence)", lambda c: [af("highpass=f=90,equalizer=f=220:t=q:w=1:g=-2,equalizer=f=4500:t=q:w=1:g=3,acompressor=threshold=0.15:ratio=2.5,alimiter=limit=0.95")], noprev=True, desc="يوضّح الكلام ويقلل الطنين ويزيد الحضور.")
 reg("pro_hdr_look", "pro", "مظهر HDR احترافي (تباين + وضوح)", lambda c: [vf("curves=all='0/0.03 0.3/0.34 0.7/0.76 1/0.98',eq=contrast=1.08:saturation=1.15,unsharp=5:5:0.8")])
 reg("pro_noise_gate", "pro", "بوابة ضجيج (Noise Gate)", lambda c: [af("agate=threshold=0.02:ratio=3:attack=10:release=250,highpass=f=60")], noprev=True, desc="تكتم الخلفية الصامتة بين الكلام (للتعليق الصوتي).")
+reg("pro_soft_light", "pro", "توهج حالم (Orton / Soft Light)", lambda c: [cx("[{i}]split[a][b];[b]gblur=sigma=16[g];[a][g]blend=c0_mode=softlight:c0_opacity=0.55:c1_opacity=0:c2_opacity=0[{o}]")], desc="تأثير Orton الفني: نعومة وإضاءة حالمة مع بقاء التفاصيل.")
 reg("pro_audio_master", "pro", "ماستر صوت احترافي (تنقية + ضغط + ضبط مستوى)", lambda c: [af("highpass=f=70,afftdn=nf=-28,acompressor=threshold=0.12:ratio=3:attack=15:release=250,equalizer=f=3000:t=q:w=1:g=2,loudnorm=I=-14:TP=-1.5:LRA=9")], noprev=True, desc="للأصوات والتعليق: يحذف الضجيج ويوحّد المستوى.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)

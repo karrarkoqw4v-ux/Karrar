@@ -70,7 +70,7 @@ async def main():
     await say("مرحبا هذا مو رابط"); assert "فقط" in last("send_message")[1]["text"]
     await say("https://vm.tiktok.com/ZSabc123/"); card = last("send_message", "edit_message_text")[1]; cb_ = [b["callback_data"] for r in card["reply_markup"]["inline_keyboard"] for b in r]; assert {"lk:edit", "lk:pro", "lk:dl"} <= set(cb_), cb_
     await click("lk:dl"); assert "بدون علامة مائية" in last("send_video")[1]["caption"]; print("LINK download OK")
-    await click("lk:mp3"); assert last("send_audio")[0] == "send_audio"; print("LINK mp3 OK")
+    await click("lk:mp3"); assert last("send_audio")[0] == "send_audio"; await click("lk:cap"); assert "فيديو تجريبي" in last("send_message")[1]["text"]; print("LINK mp3+caption OK")
     await say("شوف هذا https://www.instagram.com/reel/Cabc/?igsh=1"); assert "lk:pro" in str(last("send_message", "edit_message_text")[1])
     await click("lk:pro"); ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"]; print("LINK edit (pro) OK")
     B.photo.drop(7); B.drop_job(7); PROC = list(CALLS); CALLS.clear()

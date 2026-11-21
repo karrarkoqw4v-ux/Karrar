@@ -493,6 +493,7 @@ async def on_link(msg: Message, bot: Bot):
     await note.edit_text(text, reply_markup=_kb([
         [InlineKeyboardButton(text="✂️ تعديل الفيديو (استوديو)", callback_data="lk:edit", style="primary"), InlineKeyboardButton(text="⟦gem⟧ تعديل المصممين المحترفين", callback_data="lk:pro", style="primary")],
         [InlineKeyboardButton(text="⟦download⟧ تحميل بدون تعديل", callback_data="lk:dl", style="success"), ("🎧 استخراج الصوت MP3", "lk:mp3")],
+        [("📋 نسخ الوصف", "lk:cap")],
         [("🔗 رابط جديد", "mode:link")]]))
 
 
@@ -532,6 +533,18 @@ async def cb_link_download(cb: CallbackQuery, bot: Bot):
         log.exception("link send failed")
         await cb.message.answer("⚠️ تعذّر إرسال الفيديو. جرّب مرة ثانية.")
     await db.log_job(uid, ok, time.time() - t0, ["link:download:" + L["plat"]])
+
+
+@router.callback_query(F.data == "lk:cap")
+async def cb_link_caption(cb: CallbackQuery):
+    L = LINKS.get(cb.from_user.id)
+    if not L:
+        return await cb.answer("انتهت المهلة، أرسل الرابط من جديد.", show_alert=True)
+    await cb.answer()
+    t = (L["info"].get("title") or "").strip()
+    if not t:
+        return await cb.message.answer("لا يوجد وصف لهذا الفيديو.")
+    await cb.message.answer("📋 <b>الوصف (اضغط للنسخ):</b>\n\n<code>" + t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")[:3500] + "</code>")
 
 
 @router.callback_query(F.data == "lk:mp3")
