@@ -55,6 +55,7 @@ import beats
 import designer
 import emo
 import photo
+import photolib
 import admin
 import auth
 import linkdl
@@ -188,6 +189,10 @@ def text_row(j: dict):
     return [("🖋 إضافة نص", "e:text")]
 
 
+def _fx_items(cat: str, page: int):
+    return [e for e in E.by_cat(cat)[page * PAGE:(page + 1) * PAGE] if not e.steps and not e.noprev]
+
+
 def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     effs = E.by_cat(cat)
     chunk = effs[page * PAGE:(page + 1) * PAGE]
@@ -200,6 +205,8 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     if (page + 1) * PAGE < len(effs):
         nav.append(("التالي ▶️", f"c:{cat}:{page + 1}"))
     rows.append(nav)
+    if _fx_items(cat, page):
+        rows.append([("🖼 معاينة تأثيرات هذه الصفحة على فيديوك", f"cp:{cat}:{page}")])
     rows.append([("↩️ تراجع", "u"), ("🔙 القائمة", "home")])
     rows.append([("🚀 معالجة وتصدير", "go")])
     return _kb(rows)
@@ -485,7 +492,7 @@ async def on_link(msg: Message, bot: Bot):
             + f"⏱ {fmt(dd)} • 📐 {w}×{h} • 📦 {size / 1048576:.1f}MB\n\nاختر ما تريد:")
     await note.edit_text(text, reply_markup=_kb([
         [InlineKeyboardButton(text="✂️ تعديل الفيديو (استوديو)", callback_data="lk:edit", style="primary"), InlineKeyboardButton(text="⟦gem⟧ تعديل المصممين المحترفين", callback_data="lk:pro", style="primary")],
-        [InlineKeyboardButton(text="⟦download⟧ تحميل بدون تعديل", callback_data="lk:dl", style="success")],
+        [InlineKeyboardButton(text="⟦download⟧ تحميل بدون تعديل", callback_data="lk:dl", style="success"), ("🎧 استخراج الصوت MP3", "lk:mp3")],
         [("🔗 رابط جديد", "mode:link")]]))
 
 
@@ -525,6 +532,23 @@ async def cb_link_download(cb: CallbackQuery, bot: Bot):
         log.exception("link send failed")
         await cb.message.answer("⚠️ تعذّر إرسال الفيديو. جرّب مرة ثانية.")
     await db.log_job(uid, ok, time.time() - t0, ["link:download:" + L["plat"]])
+
+
+@router.callback_query(F.data == "lk:mp3")
+async def cb_link_mp3(cb: CallbackQuery, bot: Bot):
+    uid = cb.from_user.id
+    L = LINKS.get(uid)
+    if not L:
+        return await cb.answer("انتهت المهلة، أرسل الرابط من جديد.", show_alert=True)
+    await cb.answer("⏳ جاري استخراج الصوت")
+    out = str(L["dir"] / "audio.mp3")
+    pr = await asyncio.create_subprocess_exec("ffmpeg", "-y", "-loglevel", "error", "-i", L["path"], "-vn", "-c:a", "libmp3lame", "-q:a", "2", out, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+    await asyncio.wait_for(pr.wait(), max(300, int(L["dur"] * 2)))
+    if pr.returncode != 0 or not Path(out).exists():
+        return await cb.message.answer("⚠️ هذا الفيديو بلا صوت.")
+    title = re.sub(r"\s+", " ", L["info"].get("title") or "audio").strip()[:60] or "audio"
+    await bot.send_audio(cb.message.chat.id, FSInputFile(out, filename=f"{title}.mp3"), caption="🎧 الصوت المستخرج بدون علامة مائية ✅", title=title)
+    await db.log_job(uid, True, 1, ["link:mp3:" + L["plat"]])
 
 
 @router.callback_query(F.data.in_({"lk:edit", "lk:pro"}))
@@ -603,10 +627,11 @@ async def build_job(bot: Bot, msg: Message, uid: int, fid=None, size=None, local
         # نسخة معاينة للفيديو **كاملاً بدون أي قص** (أبعاد أصغر للفيديوهات الطويلة لتبقى المعاينة سريعة)
         proxy = d / "proxy.mp4"
         ss = 0.0
-        short = 540 if dd <= 60 else 360
-        crf = "19" if dd <= 60 else "24"
+        short = 360 if dd <= 120 else 240  # معاينة خفيفة وسريعة؛ التصدير النهائي بأعلى جودة من الأصل
+        pfps = 24 if dd <= 120 else 15
+        crf = "22" if dd <= 120 else "26"
         ok = await _sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
-                       "-vf", f"scale='if(gt(iw,ih),-2,min({short},iw))':'if(gt(iw,ih),min({short},ih),-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25",
+                       "-vf", f"scale='if(gt(iw,ih),-2,min({short},iw))':'if(gt(iw,ih),min({short},ih),-2)',scale=trunc(iw/2)*2:trunc(ih/2)*2,fps={pfps}",
                        "-map", "0:v:0", *(["-map", "0:a:0", "-c:a", "aac", "-b:a", "64k"] if has_a else ["-an"]),
                        "-c:v", "libx264", "-preset", "veryfast", "-crf", crf, "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(proxy))
         pm = process.info(await process.probe(str(proxy)))
@@ -675,6 +700,10 @@ async def refresh(bot: Bot, chat: int, j: dict, kb: InlineKeyboardMarkup | None 
     if not j.get("ed"):
         await send_editor(bot, chat, j, note=note)
         return True
+    try:  # تغذية راجعة فورية: المعاينة تُحسب على كامل الفيديو وقد تأخذ عدة ثوانٍ
+        await bot.edit_message_caption(chat_id=chat, message_id=j["ed"], caption=caption(j, "⏳ جاري المعاينة على كامل الفيديو...")[:1000], reply_markup=kb or kb_home(j))
+    except Exception:  # noqa: BLE001
+        pass
     try:
         clip = await make_clip(j)
     except compose.UserError as e:
@@ -872,6 +901,83 @@ async def build_gallery(j: dict, key: str) -> bytes:
     titles = [n.split(" ", 1)[1] if " " in n else n for n, _ in tpls]
     j["gallery"][key] = await asyncio.to_thread(art.template_grid, list(res), titles, cols)
     return j["gallery"][key]
+
+
+async def build_fx_gallery(j: dict, cat: str, page: int) -> bytes:
+    key = f"fx:{cat}:{page}"
+    if key in j["gallery"]:
+        return j["gallery"][key]
+    items = _fx_items(cat, page)
+    sem3 = asyncio.Semaphore(3)
+
+    async def one(i: int, e):
+        tmp = j["dir"] / f"gfx{cat}{page}_{i}"
+        tmp.mkdir(exist_ok=True)
+        out = tmp / "t.png"
+        async with sem3:
+            try:
+                await compose.render(j["proxy"], str(out), [(e.id, {})], j["pmeta"], tmp, "pimg")
+                return out.read_bytes()
+            except Exception:  # noqa: BLE001
+                log.exception("fx thumb %s", e.id)
+                return Path(j["thumb"]).read_bytes()
+    res = await asyncio.gather(*[one(i, e) for i, e in enumerate(items)])
+    titles = [emo.strip(e.title).split(" (")[0][:24] for e in items]
+    j["gallery"][key] = await asyncio.to_thread(art.template_grid, list(res), titles, 4)
+    return j["gallery"][key]
+
+
+@router.callback_query(F.data.startswith("cp:"))
+async def cb_fx_preview(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    _, cat, page = cb.data.split(":")
+    page = int(page)
+    items = _fx_items(cat, page)
+    if not items:
+        return await cb.answer("لا توجد معاينة مرئية لهذا القسم", show_alert=True)
+    await cb.answer("🖼 جارٍ تجهيز المعاينات على فيديوك...")
+    chat = cb.message.chat.id
+    wait = await bot.send_message(chat, f"🪄 أطبّق {len(items)} تأثيراً على لقطة من فيديوك، لحظات...")
+    try:
+        img = await build_fx_gallery(j, cat, page)
+        names = "\n".join(f"{i}. {emo.strip(e.title)}" for i, e in enumerate(items, 1))
+        rows = [[(str(i), f"ce:{e.id}") for i, e in list(enumerate(items, 1))[k:k + 4]] for k in range(0, len(items), 4)]
+        rows.append([("🔙 رجوع للمحرر", "tpl_close")])
+        await bot.send_photo(chat, BufferedInputFile(img, "fx.jpg"), caption=f"<b>معاينة التأثيرات</b> — {E.CATS[cat][1]}\nاختر رقم التأثير 👇\n\n{names}"[:1000], reply_markup=_kb(rows))
+    except Exception:  # noqa: BLE001
+        log.exception("fx gallery failed")
+        await bot.send_message(chat, "⚠️ تعذّر تجهيز المعاينات، حاول مرة أخرى.")
+    finally:
+        with _cl.suppress(Exception):
+            await wait.delete()
+
+
+@router.callback_query(F.data.startswith("ce:"))
+async def cb_fx_apply(cb: CallbackQuery, bot: Bot):
+    j = need_job(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if j.get("running"):
+        return await cb.answer("طلبك قيد المعالجة", show_alert=True)
+    eid = cb.data[3:]
+    e = E.EFFECTS.get(eid)
+    if not e or e.steps:
+        return await cb.answer()
+    await cb.answer(f"⏳ تطبيق: {e.title}"[:60])
+    j["redo"] = []
+    j["stack"].append((eid, {}))
+    j["busy"] = True
+    try:
+        ok = await refresh(bot, cb.message.chat.id, j, None, f"✅ أُضيف: {e.title}")
+    finally:
+        j["busy"] = False
+    if not ok:
+        j["stack"].pop()
+        return
+    with _cl.suppress(Exception):
+        await cb.message.delete()
 
 
 def kb_templates(key: str) -> InlineKeyboardMarkup:
@@ -1419,6 +1525,7 @@ async def main():
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
+    asyncio.create_task(asyncio.to_thread(photolib.ensure_models, lambda s: print(s, flush=True)))  # تنزيل نموذج فصل الخلفية الدقيق مرة واحدة
     asyncio.create_task(photo.cleaner())
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot, handle_as_tasks=True, allowed_updates=["message", "callback_query"])

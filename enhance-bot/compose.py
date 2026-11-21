@@ -210,7 +210,7 @@ async def _render_base(src: str, dst: str, stack, meta: dict, tmp: Path, mode: s
         args += ["-frames:v", "1", dst]
     elif mode == "pclip":
         pk = max(120, int(36 * 8192 / max(out_dur, 1) - 70))  # المعاينة كاملة (بدون قص) وتبقى دون حد رفع تيليجرام
-        args += ["-t", f"{max(out_dur, 0.5):.2f}", "-c:v", "libx264", "-preset", "veryfast" if out_dur <= 120 else "ultrafast", "-crf", "21" if out_dur <= 90 else "26", "-maxrate", f"{pk}k", "-bufsize", f"{pk * 2}k", "-pix_fmt", "yuv420p"]  # المعاينة على كامل الفيديو بدون قص
+        args += ["-t", f"{max(out_dur, 0.5):.2f}", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "27", "-maxrate", f"{pk}k", "-bufsize", f"{pk * 2}k", "-pix_fmt", "yuv420p"]  # المعاينة على كامل الفيديو بدون قص
         args += (["-map", amap, "-c:a", "aac", "-b:a", "64k"] if amap else ["-an"])
         args += ["-movflags", "+faststart", dst]
     elif pl.out == "gif":

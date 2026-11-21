@@ -48,11 +48,11 @@ def in_session(uid: int) -> bool:
 # ---------------------------------------------------------------- الأزرار
 def kb_pro_home(j) -> InlineKeyboardMarkup:
     """واجهة المصممين المحترفين للصور: باقات + أدوات التصميم + كل الأقسام"""
-    rows = [[("⟦gem⟧ باقات المصممين المحترفين (14)", "ptp:0")],
-            [("⟦brush⟧ أدوات التصميم الاحترافية", "pc:pro:0"), ("⟦star⟧ قوالب جاهزة بنقرة", "ptl:0")],
+    rows = [[("⟦gem⟧ باقات المصممين المحترفين (14)", "pg:p:0")],
+            [("⟦brush⟧ أدوات التصميم الاحترافية", "pc:pro:0"), ("⟦star⟧ قوالب جاهزة بنقرة", "pg:l:0")],
             [("⟦gem⟧ تحسين تلقائي ذكي", "pe:auto"), ("⟦photo⟧ دقة الآيفون", "pe:iphone")],
             [("⟦layers⟧ إزالة الخلفية", "pe:bg_remove"), ("⟦layers⟧ وضع البورتريه", "pe:bg_bokeh")],
-            [("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv")]]
+            [("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv"), ("🎥 قوالب كاب كات", "pg:c:0")]]
     cats = [(f"⟦{ic}⟧ {title}", f"pc:{k}:0") for k, (ic, _fb, title) in P.CATS.items() if k != "pro"]
     rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
     n = len(j["stack"])
@@ -69,8 +69,8 @@ def kb_home(j) -> InlineKeyboardMarkup:
         [("⟦layers⟧ إزالة الخلفية", "pe:bg_remove"), ("⟦layers⟧ تضبيب الخلفية", "pe:bg_blur")],
         [("⟦layers⟧ وضع البورتريه", "pe:bg_bokeh"), ("⟦brush⟧ تنعيم البشرة", "pe:skin")],
     ]
-    rows.append([(f"⟦star⟧ قوالب جاهزة بنقرة ({len(P.PHOTO_TEMPLATES)})", "ptl:0")])
-    rows.append([("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv")])
+    rows.append([(f"⟦star⟧ قوالب جاهزة بنقرة ({len(P.PHOTO_TEMPLATES)})", "pg:l:0")])
+    rows.append([("⟦film⟧ تحويل الصورة لفيديو بموسيقى", "pv"), ("🎥 قوالب كاب كات", "pg:c:0")])
     cats = [(f"⟦{ic}⟧ {title}", f"pc:{k}:0") for k, (ic, _fb, title) in P.CATS.items()]
     rows += [cats[i:i + 2] for i in range(0, len(cats), 2)]
     n = len(j["stack"])
@@ -91,24 +91,10 @@ def kb_cat(cat: str, page: int) -> InlineKeyboardMarkup:
     if (page + 1) * PAGE < len(ts):
         nav.append(("التالي ⟦right⟧", f"pc:{cat}:{page + 1}"))
     rows.append(nav)
+    if _tool_items(cat, page):
+        rows.append([("🖼 معاينة أدوات هذه الصفحة على صورتك", f"pp:{cat}:{page}")])
     rows.append([("⟦undo⟧ تراجع", "pu"), ("⟦home⟧ القائمة", "ph")])
     rows.append([("⟦download⟧ معالجة وتصدير", "pg")])
-    return kb(rows)
-
-
-def kb_tpl(page: int, pro: bool = False) -> InlineKeyboardMarkup:
-    per = 10
-    lst, pre, nav_pre = (P.PHOTO_PRO_PACKS, "pq", "ptp") if pro else (P.PHOTO_TEMPLATES, "pt", "ptl")
-    items = [(lst[i][0], f"{pre}:{i}") for i in range(page * per, min(len(lst), (page + 1) * per))]
-    rows = [items[i:i + 2] for i in range(0, len(items), 2)]
-    nav = []
-    if page > 0:
-        nav.append(("⟦left⟧ السابق", f"{nav_pre}:{page - 1}"))
-    nav.append((f"{page + 1}/{-(-len(lst) // per)}", "noop"))
-    if (page + 1) * per < len(lst):
-        nav.append(("التالي ⟦right⟧", f"{nav_pre}:{page + 1}"))
-    rows.append(nav)
-    rows.append([("⟦undo⟧ تراجع", "pu"), ("⟦home⟧ القائمة", "ph")])
     return kb(rows)
 
 
@@ -261,45 +247,204 @@ async def cb_cat(cb: CallbackQuery):
         pass
 
 
-@router.callback_query(F.data.startswith(("ptl:", "ptp:")))
-async def cb_tpl_list(cb: CallbackQuery):
+# ---------------------------------------------------------------- معارض المعاينة (قوالب وأدوات بصور حقيقية)
+LISTS = {"l": ("🎁 قوالب جاهزة بنقرة", None), "p": ("🏆 باقات المصممين المحترفين", None), "c": ("🎥 قوالب بروح كاب كات", None)}
+PER = 10
+
+
+def _list(k):
+    return {"l": P.PHOTO_TEMPLATES, "p": P.PHOTO_PRO_PACKS, "c": P.PHOTO_CAPCUT}[k]
+
+
+def _thumb_base(j):
+    if "tb" not in j:
+        import cv2
+        h, w = j["base"].shape[:2]
+        s = 360.0 / max(h, w)
+        j["tb"] = cv2.resize(j["base"], (max(1, int(w * s)), max(1, int(h * s))), interpolation=cv2.INTER_AREA) if s < 1 else j["base"]
+    return j["tb"]
+
+
+def _render_thumbs(j, jobs):
+    """jobs: قائمة [(tid, params)] لكل خانة -> bytes JPEG صغيرة"""
+    tb = _thumb_base(j)
+    out = []
+    for steps in jobs:
+        try:
+            st = (tb, None)
+            for tid, p in steps:
+                st = P.apply_one(st, tid, p or None)
+            out.append(P.to_jpeg(st, 80, 360))
+        except Exception:  # noqa: BLE001
+            log.exception("thumb failed")
+            out.append(P.to_jpeg((tb, None), 80, 360))
+    return out
+
+
+async def _gallery(j, jobs, titles, cols=5):
+    import art
+    async with sem:
+        imgs = await asyncio.to_thread(_render_thumbs, j, jobs)
+    return await asyncio.to_thread(art.template_grid, imgs, titles, cols)
+
+
+def _short(t: str) -> str:
+    import emo
+    return emo.strip(t).split(" (")[0][:24]
+
+
+def _kb_numbers(prefix_apply: str, ids: list, nav_prefix: str | None, k: str, page: int, total_pages: int):
+    rows = [[(str(i + 1), f"{prefix_apply}{ids[i]}") for i in range(r, min(r + 5, len(ids)))] for r in range(0, len(ids), 5)]
+    if nav_prefix and total_pages > 1:
+        nav = []
+        if page > 0:
+            nav.append(("⟦left⟧ السابق", f"{nav_prefix}:{k}:{page - 1}"))
+        nav.append((f"{page + 1}/{total_pages}", "noop"))
+        if page + 1 < total_pages:
+            nav.append(("التالي ⟦right⟧", f"{nav_prefix}:{k}:{page + 1}"))
+        rows.append(nav)
+    rows.append([("⟦home⟧ رجوع للمحرر", "pcl")])
+    return kb(rows)
+
+
+async def _tpl_page(j, k, page):
+    lst = _list(k)
+    lo, hi = page * PER, min(len(lst), (page + 1) * PER)
+    items = lst[lo:hi]
+    jobs = [[P.norm(x) for x in ids] for _, ids in items]
+    img = await _gallery(j, jobs, [_short(t) for t, _ in items])
+    names = "\n".join(f"{i}. {t}" for i, (t, _) in enumerate(items, lo + 1))
+    cap = f"<b>{LISTS[k][0]}</b> — صفحة {page + 1}\nاختر رقم القالب 👇\n\n{names}"[:1000]
+    return img, cap, _kb_numbers(f"pa:{k}:", list(range(lo, hi)), "pgn", k, page, -(-len(lst) // PER))
+
+
+@router.callback_query(F.data.startswith("pg:"))
+async def cb_gallery_open(cb: CallbackQuery, bot: Bot):
     j = need(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
+    _, k, page = cb.data.split(":")
+    await cb.answer("🖼 جارٍ تجهيز المعاينات على صورتك...")
+    wait = await bot.send_message(j["chat"], "🪄 أطبّق القوالب على صورتك، لحظات...")
+    try:
+        img, cap, mk = await _tpl_page(j, k, int(page))
+        await bot.send_photo(j["chat"], BufferedInputFile(img, "g.jpg"), caption=cap, reply_markup=mk)
+    except Exception:  # noqa: BLE001
+        log.exception("photo gallery failed")
+        await bot.send_message(j["chat"], "⚠️ تعذّر تجهيز المعاينات، حاول مرة أخرى.")
+    finally:
+        try:
+            await wait.delete()
+        except TelegramBadRequest:
+            pass
+
+
+@router.callback_query(F.data.startswith("pgn:"))
+async def cb_gallery_nav(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    _, k, page = cb.data.split(":")
+    await cb.answer("⏳")
+    try:
+        img, cap, mk = await _tpl_page(j, k, int(page))
+        await cb.message.edit_media(InputMediaPhoto(media=BufferedInputFile(img, "g.jpg"), caption=cap), reply_markup=mk)
+    except TelegramBadRequest:
+        pass
+    except Exception:  # noqa: BLE001
+        log.exception("photo gallery nav failed")
+
+
+@router.callback_query(F.data == "pcl")
+async def cb_gallery_close(cb: CallbackQuery):
     await cb.answer()
     try:
-        await cb.message.edit_reply_markup(reply_markup=kb_tpl(int(cb.data[4:]), cb.data.startswith("ptp:")))
+        await cb.message.delete()
     except TelegramBadRequest:
         pass
 
 
-@router.callback_query(F.data.startswith(("pt:", "pq:")))
+@router.callback_query(F.data.startswith("pa:"))
 async def cb_tpl_apply(cb: CallbackQuery, bot: Bot):
     j = need(cb)
     if not j:
         return await cb.answer(EXPIRED, show_alert=True)
     if j["busy"]:
         return await cb.answer("لحظة، يتم تطبيق الأداة السابقة")
-    name, ids = (P.PHOTO_PRO_PACKS if cb.data.startswith("pq:") else P.PHOTO_TEMPLATES)[int(cb.data[3:])]
+    _, k, i = cb.data.split(":")
+    name, ids = _list(k)[int(i)]
+    steps = [P.norm(x) for x in ids]
     await cb.answer(f"⏳ تطبيق: {name}"[:60])
     j["busy"] = True
     try:
         async with sem:
             def work():
                 st = j["cur"]
-                for tid in ids:
-                    st = P.apply_one(st, tid, None)
+                for tid, prm in steps:
+                    st = P.apply_one(st, tid, prm or None)
                 return st
             j["cur"] = await asyncio.to_thread(work)
-        j["stack"].extend((tid, {}) for tid in ids)
+        j["stack"].extend((tid, prm) for tid, prm in steps)
         j["redo"].clear()
         j["ts"] = time.time()
         await refresh(bot, j, kb_home(j), f"✅ طُبّق القالب: {name}")
+        try:
+            await cb.message.delete()
+        except TelegramBadRequest:
+            pass
     except Exception:  # noqa: BLE001
         log.exception("photo template failed")
         await bot.send_message(j["chat"], "⚠️ تعذّر تطبيق هذا القالب على الصورة.")
     finally:
         j["busy"] = False
+
+
+def _tool_items(cat, page):
+    return [t for t in P.by_cat(cat)[page * PAGE:(page + 1) * PAGE] if not t.steps]
+
+
+@router.callback_query(F.data.startswith("pp:"))
+async def cb_tools_preview(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    _, cat, page = cb.data.split(":")
+    items = _tool_items(cat, int(page))
+    if not items:
+        return await cb.answer("لا معاينة لهذا القسم", show_alert=True)
+    await cb.answer("🖼 جارٍ تجهيز المعاينات على صورتك...")
+    wait = await bot.send_message(j["chat"], f"🪄 أطبّق {len(items)} أداة على صورتك، لحظات...")
+    try:
+        img = await _gallery(j, [[(t.id, None)] for t in items], [_short(t.title) for t in items])
+        names = "\n".join(f"{i}. {t.title}" for i, t in enumerate(items, 1))
+        await bot.send_photo(j["chat"], BufferedInputFile(img, "g.jpg"), caption=f"<b>معاينة الأدوات</b> — {P.CATS[cat][2]}\nاختر رقم الأداة 👇\n\n{names}"[:1000],
+                             reply_markup=_kb_numbers("pce:", [t.id for t in items], None, cat, 0, 1))
+    except Exception:  # noqa: BLE001
+        log.exception("tools gallery failed")
+        await bot.send_message(j["chat"], "⚠️ تعذّر تجهيز المعاينات، حاول مرة أخرى.")
+    finally:
+        try:
+            await wait.delete()
+        except TelegramBadRequest:
+            pass
+
+
+@router.callback_query(F.data.startswith("pce:"))
+async def cb_tool_from_gallery(cb: CallbackQuery, bot: Bot):
+    j = need(cb)
+    if not j:
+        return await cb.answer(EXPIRED, show_alert=True)
+    if j["busy"]:
+        return await cb.answer("لحظة، يتم تطبيق الأداة السابقة")
+    tid = cb.data[4:]
+    if tid not in P.TOOLS:
+        return await cb.answer()
+    await cb.answer(f"⏳ تطبيق: {P.TOOLS[tid].title}"[:60])
+    await add_tool(bot, j, tid)
+    try:
+        await cb.message.delete()
+    except TelegramBadRequest:
+        pass
 
 
 @router.callback_query(F.data == "ph")

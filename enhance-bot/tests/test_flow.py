@@ -56,10 +56,10 @@ async def main():
     await click("mode:photo"); assert "جلسة صور" in last("send_message")[1]["text"]
     await click("mode:pro"); assert [b["callback_data"] for r in last("send_message")[1]["reply_markup"]["inline_keyboard"] for b in r] == ["pro:video", "pro:photo"]
     await click("pro:photo"); await say(photo=[{"file_id": "P", "file_unique_id": "p", "width": 10, "height": 10, "file_size": len(FILES["P"])}])
-    ed = last("send_photo"); assert "المصممين المحترفين" in ed[1]["caption"]; assert "ptp:0" in str(ed[1]["reply_markup"])
-    await click("ptp:0"); await click("pq:0"); assert "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; await click("pc:pro:0"); await click("pe:pro_dodge_burn"); print("PRO PHOTO OK")
+    ed = last("send_photo"); assert "المصممين المحترفين" in ed[1]["caption"]; assert "pg:p:0" in str(ed[1]["reply_markup"])
+    await click("pg:p:0"); assert "باقات المصممين" in last("send_photo")[1]["caption"]; await click("pa:p:0"); assert "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; await click("pc:pro:0"); await click("pe:pro_dodge_burn"); print("PRO PHOTO OK")
     B.photo.drop(7); await click("mode:pro"); await click("pro:video"); await say(video={"file_id": "V", "file_unique_id": "u", "width": 360, "height": 640, "duration": 5, "file_size": len(FILES["V"])})
-    ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"] and "tpl:p" in str(ed[1]["reply_markup"]); await click("tpl:p"); await click("t:p:1"); await click("c:pro:0"); print("PRO VIDEO OK")
+    ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"] and "tpl:p" in str(ed[1]["reply_markup"]); await click("tpl:p"); await click("t:p:1"); await click("c:pro:0"); await click("c:ed:0"); await click("cp:ed:0"); assert "معاينة التأثيرات" in last("send_photo")[1]["caption"]; await click("ce:flash_beat"); assert "flash_beat" in str(B.JOBS[7]["stack"]); print("video effects preview gallery OK"); print("PRO VIDEO OK")
     # ---- مونتاج من الرابط (تحميل مُحاكى)
     async def fake_dl(url, dest, proxy=None):
         dest.mkdir(parents=True, exist_ok=True); p = dest / "dl.mp4"; p.write_bytes(FILES["V"])
@@ -70,6 +70,7 @@ async def main():
     await say("مرحبا هذا مو رابط"); assert "فقط" in last("send_message")[1]["text"]
     await say("https://vm.tiktok.com/ZSabc123/"); card = last("send_message", "edit_message_text")[1]; cb_ = [b["callback_data"] for r in card["reply_markup"]["inline_keyboard"] for b in r]; assert {"lk:edit", "lk:pro", "lk:dl"} <= set(cb_), cb_
     await click("lk:dl"); assert "بدون علامة مائية" in last("send_video")[1]["caption"]; print("LINK download OK")
+    await click("lk:mp3"); assert last("send_audio")[0] == "send_audio"; print("LINK mp3 OK")
     await say("شوف هذا https://www.instagram.com/reel/Cabc/?igsh=1"); assert "lk:pro" in str(last("send_message", "edit_message_text")[1])
     await click("lk:pro"); ed = last("send_video"); assert "المصممين المحترفين" in ed[1]["caption"]; print("LINK edit (pro) OK")
     B.photo.drop(7); B.drop_job(7); PROC = list(CALLS); CALLS.clear()
@@ -79,7 +80,9 @@ async def main():
     await click("pe:text"); assert "اكتب النص" in last("send_message")[1]["text"]
     await say("مرحبا"); await click("ps:2"); assert cnt("edit_message_media") == 2; print("photo text step OK")
     await click("pe:bg_remove"); assert cnt("edit_message_media") == 3 and "شفافة" in last("edit_message_media")[1]["media"]["caption"]; print("bg_remove alpha OK")
-    n0 = cnt("edit_message_media"); await click("ptl:0"); await click("pt:1"); assert cnt("edit_message_media") == n0 + 1 and "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; print("photo template OK")
+    n0 = cnt("edit_message_media"); await click("pg:l:0"); assert "قوالب جاهزة" in last("send_photo")[1]["caption"]; await click("pa:l:1"); assert cnt("edit_message_media") == n0 + 1 and "طُبّق القالب" in last("edit_message_media")[1]["media"]["caption"]; print("photo template OK")
+    await click("pg:c:0"); assert "كاب كات" in last("send_photo")[1]["caption"]; await click("pgn:c:0"); await click("pa:c:6"); assert "tag" in str(B.photo.PJOBS[7]["stack"]); print("photo capcut OK")
+    await click("pc:bg:0"); await click("pp:bg:0"); assert "معاينة الأدوات" in last("send_photo")[1]["caption"]; await click("pce:bg_blur"); print("photo tool preview gallery OK")
     await click("pu"); await click("pr"); await click("pk"); await click("pd:0"); assert cnt("edit_message_media") >= 7; print("photo undo/redo/delete OK")
     await click("pv"); await click("pvs:style:pulse"); await click("pvs:dur:8"); await say(audio={"file_id": "A", "file_unique_id": "a", "duration": 5, "file_size": len(FILES["A"])}); assert last("send_video")[1]["duration"] == 8; print("photo->video with music OK")
     await click("pg"); assert last("send_document")[1]["caption"]; print("photo export OK")

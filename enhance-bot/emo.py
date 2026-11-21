@@ -14,7 +14,7 @@ import re
 
 from aiogram.client.session.middlewares.base import BaseRequestMiddleware
 from aiogram.methods import (AnswerCallbackQuery, EditMessageCaption, EditMessageMedia, EditMessageReplyMarkup,
-                             EditMessageText, SendMessage, SendPhoto, SendVideo, SendDocument, SendAnimation)
+                             EditMessageText, SendMessage, SendPhoto, SendVideo, SendDocument, SendAnimation, SendAudio, SendVoice)
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 ENABLED = os.getenv("PREMIUM_EMOJI", "1").strip() not in ("0", "false", "no", "")
@@ -206,7 +206,7 @@ def style_for(b: InlineKeyboardButton) -> str | None:
     d = b.callback_data or ""
     if d in ("au:reg", "au:start", "mode:link", "lk:dl"):
         return "success"
-    if d in ("au:login", "au:gen", "au:me", "mode:pro", "pro:video") or d.startswith("ptp:"):
+    if d in ("au:login", "au:gen", "au:me", "mode:pro", "pro:video") or d.startswith(("ptp:", "pg:p")):
         return "primary"
     if d in ("au:outy",):
         return "danger"
@@ -282,7 +282,7 @@ def _apply(method):
         return
     if isinstance(method, (SendMessage, EditMessageText)):
         method.text = html(method.text) if _is_html(method) else strip(method.text)
-    elif isinstance(method, (SendPhoto, SendVideo, SendDocument, SendAnimation, EditMessageCaption)):
+    elif isinstance(method, (SendPhoto, SendVideo, SendDocument, SendAnimation, SendAudio, SendVoice, EditMessageCaption)):
         if method.caption:
             method.caption = html(method.caption) if _is_html(method) else strip(method.caption)
     elif isinstance(method, EditMessageMedia):
@@ -290,7 +290,7 @@ def _apply(method):
         if getattr(med, "caption", None):
             cap = html(med.caption) if _is_html(med) else strip(med.caption)
             method.media = med.model_copy(update={"caption": cap})  # الأنواع مجمّدة
-    if isinstance(method, (SendMessage, EditMessageText, SendPhoto, SendVideo, SendDocument, SendAnimation,
+    if isinstance(method, (SendMessage, EditMessageText, SendPhoto, SendVideo, SendDocument, SendAnimation, SendAudio, SendVoice,
                            EditMessageCaption, EditMessageMedia, EditMessageReplyMarkup)):
         mk = getattr(method, "reply_markup", None)
         if mk is not None:

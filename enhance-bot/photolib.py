@@ -1,6 +1,7 @@
 """أدوات مونتاج الصور: خلفيات (إزالة/تضبيب/إخفاء/استبدال) + تحسين + فلاتر + تأثيرات فنية + إطارات + تحويل.
 كل أداة دالة تأخذ (img BGR uint8, alpha float|None) وتُرجع (img, alpha). الأحجام النسبية تعتمد على min(h,w) فتعمل على المعاينة والأصل."""
 import hashlib
+import os
 from pathlib import Path
 
 import cv2
@@ -15,22 +16,72 @@ MODELS = BASE / "models"
 cv2.setNumThreads(2)
 
 # ---------------------------------------------------------------- القناع (فصل الشخص/الجسم عن الخلفية)
-_sess = None
+# سلسلة نماذج: u2net_human_seg (الأفضل للأشخاص حتى بالملابس الداكنة) ثم silueta (أجسام عامة) ثم u2netp المرفق (احتياطي).
+# النموذجان الكبيران يُنزَّلان تلقائياً مرة واحدة في الخلفية عند أول تشغيل (إن كان الإنترنت متاحاً).
+MODEL_SPECS = [
+    ("u2net_human_seg.onnx", "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx", 150_000_000),
+    ("silueta.onnx", "https://github.com/danielgatis/rembg/releases/download/v0.0.0/silueta.onnx", 40_000_000),
+]
+_sessions: dict = {}
 _mcache: dict = {}
 
 
-def _u2net(img):
-    global _sess
-    if _sess is None:
+def _model_path(name: str):
+    f = MODELS / name
+    spec = next((s for s in MODEL_SPECS if s[0] == name), None)
+    if f.exists() and (spec is None or f.stat().st_size >= spec[2]):
+        return f
+    return None
+
+
+def ensure_models(log=print):
+    """تنزيل النماذج الناقصة (يُستدعى من خيط خلفي)"""
+    import urllib.request
+    if os.getenv("PHOTO_MODELS", "1") == "0":
+        return
+    MODELS.mkdir(exist_ok=True)
+    for name, url, minsize in MODEL_SPECS:
+        if _model_path(name):
+            continue
+        part = MODELS / (name + ".part")
+        try:
+            log(f"⬇️ تنزيل نموذج فصل الخلفية {name} ...")
+            with urllib.request.urlopen(url, timeout=60) as r, open(part, "wb") as f:
+                while True:
+                    b = r.read(1 << 20)
+                    if not b:
+                        break
+                    f.write(b)
+            if part.stat().st_size < minsize:
+                raise RuntimeError("حجم الملف غير مكتمل")
+            part.replace(MODELS / name)
+            log(f"✅ تم تنزيل {name}")
+        except Exception as e:  # noqa: BLE001
+            log(f"⚠️ تعذّر تنزيل {name}: {e}")
+            part.unlink(missing_ok=True)
+
+
+def _sess(name):
+    if name not in _sessions:
         import onnxruntime as ort
-        _sess = ort.InferenceSession(str(MODELS / "u2netp.onnx"), providers=["CPUExecutionProvider"])
+        so = ort.SessionOptions()
+        so.intra_op_num_threads = 2
+        _sessions[name] = ort.InferenceSession(str(_model_path(name)), sess_options=so, providers=["CPUExecutionProvider"])
+    return _sessions[name]
+
+
+def _infer(name, img, size=320):
+    s = _sess(name)
     h, w = img.shape[:2]
-    x = cv2.cvtColor(cv2.resize(img, (320, 320), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB).astype(np.float32)
+    x = cv2.cvtColor(cv2.resize(img, (size, size), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB).astype(np.float32)
     x = x / max(float(x.max()), 1e-6)
     x = (x - np.array([0.485, 0.456, 0.406], np.float32)) / np.array([0.229, 0.224, 0.225], np.float32)
-    out = _sess.run(None, {_sess.get_inputs()[0].name: x.transpose(2, 0, 1)[None]})[0][0, 0]
-    out = (out - out.min()) / max(float(out.max() - out.min()), 1e-6)
-    return cv2.resize(out, (w, h), interpolation=cv2.INTER_CUBIC)
+    inp = s.get_inputs()[0].name
+    o1 = s.run(None, {inp: x.transpose(2, 0, 1)[None]})[0][0, 0]
+    o2 = s.run(None, {inp: x[:, ::-1].copy().transpose(2, 0, 1)[None]})[0][0, 0][:, ::-1]  # متوسط مع النسخة المقلوبة = حواف أدق
+    o = (o1 + o2) / 2
+    o = (o - o.min()) / max(float(o.max() - o.min()), 1e-6)
+    return cv2.resize(o, (w, h), interpolation=cv2.INTER_CUBIC)
 
 
 def _grabcut(img):
@@ -45,22 +96,51 @@ def _grabcut(img):
     return cv2.resize(out, (w, h))
 
 
+def _refine(img, m):
+    """تنظيف القناع: إزالة الجزر الصغيرة وسدّ الثقوب ثم تنعيم الحواف على حدود الصورة الحقيقية"""
+    S = min(img.shape[:2])
+    m = np.clip((m - 0.12) / 0.76, 0, 1)
+    m = m * m * (3 - 2 * m)
+    b = (m > 0.5).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(b, 8)
+    if n > 1:  # نبقي المكوّنات الكبيرة فقط
+        big = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] >= 0.04 * b.sum() or stats[i, cv2.CC_STAT_AREA] == stats[1:, cv2.CC_STAT_AREA].max()]
+        keep = np.isin(lab, big).astype(np.float32)
+        m = m * np.clip(cv2.dilate(keep, np.ones((5, 5), np.uint8)), 0, 1)
+    inv = (1 - (m > 0.5)).astype(np.uint8)  # ثقوب داخلية صغيرة => تُملأ
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(inv, 8)
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] < 0.003 * m.size and not (lab[0, :] == i).any() and not (lab[-1, :] == i).any() and not (lab[:, 0] == i).any() and not (lab[:, -1] == i).any():
+            m[lab == i] = 1.0
+    try:
+        g = img.astype(np.float32) / 255.0
+        m = cv2.ximgproc.guidedFilter(g, m.astype(np.float32), max(3, S // 160), 1e-4)
+    except Exception:  # noqa: BLE001
+        m = cv2.GaussianBlur(m, (0, 0), max(0.8, S / 600))
+    m = np.clip((m - 0.22) / 0.56, 0, 1)
+    m = m * m * (3 - 2 * m)
+    return m.astype(np.float32)
+
+
 def mask(img) -> np.ndarray:
-    """قناع ناعم 0..1 للجسم الرئيسي (يعمل بنموذج U²-Net الصغير، وبديل GrabCut عند غياب onnxruntime)"""
+    """قناع ناعم 0..1 للجسم الرئيسي. أولاً نموذج الأشخاص ثم العام ثم المرفق ثم GrabCut."""
     key = (img.shape, hashlib.md5(cv2.resize(img, (48, 48), interpolation=cv2.INTER_AREA).tobytes()).hexdigest())
     if key in _mcache:
         return _mcache[key]
-    try:
-        m = _u2net(img)
-    except Exception:  # noqa: BLE001
+    m = None
+    for name in ("u2net_human_seg.onnx", "silueta.onnx", "u2netp.onnx"):
+        if not _model_path(name):
+            continue
+        try:
+            cand = _infer(name, img)
+        except Exception:  # noqa: BLE001
+            continue
+        m = cand
+        if (cand > 0.5).mean() >= 0.03:  # وجد جسماً بحجم معقول
+            break
+    if m is None:
         m = _grabcut(img)
-    m = np.clip((m - 0.25) / 0.5, 0, 1)
-    m = m * m * (3 - 2 * m)  # smoothstep: حواف أنظف
-    try:
-        m = cv2.ximgproc.guidedFilter(img, m.astype(np.float32), max(4, min(img.shape[:2]) // 120), 1e-3)
-    except Exception:  # noqa: BLE001
-        m = cv2.GaussianBlur(m, (0, 0), max(0.8, min(img.shape[:2]) / 700))
-    m = np.clip(m, 0, 1).astype(np.float32)
+    m = _refine(img, m)
     if len(_mcache) > 6:
         _mcache.clear()
     _mcache[key] = m
@@ -838,8 +918,30 @@ def _edge_burn(img):
 
 
 _pro("pro_edge_burn", "حرق الأطراف الاحترافي (Edge Burn)", _edge_burn, "يوجّه النظر للمركز كما يفعل المصورون.")
+_pro("pro_hdr_look", "مظهر HDR احترافي (دمج تعريضات + وضوح)", lambda i: cvlib.sharpen(cv2.LUT(cvlib.hdr_fusion(i, 1.0), curve([(0, 0.02), (.3, .33), (.7, .76), (1, .98)])), 0.5, 1.0, 0.2, 2.5))
 _pro("pro_color_pop", "ألوان بارزة احترافية", lambda i: grade(cvlib.vibrance(i, 0.6), sat=1.12, con=1.1))
 _pro("pro_cine_curve", "منحنى سينمائي (S-Curve)", lambda i: cv2.LUT(i, curve([(0, 0), (.25, .18), (.5, .5), (.75, .84), (1, 1)])))
+
+
+PHOTO_CAPCUT = [
+    ("🌀 ريمكس سبين", ["f_cin", "a_spin_blur", "a_rgb_pop"]),
+    ("⚡ غليتش RGB", ["f_cyber", "a_glitch", "a_chroma"]),
+    ("👻 ظل متحرك", ["f_moody", "a_trail", "a_glow"]),
+    ("🔁 فلاش نيجاتيف", ["f_moody", "f_invert_soft", "a_chroma"]),
+    ("🧩 بكسل بيت", ["f_vivid", "a_pixel_slice", "a_rgb_pop"]),
+    ("🎞 هالة فيلمية", ["f_expired", "a_halation", "a_grain"]),
+    ("🏷 تاج إيديت", ["auto", "a_rgb_pop", ("tag", {"text": "EDIT", "style": "edit", "pos": "tl"})]),
+    ("🔴 REC فيلم", ["f_vintage", "a_vhs", ("tag", {"text": "REC", "style": "rec", "pos": "tl"})]),
+    ("💠 نيون بيت + وسم", ["f_tokyo", "a_glow", ("tag", {"text": "NEON", "style": "neon", "pos": "tr"})]),
+    ("📱 ريلز ترند + وسم", ["auto", "f_vivid", "l_fit_story", ("tag", {"text": "NEW", "style": "live", "pos": "tl"})]),
+    ("🐌 سلو-فاست ذهبي", ["f_golden_hour", "a_dreamy", "a_glow"]),
+    ("🌈 موجة حالمة", ["f_dream_pink", "a_prism", "a_softfocus"]),
+]
+
+
+def norm(entry):
+    """عنصر قالب: اسم أداة أو (اسم، معاملات)"""
+    return (entry, {}) if isinstance(entry, str) else (entry[0], dict(entry[1]))
 
 
 PHOTO_PRO_PACKS = [
