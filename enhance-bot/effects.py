@@ -289,6 +289,8 @@ reg("tag", "edit", "وسم / تاج تعديل (EDIT • REC • LIVE)", _tag,
 reg("mirror_split", "fx", "مرآة منتصف (نصف معكوس)", lambda c: [cx("[{i}]split[a][b];[a]crop=iw/2:ih:0:0[l];[b]crop=iw/2:ih:0:0,hflip[r];[l][r]hstack[{o}]")], motion=True)
 reg("film_flicker", "fx", "رجفة فيلم قديم (سطوع)", lambda c: [vf("eq=brightness='0.035*sin(t*37)+0.025*sin(t*91)':contrast='1+0.04*sin(t*53)':eval=frame")], motion=True)
 reg("vert_shake", "ed", "اهتزاز عمودي على الإيقاع", lambda c: [vf(f"scale=trunc({c.w}*1.08/2)*2:trunc({c.h}*1.08/2)*2,crop={c.w}:{c.h}:x='(iw-ow)/2':y='(ih-oh)/2+((ih-oh)/2-2)*exp(-8*{_tt(c)[0]})*sin(t*70)'")], motion=True)
+reg("vignette_pulse", "ed", "تعتيم أطراف نبضي", lambda c: [vf(f"vignette=angle='0.95-0.32*exp(-6*{_tt(c)[0]})':eval=frame")], motion=True)
+reg("sat_drop", "ed", "سقوط الألوان على الضربة", lambda c: [vf(f"eq=saturation='1-0.85*exp(-8*{_tt(c, 2.0)[0]})':eval=frame")], motion=True)
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)
 reg("color_flicker", "ed", "تقلّب الألوان", _colorflicker, motion=True)

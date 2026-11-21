@@ -741,6 +741,20 @@ _flt("f_teal_pop", "تيل بارز (ظلال تيل وبشرة دافئة)", la
 _enh("e_clarity", "وضوح محلي (Clarity)", lambda i: cvlib.sharpen(cvlib.clahe(i, 1.6, 8, 0.6), 0.5, 1.0, 0.2, 3.0))
 
 
+_flt("f_mono_blue", "أحادي أزرق", lambda i: _duotone(i, (60, 20, 5), (255, 210, 150)))
+_enh("e_sky", "تقوية السماء", lambda i: _sky(i))
+
+
+def _sky(img):
+    h = img.shape[0]
+    top = np.clip(1.0 - np.linspace(0, 1.6, h), 0, 1)[:, None, None].astype(np.float32)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV).astype(np.float32)
+    blue = ((hsv[..., 0] > 90) & (hsv[..., 0] < 130)).astype(np.float32)[..., None] * top
+    hsv[..., 1] = np.clip(hsv[..., 1] * (1 + 0.45 * blue[..., 0]), 0, 255)
+    hsv[..., 2] = np.clip(hsv[..., 2] * (1 - 0.1 * blue[..., 0]), 0, 255)
+    return cvlib.dehaze(cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR), 0.5, 0.4)
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
