@@ -10,5 +10,9 @@ object Cats {
     val icon: Map<String, ImageVector> = mapOf("auto" to Icons.Rounded.AutoFixHigh, "ed" to Icons.Rounded.GraphicEq, "col" to Icons.Rounded.Palette, "hdr" to Icons.Rounded.HdrOn,
         "pro" to Icons.Rounded.WorkspacePremium, "fx" to Icons.Rounded.Bolt, "part" to Icons.Rounded.AcUnit, "edit" to Icons.Rounded.ContentCut, "aud" to Icons.Rounded.MusicNote,
         "res" to Icons.Rounded.HighQuality, "cv" to Icons.Rounded.Biotech, "ai" to Icons.Rounded.AutoAwesome, "out" to Icons.Rounded.IosShare)
-    fun of(cat: String) = BotCatalog.fx.filter { it.cat == cat }
+    /** يعرض فقط ما يعمل فعلياً على الفيديو */
+    val supported: List<Fx> by lazy { BotCatalog.fx.filter { Fxs.has(it.id) } }
+    val cats: List<Pair<String, String>> by lazy { BotCatalog.cats.filter { c -> supported.any { it.cat == c.first } } }
+    fun of(cat: String) = supported.filter { it.cat == cat }
+    val templates: List<Tpl> by lazy { BotCatalog.templates.filter { t -> t.fx.all { Fxs.has(it) } } }
 }

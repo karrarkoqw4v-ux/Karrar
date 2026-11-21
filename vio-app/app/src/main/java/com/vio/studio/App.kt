@@ -31,4 +31,19 @@ fun AppRoot() {
         Box(Modifier.weight(1f)) { Router(r) }
         if (showBar) BottomBar()
     }
+    if (Jobs.active) JobOverlay()
+}
+
+@Composable
+fun JobOverlay() {
+    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xCC0B0818)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        GlassCard(Modifier.padding(32.dp).fillMaxWidth(), 24.dp, 0.1f) {
+            Column(Modifier.padding(24.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                T(Jobs.title, Sz.H3, C.hi, androidx.compose.ui.text.font.FontWeight.ExtraBold, center = true)
+                T(Jobs.msg, Sz.Body, if (Jobs.finished && !Jobs.ok) C.gold else C.hi, center = true)
+                if (!Jobs.finished) androidx.compose.material3.LinearProgressIndicator(progress = { Jobs.progress }, modifier = Modifier.fillMaxWidth().height(8.dp), color = C.pink, trackColor = C.stroke)
+                else GlassButton("حسناً", Modifier.fillMaxWidth(), null, C.violet, 0.5f) { Jobs.active = false }
+            }
+        }
+    }
 }

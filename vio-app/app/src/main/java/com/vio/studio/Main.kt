@@ -35,11 +35,11 @@ private data class Tile(val title: String, val sub: String, val icon: ImageVecto
 fun HomeScreen() {
     val u = Session.user
     val tiles = listOf(
-        Tile("مونتاج الفيديو", "${BotCatalog.fx.size} تأثيراً", Icons.Rounded.Movie, C.brand, "fx/ed"),
-        Tile("قوالب جاهزة", "${BotCatalog.templates.size} قالباً", Icons.Rounded.Dashboard, C.warm, "templates"),
+        Tile("مونتاج الفيديو", "${Cats.supported.size} تأثيراً", Icons.Rounded.Movie, C.brand, "fx/ed"),
+        Tile("قوالب جاهزة", "${Cats.templates.size} قالباً", Icons.Rounded.Dashboard, C.warm, "templates"),
         Tile("تعديل الصور", "فلاتر على جهازك", Icons.Rounded.PhotoCamera, C.mint, "photo"),
         Tile("مونتاج من رابط", "تيك توك بلا علامة", Icons.Rounded.Link, C.cool, "link"),
-        Tile("الذكاء الاصطناعي", "عزل وتضبيب الخلفية", Icons.Rounded.AutoAwesome, C.brand, "fx/ai"),
+        Tile("فلاتر الألوان", "تدريج سينمائي", Icons.Rounded.Palette, C.brand, "fx/col"),
         Tile("الاحترافي", "تدريج وتباين وصوت", Icons.Rounded.WorkspacePremium, C.cool, "fx/pro"),
     )
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
@@ -101,18 +101,18 @@ fun HomeScreen() {
 
 @Composable
 fun FxScreen(initial: String) {
-    var cat by remember(initial) { mutableStateOf(initial) }
+    var cat by remember(initial) { mutableStateOf(if (Cats.cats.any { it.first == initial }) initial else Cats.cats.first().first) }
     var sel by remember(cat) { mutableStateOf<String?>(null) }
     val list = Cats.of(cat)
     val ctx = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> val s = sel; if (uri != null && s != null) Engine.run(ctx, uri, listOf(s), list.firstOrNull { it.id == s }?.title ?: "تأثير") }
     Column(Modifier.fillMaxSize()) {
         TopBar("تأثيرات الفيديو", back = false)
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BotCatalog.cats.forEach { (id, _) -> Chip(Cats.short[id] ?: id, id == cat) { cat = id } }
+            Cats.cats.forEach { (id, _) -> Chip(Cats.short[id] ?: id, id == cat) { cat = id } }
         }
         Spacer(Modifier.height(6.dp))
-        T(BotCatalog.cats.first { it.first == cat }.second + " • ${list.size}", Sz.Small, Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+        T((Cats.cats.firstOrNull { it.first == cat }?.second ?: "") + " • ${list.size}", Sz.Small, Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(list, key = { it.id }) { f ->
                 val on = sel == f.id
@@ -137,13 +137,14 @@ fun FxScreen(initial: String) {
 @Composable
 fun TemplatesScreen() {
     var sel by remember { mutableStateOf<Int?>(null) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { }
+    val ctx = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> val s = sel; if (uri != null && s != null) Engine.run(ctx, uri, Cats.templates[s].fx, Cats.templates[s].name) }
     Column(Modifier.fillMaxSize()) {
         TopBar("القوالب الجاهزة", back = false)
         T("كل قالب = مجموعة تأثيرات تُطبَّق دفعة واحدة", Sz.Small, Color.White.copy(alpha = 0.7f), modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(BotCatalog.templates.size) { i ->
-                val t = BotCatalog.templates[i]; val on = sel == i
+            items(Cats.templates.size) { i ->
+                val t = Cats.templates[i]; val on = sel == i
                 val first = BotCatalog.fx.firstOrNull { it.id == t.fx.first() } ?: BotCatalog.fx.first()
                 Row(Modifier.fillMaxWidth().glass(18.dp, if (on) C.violet else Color.White, if (on) 0.28f else 0.07f).clickable { sel = i }.padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FxThumb(first, 64.dp, 14.dp)
