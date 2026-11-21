@@ -1211,6 +1211,23 @@ _lay("l_crop_45", "قص 4:5", lambda i: _crop_ratio(i, 4, 5))
 _lay("l_crop_story", "قص 9:16", lambda i: _crop_ratio(i, 9, 16))
 _lay("l_crop_wide", "قص 16:9", lambda i: _crop_ratio(i, 16, 9))
 _lay("l_cinema", "شريط سينمائي 2.35:1", lambda i: _crop_ratio(i, 2.35, 1))
+_lay("l_crop_34", "قص 3:4 (صورة شخصية/جواز)", lambda i: _crop_ratio(i, 3, 4))
+_lay("l_crop_23", "قص 2:3 (بنترست)", lambda i: _crop_ratio(i, 2, 3))
+
+
+def _circle(img):
+    """صورة بروفايل دائرية: قص مربع من الوسط ثم قناع دائري بحدّ أبيض رفيع على خلفية بيضاء"""
+    sq = _crop_ratio(img, 1, 1)
+    h, w = sq.shape[:2]
+    m = np.zeros((h, w), np.uint8)
+    cv2.circle(m, (w // 2, h // 2), int(min(h, w) * 0.5) - 2, 255, -1)
+    m = cv2.GaussianBlur(m, (0, 0), 1.2).astype(np.float32) / 255
+    out = comp(sq, solid(sq.shape, (255, 255, 255)), m)
+    cv2.circle(out, (w // 2, h // 2), int(min(h, w) * 0.5) - 2, (255, 255, 255), max(2, int(min(h, w) * 0.012)), cv2.LINE_AA)
+    return out
+
+
+_lay("l_circle", "صورة دائرية (بروفايل)", _circle)
 
 
 # ================================================================ التحويل
