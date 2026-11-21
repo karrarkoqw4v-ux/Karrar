@@ -1539,8 +1539,15 @@ async def main():
         if "Conflict" in type(e).__name__ or "Conflict" in str(e):
             print("⚠️ توجد نسخة أخرى من البوت تعمل بنفس التوكن (Conflict). أوقف النسخة الأخرى وإلا لن يستقبل هذا البوت الرسائل.", flush=True)
     try:
-        from aiogram.types import BotCommand
-        await bot.set_my_commands([BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="استوديو المونتاج"), BotCommand(command="help", description="طريقة الاستخدام"), BotCommand(command="id", description="آيديك")])
+        from aiogram.types import BotCommand, BotCommandScopeChat
+        common = [BotCommand(command="start", description="البداية"), BotCommand(command="menu", description="استوديو المونتاج"),
+                  BotCommand(command="account", description="حسابي"), BotCommand(command="help", description="طريقة الاستخدام"), BotCommand(command="id", description="آيديك")]
+        await bot.set_my_commands(common)
+        for a in ADMIN_IDS:  # قائمة أوامر إضافية تظهر للمسؤول فقط
+            try:
+                await bot.set_my_commands([BotCommand(command="admin", description="🛠 لوحة التحكم")] + common, scope=BotCommandScopeChat(chat_id=a))
+            except Exception:  # noqa: BLE001
+                pass
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
