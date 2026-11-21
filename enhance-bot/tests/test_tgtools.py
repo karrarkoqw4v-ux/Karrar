@@ -34,7 +34,7 @@ class CB:
 
 
 def mk(cc, host, ms, n=0):
-    return {"key": proxies.key_of(host, 443 + n, "s"), "host": host, "port": 443 + n, "secret": "s", "ip": f"1.2.3.{n + 4}", "cc": cc, "ms": ms, "ok": True, "name": f"خادم {cc} {n}"}
+    return {"key": proxies.key_of(host, 443 + n, "s"), "host": host, "port": 443 + n, "secret": "s", "ip": f"1.2.3.{n + 4}", "cc": cc, "ms": ms, "ok": True, "tier": 1, "score": max(1, 100 - int(ms)), "name": f"خادم {cc} {n}"}
 
 
 async def main():
@@ -61,7 +61,7 @@ async def main():
     txt, kb = cb.message.out[-1]
     assert "tg-emoji" in txt and FLAGS["IR"][0] in txt
     srv = [b for r in kb.inline_keyboard for b in r if b.callback_data.startswith("tt:ps:")]
-    assert len(srv) == 3 and srv[0].text == "سرعة الخادم: 99% - إيران" and srv[2].text == "سرعة الخادم: 82% - إيران", [b.text for b in srv]  # حتى البنق العالي يظهر
+    assert len(srv) == 3 and srv[0].text == "سرعة الخادم: 95% - إيران" and srv[2].text == "سرعة الخادم: 10% - إيران", [b.text for b in srv]  # حتى البنق العالي يظهر
     # بطاقة السيرفر
     real_sleep = asyncio.sleep
     asyncio.sleep = lambda *_a, **_k: real_sleep(0)

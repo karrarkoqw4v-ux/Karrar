@@ -136,8 +136,8 @@ async def cb_country(cb: CallbackQuery):
         return
     rows = []
     for e in lst:
-        sp = f"سرعة الخادم: {proxies.speed_pct(e['ms'])}%" if e["ok"] else "خادم غير مفحوص"
-        rows.append([B(f"{sp} - {FLAGS[cc][1]}", f"tt:ps:{e['key']}", "success" if e["ok"] and e["ms"] <= 60 else None)])
+        sp = f"سرعة الخادم: {proxies.speed_pct(e)}%" if e["ok"] else "خادم غير مفحوص"
+        rows.append([B(f"{sp} - {FLAGS[cc][1]}", f"tt:ps:{e['key']}", "success" if e["tier"] == 1 and e["score"] >= 80 else None)])
     rows.append([B("الدول", "tt:px")])
     note = "" if any(e["ok"] for e in lst) else "\nملاحظة: لم يتم فحص اتصال هذه الخوادم من جهاز البوت، قد لا يعمل بعضها."
     await _show(cb, f"{head}\n\nخوادم MTProto وسيط ({len(lst)}) — الأسرع أولاً\nاختر الخادم المناسب:{note}", _kb(rows))
@@ -156,14 +156,15 @@ async def cb_server(cb: CallbackQuery):
         pass
     await asyncio.sleep(1.2)
     cc = e["cc"]
-    speed = f"{proxies.speed_pct(e['ms'])}%" if e["ok"] else "غير مفحوص"
+    speed = f"{proxies.speed_pct(e)}%" if e["ok"] else "غير مفحوص"
     txt = (f"<b>خادم MTProto وسيط</b>\n\n"
            f"اسم الخادم: <b>{e['name']}</b>\n"
            f"عنوان الخادم: <code>{e['host']}</code>\n"
            f"منفذ الخادم: <code>{e['port']}</code>\n"
            f"مفتاح الخادم: <code>{e['secret']}</code>\n"
            f"الدولة: {flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n"
-           f"سرعة الخادم: <b>{speed}</b>\n\n"
+           f"سرعة الخادم: <b>{speed}</b>\n"
+           f"نوع الفحص: {'اتصال تيليجرام فعلي' if e['tier'] == 1 else 'اتصال فقط' if e['tier'] == 2 else 'غير مفحوص'}\n\n"
            f"اضغط تحت «فتح واتصال» لتفعيل الخادم في تيليجرام")
     await _show(cb, txt, _kb([[B("فتح واتصال", url=proxies.link(e), style="success")], [B("خوادم الدولة", f"tt:pc:{cc}"), B("الدول", "tt:px")]]))
 
