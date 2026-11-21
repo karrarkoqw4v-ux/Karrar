@@ -325,6 +325,7 @@ reg("pro_noise_gate", "pro", "بوابة ضجيج (Noise Gate)", lambda c: [af("
 reg("pro_soft_light", "pro", "توهج حالم (Orton / Soft Light)", lambda c: [cx("[{i}]split[a][b];[b]gblur=sigma=16[g];[a][g]blend=c0_mode=softlight:c0_opacity=0.55:c1_opacity=0:c2_opacity=0[{o}]")], desc="تأثير Orton الفني: نعومة وإضاءة حالمة مع بقاء التفاصيل.")
 reg("pro_deband", "pro", "إزالة التشريط (Deband)", lambda c: [vf("deband=1thr=0.02:2thr=0.02:3thr=0.02:range=16:blur=1")], desc="يزيل خطوط التدرج في السماء والظلال بعد الضغط.")
 reg("pro_denoise_video", "pro", "تنقية فيديو احترافية (حفظ التفاصيل)", lambda c: [vf("hqdn3d=2.5:2:5:4")], desc="يقلل الحبيبات والتشويش بين الإطارات.")
+reg("pro_portra", "pro", "ستوك فيلم بورترا (ألوان باستيل دافئة)", lambda c: [vf("colorbalance=rs=.03:gs=.01:bs=-.03:rm=.04:bm=-.04:rh=.03:bh=-.02,curves=all='0/0.04 0.5/0.52 1/0.97',eq=saturation=0.92:contrast=0.96")], desc="مظهر أفلام Portra الدافئة الناعمة للبورتريه.")
 reg("pro_audio_master", "pro", "ماستر صوت احترافي (تنقية + ضغط + ضبط مستوى)", lambda c: [af("highpass=f=70,afftdn=nf=-28,acompressor=threshold=0.12:ratio=3:attack=15:release=250,equalizer=f=3000:t=q:w=1:g=2,loudnorm=I=-14:TP=-1.5:LRA=9")], noprev=True, desc="للأصوات والتعليق: يحذف الضجيج ويوحّد المستوى.")
 reg("blur_burst", "ed", "ضبابية حركة على الضربة", _blurburst, motion=True, desc="ضبابية حركة عمودية خاطفة مع انتقال الإيقاع.")
 reg("red_flash", "ed", "وميض أحمر على الإيقاع", _redflash, motion=True)

@@ -176,6 +176,11 @@ async def _on_job(uid, ok, secs, effects):
     if ok and db.flag("alert_jobs"):
         await notify_admins(f"✅ عملية ناجحة • <code>{uid}</code> • {secs:.0f}ث\n{esc(', '.join(effects)[:150])}", "job")
     elif not ok and db.flag("alert_fail"):
+        rec = await db.recent_jobs(10)
+        bad = sum(1 for r in rec if not r[3])
+        if len(rec) >= 8 and bad >= 6 and time.time() - float(db.setting("last_fail_wave") or 0) > 1800:
+            await db.set_setting("last_fail_wave", str(time.time()))
+            await notify_admins(f"🚨 <b>موجة فشل!</b> {bad} من آخر {len(rec)} عمليات فشلت. افتح «فحص سريع» و«آخر العمليات».", "fail")
         await notify_admins(f"⚠️ <b>فشلت عملية</b> • <code>{uid}</code> • {secs:.0f}ث\n{esc(', '.join(effects)[:200])}", "fail")
 
 
