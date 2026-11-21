@@ -58,6 +58,8 @@ import photo
 import photolib
 import activity
 import manual
+import proxies
+import tgtools
 import admin
 import watchdog
 import auth
@@ -105,7 +107,8 @@ def kb_mode() -> InlineKeyboardMarkup:
                 [InlineKeyboardButton(text="⟦account⟧ حسابي", callback_data="au:me")],
                 [InlineKeyboardButton(text="⟦gem⟧ مونتاج المصممين محترفين", callback_data="mode:pro", style="primary")],
                 [InlineKeyboardButton(text="⟦share⟧ مونتاج من خلال الرابط", callback_data="mode:link", style="success")],
-                [InlineKeyboardButton(text="🤖 مونتاج الذكاء الاصطناعي", callback_data="mode:ai", style="primary")]])
+                [InlineKeyboardButton(text="🤖 مونتاج الذكاء الاصطناعي", callback_data="mode:ai", style="primary")],
+                [InlineKeyboardButton(text="🛠 أدوات تيليجرام", callback_data="tt:menu", style="success")]])
 
 
 async def send_menu(msg: Message):
@@ -1585,6 +1588,9 @@ async def main():
     dp.include_router(manual.router)
     dp.include_router(admin.router)
     dp.include_router(photo.router)
+    tgtools.HOOK["home"] = send_menu
+    tgtools.ADMIN_IDS = set(ADMIN_IDS)
+    dp.include_router(tgtools.router)
     dp.include_router(router)
     global BOT
     BOT = bot
@@ -1609,6 +1615,7 @@ async def main():
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
+    asyncio.create_task(proxies.loop_forever())
     admin.attach_log_buffer()
     watchdog.start_guard(idle_fn=lambda: not any(j.get("running") for j in JOBS.values()))
     asyncio.create_task(watchdog.beat_task(bot))

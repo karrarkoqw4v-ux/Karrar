@@ -10,3 +10,4 @@ python-bidi
 static-ffmpeg
 onnxruntime>=1.17
 yt-dlp>=2024.8.6
+geoip2fast
