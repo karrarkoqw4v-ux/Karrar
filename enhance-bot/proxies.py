@@ -20,6 +20,7 @@ SOURCES = [
     "https://raw.githubusercontent.com/Grim1313/mtproto-for-telegram/master/all_proxies.txt",
     "https://raw.githubusercontent.com/ALIILAPRO/MTProtoProxy/main/mtproto.txt",
 ]
+JSON_SOURCES = ["https://mtpro.xyz/api/?type=mtproto"]  # قائمة إضافية (تعمل حيث الموقع متاح)
 _RE = re.compile(r"server=([^&\s]+)&port=(\d+)&secret=([A-Za-z0-9_\-=%]+)")
 REFRESH_EVERY = 900  # كل 15 دقيقة
 
@@ -68,6 +69,16 @@ async def _fetch_sources() -> set[tuple[str, int, str]]:
                     out.add((m.group(1).rstrip("."), int(m.group(2)), m.group(3)))
             except Exception as e:  # noqa: BLE001
                 log.warning("proxy source failed %s: %s", u, e)
+        for u in JSON_SOURCES:
+            try:
+                async with s.get(u, proxy=px) as r:
+                    data = await r.json(content_type=None)
+                for it in data if isinstance(data, list) else []:
+                    h, pt, sec = it.get("host"), it.get("port"), it.get("secret")
+                    if h and pt and sec:
+                        out.add((str(h).rstrip("."), int(pt), str(sec)))
+            except Exception as e:  # noqa: BLE001
+                log.warning("proxy json source failed %s: %s", u, e)
     return out
 
 
@@ -139,6 +150,11 @@ async def loop_forever() -> None:
         await asyncio.sleep(REFRESH_EVERY)
 
 
+def servers(cc: str) -> list[dict]:
+    """كل السيرفرات المتصلة لدولة (الأسرع أولاً، حتى 8)"""
+    return STATE["by_cc"].get(cc, [])[:8]
+
+
 def good(cc: str) -> list[dict]:
     """السيرفرات القوية لدولة: ping ≤ الحد (افتراضي 20ms)"""
     lim = max_ping()
@@ -146,7 +162,7 @@ def good(cc: str) -> list[dict]:
 
 
 def countries() -> list[tuple[str, int]]:
-    """الدول التي فيها سيرفر قوي واحد على الأقل (عدد السيرفرات) — بالترتيب الأبجدي العربي"""
-    out = [(cc, len(good(cc))) for cc in STATE["by_cc"] if good(cc)]
-    out.sort(key=lambda x: FLAGS[x[0]][1])
+    """كل دول الأعلام (68): التي فيها سيرفرات متصلة أولاً ثم الباقي أبجدياً — (الرمز، عدد المتصل)"""
+    out = [(cc, len(STATE["by_cc"].get(cc, []))) for cc in FLAGS]
+    out.sort(key=lambda x: (x[1] == 0, -x[1], FLAGS[x[0]][1]))
     return out

@@ -12,7 +12,7 @@ from flagmap import FLAGS, flag_html
 router = Router()
 HOOK: dict = {}  # {"home": send_menu}
 ADMIN_IDS: set[int] = set()
-PAGE = 12
+PAGE = 16
 
 
 def _kb(rows):
@@ -61,7 +61,7 @@ def _countries_kb(page: int, admin: bool = False) -> tuple[str, InlineKeyboardMa
     chunk = cs[page * PAGE:(page + 1) * PAGE]
     rows, row = [], []
     for cc, n in chunk:
-        row.append(InlineKeyboardButton(text=f"{FLAGS[cc][1]} • {n}", callback_data=f"tt:pc:{cc}", icon_custom_emoji_id=FLAGS[cc][0]))
+        row.append(InlineKeyboardButton(text=FLAGS[cc][1] + (f" • {n}" if n else ""), callback_data=f"tt:pc:{cc}", icon_custom_emoji_id=FLAGS[cc][0]))
         if len(row) == 2:
             rows.append(row)
             row = []
@@ -75,15 +75,13 @@ def _countries_kb(page: int, admin: bool = False) -> tuple[str, InlineKeyboardMa
     if nav:
         rows.append(nav)
     rows.append([InlineKeyboardButton(text="🔄 تحديث", callback_data="tt:pxr"), InlineKeyboardButton(text="↩️ رجوع", callback_data="tt:tools")])
-    if not cs:
-        st = proxies.STATE
-        txt = "🌐 <b>سحب بروكسي</b>\n\nلا يوجد حالياً سيرفر متصل قوي (ping ≤ %dms). جرّب «تحديث» بعد قليل." % proxies.max_ping()
-        if admin and st["total"] and st["alive"] < 0.1 * st["total"]:
-            txt += (f"\n\n⚠️ <b>للمسؤول:</b> اتصل الفحص بـ {st['alive']} فقط من {st['total']} سيرفراً، فجهاز تشغيل البوت لا يملك إنترنتاً مباشراً كافياً. "
-                    "شغّل البوت على استضافة بإنترنت مباشر ليظهر الفحص الحقيقي.")
-    else:
-        txt = (f"🌐 <b>سحب بروكسي</b>\n\nاختر الدولة 👇\nتظهر هنا فقط الدول التي فيها سيرفرات <b>متصلة وقوية</b> (ping ≤ {proxies.max_ping():.0f}ms)\n"
-               f"🗂 الدول المتاحة: {len(cs)} • صفحة {page + 1}/{pages}")
+    st = proxies.STATE
+    withs = sum(1 for _, n in cs if n)
+    txt = (f"🌐 <b>سحب بروكسي</b>\n\nاختر الدولة 👇\n🗂 {len(cs)} دولة • فيها سيرفرات متصلة الآن: {withs} • صفحة {page + 1}/{pages}\n"
+           f"🟢 = قوي (ping ≤ {proxies.max_ping():.0f}ms)")
+    if admin and st["total"] and st["alive"] < 0.1 * st["total"]:
+        txt += (f"\n\n⚠️ <b>للمسؤول:</b> اتصل الفحص بـ {st['alive']} فقط من {st['total']} سيرفراً، فجهاز تشغيل البوت لا يملك إنترنتاً مباشراً كافياً. "
+                "شغّل البوت على استضافة بإنترنت مباشر ليظهر الفحص الحقيقي.")
     return txt, _kb(rows)
 
 
@@ -126,13 +124,14 @@ async def cb_country(cb: CallbackQuery):
     cc = cb.data.split(":")[2]
     if cc not in FLAGS:
         return
-    lst = proxies.good(cc)
+    lst = proxies.servers(cc)
     if not lst:
-        await _show(cb, f"{flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n\nلا توجد سيرفرات قوية الآن لهذه الدولة.", _kb([[InlineKeyboardButton(text="↩️ الدول", callback_data="tt:px")]]))
+        await _show(cb, f"{flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n\nلا توجد سيرفرات متصلة لهذه الدولة الآن. جرّب دولة ثانية أو «تحديث».", _kb([[InlineKeyboardButton(text="↩️ الدول", callback_data="tt:px")]]))
         return
-    rows = [[InlineKeyboardButton(text=f"🟢 {e['ms']:.0f}ms • {e['ip']}", callback_data=f"tt:ps:{e['key']}", style="primary")] for e in lst]
+    lim = proxies.max_ping()
+    rows = [[InlineKeyboardButton(text=f"{'🟢' if e['ms'] <= lim else '🟡'} {e['ms']:.0f}ms • {e['ip']}", callback_data=f"tt:ps:{e['key']}", style="primary" if e["ms"] <= lim else None)] for e in lst]
     rows.append([InlineKeyboardButton(text="↩️ الدول", callback_data="tt:px")])
-    await _show(cb, f"{flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n\n🟢 سيرفرات متصلة وقوية (الأسرع أولاً)\nاختر السيرفر المناسب 👇", _kb(rows))
+    await _show(cb, f"{flag_html(cc)} <b>{FLAGS[cc][1]}</b>\n\n🟢 قوي (≤ {lim:.0f}ms) • 🟡 متصل أبطأ — الأسرع أولاً\nاختر السيرفر المناسب 👇", _kb(rows))
 
 
 @router.callback_query(F.data.startswith("tt:ps:"))
