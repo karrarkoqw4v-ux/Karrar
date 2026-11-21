@@ -12,20 +12,21 @@ fun Router(r: String) {
         r == "login" -> LoginScreen()
         r == "register" -> RegisterScreen()
         r == "home" -> ScreenBg { HomeScreen() }
-        r.startsWith("studio/") -> ScreenBg { StudioScreen(r.removePrefix("studio/")) }
+        r.startsWith("fx/") -> ScreenBg { FxScreen(r.removePrefix("fx/")) }
+        r == "templates" -> ScreenBg { TemplatesScreen() }
+        r == "photo" -> ScreenBg { PhotoScreen() }
         r == "link" -> ScreenBg { LinkScreen() }
         r == "account" -> ScreenBg { AccountScreen() }
-        r == "settings" -> ScreenBg { SettingsScreen() }
         else -> ScreenBg { HomeScreen() }
     }
 }
 
-private val tabs = setOf("home", "link", "account")
+private val tabs = setOf("home", "templates", "account")
 
 @Composable
 fun AppRoot() {
     val r = Nav.cur
-    val showBar = r in tabs || r.startsWith("studio/")
+    val showBar = r in tabs || r.startsWith("fx/")
     Column(Modifier.fillMaxSize().background(C.bg)) {
         Box(Modifier.weight(1f)) { Router(r) }
         if (showBar) BottomBar()

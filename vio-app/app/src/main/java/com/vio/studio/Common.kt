@@ -30,15 +30,15 @@ import androidx.compose.ui.unit.sp
 fun Field(value: String, onChange: (String) -> Unit, label: String, icon: ImageVector, password: Boolean = false, keyboard: KeyboardType = KeyboardType.Text, modifier: Modifier = Modifier) {
     var show by remember { mutableStateOf(false) }
     Column(modifier) {
-        T(label, 12, C.lo, FontWeight.Medium, Modifier.padding(bottom = 6.dp, start = 4.dp, end = 4.dp))
+        T(label, Sz.Small, Color.White.copy(alpha = 0.75f), FontWeight.Medium, Modifier.padding(bottom = 6.dp, start = 4.dp, end = 4.dp))
         Row(
-            Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(16.dp)).background(C.surface).border(1.5.dp, C.stroke, RoundedCornerShape(16.dp)).padding(horizontal = 14.dp),
+            Modifier.fillMaxWidth().height(56.dp).glass(16.dp, Color.White, 0.07f).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(icon, null, tint = C.violet, modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(22.dp))
             BasicTextField(
                 value, onChange, singleLine = true, modifier = Modifier.weight(1f),
-                textStyle = TextStyle(color = C.hi, fontSize = 16.sp, fontFamily = Tajawal),
+                textStyle = TextStyle(color = C.hi, fontSize = 15.sp, fontFamily = Tajawal),
                 cursorBrush = SolidColor(C.pink),
                 visualTransformation = if (password && !show) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard),
@@ -51,24 +51,24 @@ fun Field(value: String, onChange: (String) -> Unit, label: String, icon: ImageV
 @Composable
 fun TopBar(title: String, back: Boolean = true) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (back) Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(C.surface).border(1.dp, C.stroke, RoundedCornerShape(14.dp)).clickable { Nav.back() }, contentAlignment = Alignment.Center) {
+        if (back) Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).glass(14.dp).clickable { Nav.back() }, contentAlignment = Alignment.Center) {
             Icon(Icons.Rounded.ArrowForward, null, tint = C.hi, modifier = Modifier.size(22.dp))
         }
-        T(title, 20, C.hi, FontWeight.ExtraBold, Modifier.weight(1f))
+        T(title, Sz.H2, C.hi, FontWeight.ExtraBold, Modifier.weight(1f))
     }
 }
 
 @Composable
 fun BottomBar() {
-    val items = listOf(Triple("home", "الرئيسية", Icons.Rounded.Home), Triple("studio/video", "الاستوديو", Icons.Rounded.Movie), Triple("link", "رابط", Icons.Rounded.Link), Triple("account", "حسابي", Icons.Rounded.Person))
-    Row(Modifier.fillMaxWidth().background(C.surface).border(BorderStroke(1.dp, C.stroke)).padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceAround) {
+    val items = listOf(Triple("home", "الرئيسية", Icons.Rounded.Home), Triple("fx/ed", "التأثيرات", Icons.Rounded.AutoFixHigh), Triple("templates", "القوالب", Icons.Rounded.Dashboard), Triple("account", "حسابي", Icons.Rounded.Person))
+    Row(Modifier.fillMaxWidth().background(Color(0xFF0B0818)).padding(horizontal = 14.dp, vertical = 8.dp).glass(22.dp, Color.White, 0.08f).padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceAround) {
         items.forEach { (r, n, ic) ->
-            val on = Nav.cur == r || (r == "studio/video" && Nav.cur.startsWith("studio"))
-            Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable { Nav.tab(r) }.padding(horizontal = 14.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) C.brand else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))).padding(horizontal = 16.dp, vertical = 4.dp)) {
-                    Icon(ic, null, tint = if (on) Color.White else C.lo, modifier = Modifier.size(24.dp))
+            val on = Nav.cur == r || (r == "fx/ed" && Nav.cur.startsWith("fx/"))
+            Column(Modifier.clip(RoundedCornerShape(14.dp)).clickable { Nav.tab(r) }.padding(horizontal = 14.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.clip(RoundedCornerShape(50)).background(if (on) C.brand else androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, Color.Transparent))).padding(horizontal = 16.dp, vertical = 3.dp)) {
+                    Icon(ic, null, tint = if (on) Color.White else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(22.dp))
                 }
-                T(n, 11, if (on) C.hi else C.lo, if (on) FontWeight.Bold else FontWeight.Medium)
+                T(n, Sz.Tiny, if (on) Color.White else Color.White.copy(alpha = 0.6f), if (on) FontWeight.Bold else FontWeight.Medium)
             }
         }
     }

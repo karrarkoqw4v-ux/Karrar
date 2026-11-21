@@ -47,13 +47,15 @@ class ShotsTest {
         Debug.regStage = 2; shoot("05_register_success", "register")
         Debug.regStage = 0
         Repo.register("كرار", "karrar", "", "1234"); Repo.seedShots()
+        Debug.still = true
         shoot("06_home", "home")
-        shoot("07_studio_video", "studio/video")
-        shoot("08_studio_photo", "studio/photo")
-        shoot("09_studio_pro", "studio/pro")
-        shoot("10_studio_ai", "studio/ai")
-        shoot("11_link", "link")
-        shoot("12_account", "account")
-        shoot("13_settings", "settings")
+        shoot("07_fx_ed", "fx/ed")
+        shoot("08_fx_col", "fx/col")
+        shoot("09_fx_part", "fx/part")
+        shoot("10_fx_ai", "fx/ai")
+        shoot("11_templates", "templates")
+        shoot("12_photo", "photo")
+        shoot("13_link", "link")
+        shoot("14_account", "account")
     }
 }

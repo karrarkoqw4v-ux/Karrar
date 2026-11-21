@@ -19,7 +19,6 @@ data class Work(val kind: String, val title: String, val time: Long)
 object Session {
     var user by mutableStateOf<User?>(null)
     var guest by mutableStateOf(false)
-    var server by mutableStateOf("")
     val works = mutableStateListOf<Work>()
 }
 
@@ -32,7 +31,7 @@ object Nav {
     fun reset(r: String) { stack.clear(); stack.add(r) }
 }
 
-object Debug { var regStage by mutableStateOf(0) }
+object Debug { var regStage by mutableStateOf(0); var still by mutableStateOf(false) }
 
 /** تخزين محلي: حسابات (PBKDF2) + جلسة + أعمالي + رابط الخادم */
 object Repo {
@@ -40,7 +39,6 @@ object Repo {
 
     fun init(c: Context) {
         sp = c.getSharedPreferences("vio", Context.MODE_PRIVATE)
-        Session.server = sp.getString("server", "") ?: ""
         Session.guest = sp.getBoolean("guest", false)
         val cur = sp.getString("current", null)
         Session.user = if (cur != null) find(cur)?.let { toUser(it) } else null
@@ -91,7 +89,6 @@ object Repo {
 
     fun logout() { setCurrent(null) }
     fun setGuest(g: Boolean) { Session.guest = g; sp.edit().putBoolean("guest", g).apply() }
-    fun setServer(s: String) { Session.server = s.trim().trimEnd('/'); sp.edit().putString("server", Session.server).apply() }
 
     private fun key() = "works_" + (Session.user?.username ?: "_guest")
     private fun loadWorks() {

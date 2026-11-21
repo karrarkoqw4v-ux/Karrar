@@ -163,3 +163,29 @@ fun Tag(text: String, color: Color) {
 
 @Composable
 fun Dot(color: Color, size: Dp = 8.dp) { Box(Modifier.size(size).clip(CircleShape).background(color)) }
+
+object Sz { const val H1 = 28; const val H2 = 22; const val H3 = 17; const val Body = 15; const val Small = 13; const val Tiny = 11 }
+
+private val glassEdge = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.06f)))
+
+/** زجاج شفاف: خلفية بيضاء شفافة + حدّ متدرّج */
+fun Modifier.glass(radius: Dp = 18.dp, tint: Color = Color.White, alpha: Float = 0.08f): Modifier {
+    val sh = RoundedCornerShape(radius)
+    return this.clip(sh).background(tint.copy(alpha = alpha)).border(1.dp, glassEdge, sh)
+}
+
+@Composable
+fun GlassButton(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, tint: Color = Color.White, alpha: Float = 0.12f, onClick: () -> Unit) {
+    Box(modifier.height(54.dp).glass(16.dp, tint, alpha).clickable { onClick() }, contentAlignment = Alignment.Center) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (icon != null) Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+            T(text, Sz.Body + 1, Color.White, FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun GlassCard(modifier: Modifier = Modifier, radius: Dp = 20.dp, alpha: Float = 0.07f, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    val m = modifier.glass(radius, Color.White, alpha)
+    Column(if (onClick != null) m.clickable { onClick() } else m, content = content)
+}

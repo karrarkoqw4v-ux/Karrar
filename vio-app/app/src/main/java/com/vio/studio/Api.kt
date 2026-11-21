@@ -1,35 +1,43 @@
 package com.vio.studio
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.provider.MediaStore
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** اتصال اختياري بخادم Vio (للفيديو/الذكاء الاصطناعي/الروابط). يعمل في خيط خلفي. */
+/** جلب فيديو تيك توك بدون علامة مائية مباشرة من الجهاز (نفس مصدر البوت: tikwm) */
 object Api {
-    private fun call(path: String, body: JSONObject?): Pair<Int, String> {
-        val u = URL(Session.server.trimEnd('/') + path)
-        val c = u.openConnection() as HttpURLConnection
-        c.connectTimeout = 8000; c.readTimeout = 60000
-        if (body != null) { c.requestMethod = "POST"; c.doOutput = true; c.setRequestProperty("Content-Type", "application/json"); c.outputStream.use { it.write(body.toString().toByteArray()) } }
-        val code = c.responseCode
-        val txt = (if (code < 400) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
-        return code to txt
-    }
-
     fun async(block: () -> String, done: (String) -> Unit) {
         val h = android.os.Handler(android.os.Looper.getMainLooper())
-        Thread { val r = try { block() } catch (e: Exception) { "تعذّر الاتصال بالخادم" }; h.post { done(r) } }.start()
+        Thread { val r = try { block() } catch (e: Exception) { "تعذّر الجلب: تأكد من الاتصال بالإنترنت والرابط" }; h.post { done(r) } }.start()
     }
 
-    fun ping(): String {
-        if (Session.server.isBlank()) return "لم تُضبط عنوان الخادم بعد"
-        val (c, _) = call("/api/ping", null)
-        return if (c == 200) "متصل بالخادم" else "الخادم ردّ برمز $c"
+    private fun open(u: String): HttpURLConnection {
+        val c = URL(u).openConnection() as HttpURLConnection
+        c.connectTimeout = 15000; c.readTimeout = 60000
+        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36")
+        return c
     }
 
-    fun link(url: String): String {
-        if (Session.server.isBlank()) return "اضبط عنوان الخادم من الإعدادات أولاً"
-        val (c, t) = call("/api/link", JSONObject().put("url", url))
-        return if (c == 200) "تم: " + (JSONObject(t).optString("title").ifBlank { "الفيديو جاهز" }) else "فشل الجلب ($c)"
+    fun tiktok(ctx: Context, link: String): String {
+        if (!(link.contains("tiktok.com"))) return "الرابط ليس من تيك توك"
+        val api = "https://www.tikwm.com/api/?hd=1&url=" + java.net.URLEncoder.encode(link, "UTF-8")
+        val js = JSONObject(open(api).inputStream.bufferedReader().use { it.readText() })
+        if (js.optInt("code") != 0) return "تعذّر جلب الفيديو: الرابط غير صحيح أو محذوف أو خاص"
+        val d = js.getJSONObject("data")
+        var v = d.optString("hdplay").ifBlank { d.optString("play") }
+        if (v.isBlank()) return "هذا الرابط صور (سلايد) وليس فيديو"
+        if (v.startsWith("/")) v = "https://www.tikwm.com$v"
+        val vals = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, "Vio_${System.currentTimeMillis()}.mp4")
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            if (Build.VERSION.SDK_INT >= 29) put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/Vio")
+        }
+        val uri = ctx.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, vals) ?: return "تعذّر الحفظ في المعرض"
+        ctx.contentResolver.openOutputStream(uri)?.use { out -> open(v).inputStream.use { it.copyTo(out) } }
+        return "تم: حُفظ الفيديو في Movies/Vio"
     }
 }
