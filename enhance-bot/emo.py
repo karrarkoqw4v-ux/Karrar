@@ -169,9 +169,22 @@ def _tidy(s: str) -> str:
     return s.strip()
 
 
+_FLAG = re.compile(r"[\U0001F1E6-\U0001F1FF]{2}")  # أعلام الدول العادية تبقى كما هي
+
+
+def _keep_flags(s: str, fn) -> str:
+    out, pos = [], 0
+    for m in _FLAG.finditer(s):
+        out.append(fn(s[pos:m.start()]))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(fn(s[pos:]))
+    return "".join(out)
+
+
 def strip(s: str) -> str:
-    """إزالة كل الإيموجيات العادية (لنصوص لا تدعم المميز)"""
-    return _tidy(_EMOJI.sub("", _PH.sub("", s or "")))
+    """إزالة كل الإيموجيات العادية (لنصوص لا تدعم المميز) عدا أعلام الدول"""
+    return _tidy(_keep_flags(s or "", lambda t: _EMOJI.sub("", _PH.sub("", t))))
 
 
 def html(s: str) -> str:
@@ -191,7 +204,7 @@ def _conv(s: str) -> str:
     def rep(m):
         k = _key(m.group(0))
         return f'<tg-emoji emoji-id="{MAP[k]}">{k}</tg-emoji>' if k else ""
-    s = _EMOJI.sub(rep, s)
+    s = _keep_flags(s, lambda t: _EMOJI.sub(rep, t))
     return _PH.sub(lambda m: f'<tg-emoji emoji-id="{PH[m.group(1)][0]}">{PH[m.group(1)][1]}</tg-emoji>' if m.group(1) in PH else "", s)
 
 

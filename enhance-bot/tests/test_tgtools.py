@@ -45,13 +45,13 @@ async def main():
     proxies.STATE.update({"ts": time.time(), "by_cc": by, "all": {e["key"]: e for e in ents}, "alive": 5, "total": 9})
     # كل الدول تظهر (68)، والتي فيها سيرفرات أولاً
     cs = proxies.countries()
-    assert len(cs) == len(FLAGS) == 68, len(cs)
+    assert len(cs) == len(FLAGS) == 107, len(cs)
     assert [c for c, n in cs[:3]] == ["IR", "JP", "EG"] or cs[0][0] == "IR", cs[:3]
     assert dict(cs)["IR"] == 3 and dict(cs)["SA"] == 0
     cb = CB("tt:px")
     await tgtools.cb_px(cb)
     txt, kb = cb.message.out[-1]
-    assert "68 دولة" in txt and "مستقرة الآن: 3" in txt
+    assert "107 دولة" in txt and "مستقرة الآن: 3" in txt
     btns = [b for r in kb.inline_keyboard for b in r]
     assert any(b.icon_custom_emoji_id == FLAGS["IR"][0] for b in btns)
     emo.markup(kb)  # لا يكسر الأزرار
@@ -68,7 +68,7 @@ async def main():
     cb = CB(srv[0].callback_data)
     await tgtools.cb_server(cb)
     asyncio.sleep = real_sleep
-    assert cb.message.out[0][0].startswith("جاري تجهيز السيرفر")
+    assert cb.message.out[0][0].startswith("جاري تجهيز الخادم")
     txt, kb = cb.message.out[-1]
     assert "a.ir" in txt and "444" in txt and "ping" in txt
     url = [b for r in kb.inline_keyboard for b in r if b.url][0].url
@@ -76,7 +76,7 @@ async def main():
     # دولة بلا سيرفرات
     cb = CB("tt:pc:SA")
     await tgtools.cb_country(cb)
-    assert "لا توجد سيرفرات مستقرة" in cb.message.out[-1][0]
+    assert "لا توجد خوادم مستقرة" in cb.message.out[-1][0]
     # سيرفر منتهٍ
     cb = CB("tt:ps:deadbeef")
     await tgtools.cb_server(cb)
