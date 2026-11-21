@@ -843,6 +843,10 @@ _enh("e_clarity", "وضوح محلي (Clarity)", lambda i: cvlib.sharpen(cvlib.c
 
 
 _flt("f_mono_blue", "أحادي أزرق", lambda i: _duotone(i, (60, 20, 5), (255, 210, 150)))
+_flt("f_clarendon", "كلارندون (مشرق وحيوي)", lambda i: grade(i, hi=(-.02, .01, .04), sat=1.25, con=1.15, bright=.03))
+_flt("f_rose_film", "فيلم وردي حالم", lambda i: grade(i, sh=(.04, -.02, .06), hi=(.02, -.01, .05), sat=.95, con=.95, bright=.03))
+_flt("f_mint_cool", "نعناعي منعش", lambda i: grade(i, sh=(.06, .05, -.04), mid=(.02, .04, -.03), sat=1.05, con=1.05))
+_flt("f_golden_matte", "ذهبي مطفي", lambda i: grade(i, sh=(-.02, 0, .03), hi=(-.06, 0, .07), sat=.9, con=.92, bright=.04))
 _enh("e_sky", "تقوية السماء", lambda i: _sky(i))
 
 
