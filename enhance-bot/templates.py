@@ -71,6 +71,9 @@ NEW_TEMPLATES = [
     ("✨ ساطع نظيف", [T("clean_bright"), T("cv_sharp"), T("bloom_beat")]),
     ("💥 انفجار ألوان", [T("hue_pulse"), T("rgb_beat"), T("zoom_beat"), T("strobe")]),
     ("🎬 ترايلر درامي", [T("teal_dark"), T("letterbox"), T("zoom_out_beat"), T("film_burn"), T("vignette")]),
+    ("🔴 أحمر وحيد", [T("hold_red"), T("vignette_pulse"), T("zoom_beat"), T("filmgrain")]),
+    ("🫥 ألوان تسقط", [T("auto_vivid"), T("sat_drop"), T("rgb_beat"), T("flash_beat")]),
+    ("🪞 مرآة وإيقاع", [T("tokyo"), T("mirror_split"), T("vert_shake"), T("bloom_beat")]),
 ]
 # قوالب بروح تطبيقات المونتاج العالمية (تنفيذ أصلي بالكامل)
 CAPCUT_TEMPLATES = [
@@ -87,4 +90,4 @@ CAPCUT_TEMPLATES = [
     ("📱 تيك توك ترند + وسم", [T("ratio916"), T("vivid"), T("punch"), T("tag", text="NEW", style="live", pos="tl")]),
     ("💥 غليتش وايب", [T("cyber"), T("glitch_burst"), T("rgb_beat"), T("blur_burst")]),
 ]
-TEMPLATE_SETS = {"c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 4), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
+TEMPLATE_SETS = {"c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 5), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}

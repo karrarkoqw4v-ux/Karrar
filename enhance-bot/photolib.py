@@ -781,6 +781,10 @@ PHOTO_TEMPLATES = [
     ("👻 أثر وغليتش", ["f_cyber", "a_trail", "a_pixel_slice"]),
     ("🔁 نيجاتيف ناعم", ["f_moody", "f_invert_soft", "a_chroma"]),
     ("💥 بوب RGB", ["auto", "a_rgb_pop", "a_glow"]),
+    ("☁️ سماء درامية", ["e_sky", "e_clarity", "a_vignette"]),
+    ("🌸 بورتريه وردي", ["bg_rose", "e_portrait", "a_sparkle"]),
+    ("🏅 بورتريه ذهبي", ["bg_gold", "e_portrait", "a_glow"]),
+    ("🔵 أحادي أزرق فني", ["f_mono_blue", "a_grain", "a_vignette"]),
 ]
 
 
