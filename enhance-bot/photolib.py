@@ -348,6 +348,16 @@ def bg_remove_soft(img, a):
 _bgfx("bg_cinema_dark", "خلفية سينمائية داكنة", lambda i: _u(_f(blur(i, 0.04)) * 0.22 * vignette_map(i, 1.2, 0.6)[..., None]), "الشخص واضح والخلفية مظلمة مضببة.")
 
 
+@tool("bg_clean_edges", "bg", "تنظيف حواف القص (إزالة الهالة)", alpha=True, desc="بعد إزالة الخلفية: يقلّص الحافة قليلاً لإزالة بقايا الخلفية حول الجسم.")
+def bg_clean_edges(img, a):
+    if a is None:
+        a = mask(img)
+    k = max(1, int(_S(img) * 0.002))
+    er = cv2.erode(a, np.ones((2 * k + 1, 2 * k + 1), np.uint8))
+    a2 = cv2.GaussianBlur(er, (0, 0), max(0.6, k * 0.6))
+    return img, np.clip(a2, 0, 1).astype(np.float32)
+
+
 @tool("bg_sticker", "bg", "ستيكر بحدّ أبيض (شفاف)", alpha=True, desc="يقص الجسم ويضيف إطاراً أبيض كالملصق.")
 def bg_sticker(img, a):
     m = mask(img) if a is None else a

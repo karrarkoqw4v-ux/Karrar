@@ -235,7 +235,7 @@ async def screen_home():
         [("⟦layers⟧ الجلسات النشطة", "ad:sess"), ("🔔 الإشعارات", "ad:alerts")],
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
-        [("📋 تقرير اليوم مقابل أمس", "ad:rep")],
+        [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
     ]
@@ -889,3 +889,50 @@ async def cb_idle_delete(cb: CallbackQuery):
         await db.delete_account(r[0])
     await cb.answer(f"حُذف {len(rows)} حساب", show_alert=True)
     await show(cb, f"✅ حُذفت {len(rows)} حسابات خاملة.", kb([[("⟦left⟧ الحسابات", "ad:acc:last_login:0")], BACK]))
+
+
+@router.callback_query(F.data == "ad:health")
+async def cb_health(cb: CallbackQuery):
+    """فحص سريع لكل ما يعتمد عليه البوت"""
+    await cb.answer("⏳ جاري الفحص")
+    import cv2
+    import numpy as np
+    checks = []
+
+    async def ff(name):
+        try:
+            pr = await asyncio.create_subprocess_exec(name, "-version", stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            await asyncio.wait_for(pr.wait(), 8)
+            return pr.returncode == 0
+        except Exception:  # noqa: BLE001
+            return False
+    checks.append(("FFmpeg", await ff("ffmpeg")))
+    checks.append(("FFprobe", await ff("ffprobe")))
+    try:
+        import onnxruntime  # noqa: F401
+        checks.append(("onnxruntime", True))
+    except Exception:  # noqa: BLE001
+        checks.append(("onnxruntime", False))
+    checks.append(("OpenCV contrib (guidedFilter)", hasattr(cv2, "ximgproc")))
+    checks.append(("OpenCV dnn_superres", hasattr(cv2, "dnn_superres")))
+    for n in ("u2net_human_seg.onnx", "silueta.onnx", "u2netp.onnx"):
+        checks.append((f"نموذج {n.split('.')[0]}", _model_ok(n)))
+    try:
+        checks.append(("قاعدة البيانات", (await db.count_users()) >= 0))
+    except Exception:  # noqa: BLE001
+        checks.append(("قاعدة البيانات", False))
+    try:
+        import art
+        art.text_png("اختبار", 200, 100, "mid", "/tmp/_h.png")
+        checks.append(("الخطوط العربية", True))
+    except Exception:  # noqa: BLE001
+        checks.append(("الخطوط العربية", False))
+    try:
+        import photolib
+        s = photolib.apply_one((np.full((120, 120, 3), 128, np.uint8), None), "auto")
+        checks.append(("محرك الصور", s[0].shape == (120, 120, 3)))
+    except Exception:  # noqa: BLE001
+        checks.append(("محرك الصور", False))
+    ok = sum(1 for _, v in checks if v)
+    text = f"🩺 <b>الفحص السريع</b> — {ok}/{len(checks)} سليم\n\n" + "\n".join(f"{'✅' if v else '❌'} {n}" for n, v in checks)
+    await show(cb, text, kb([[("⟦refresh⟧ إعادة الفحص", "ad:health"), ("⟦grid⟧ حالة النظام", "ad:sys")], BACK]))
