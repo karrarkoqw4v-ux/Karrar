@@ -236,6 +236,7 @@ async def screen_home():
         [("⟦minus⟧ المحظورون", "ad:bans"), ("⟦gear⟧ الإعدادات", "ad:set")],
         [("⟦grid⟧ حالة النظام", "ad:sys"), ("⟦download⟧ تصدير البيانات", "ad:exp")],
         [("📋 تقرير اليوم مقابل أمس", "ad:rep"), ("🩺 فحص سريع", "ad:health")],
+        [InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")],
         [("⟦trash⟧ تنظيف الملفات المؤقتة", "ad:clean"), ("⟦refresh⟧ تحديث", "ad:home")],
         [("❌ إغلاق اللوحة", "ad:close")],
     ]
@@ -941,3 +942,121 @@ async def cb_health(cb: CallbackQuery):
     ok = sum(1 for _, v in checks if v)
     text = f"🩺 <b>الفحص السريع</b> — {ok}/{len(checks)} سليم\n\n" + "\n".join(f"{'✅' if v else '❌'} {n}" for n, v in checks)
     await show(cb, text, kb([[("⟦refresh⟧ إعادة الفحص", "ad:health"), ("⟦grid⟧ حالة النظام", "ad:sys")], BACK]))
+
+
+# ---------------------------------------------------------------- «اتصال بكلاود»: تقرير معلومات الاستضافة (بلا أسرار)
+import collections  # noqa: E402
+import re as _re  # noqa: E402
+import subprocess  # noqa: E402
+
+_LOGBUF: collections.deque = collections.deque(maxlen=120)
+_SECRET = _re.compile(r"(\d{6,}:[A-Za-z0-9_-]{25,})|((?i:token|password|passwd|secret|cookie|authorization)\s*[=:]\s*\S+)")
+
+
+class _BufHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            _LOGBUF.append(_SECRET.sub("[محجوب]", self.format(record))[:300])
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def attach_log_buffer():
+    h = _BufHandler()
+    h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    logging.getLogger().addHandler(h)
+
+
+def _host_platform() -> str:
+    env = os.environ
+    for key, name in (("RENDER", "Render"), ("RAILWAY_ENVIRONMENT", "Railway"), ("KOYEB_APP_NAME", "Koyeb"), ("DYNO", "Heroku"), ("FLY_APP_NAME", "Fly.io"),
+                      ("REPL_ID", "Replit"), ("SPACE_ID", "Hugging Face Space"), ("PTERODACTYL", "Pterodactyl"), ("KUBERNETES_SERVICE_HOST", "Kubernetes"), ("container", "Container")):
+        if env.get(key):
+            return name
+    if Path("/.dockerenv").exists():
+        return "Docker"
+    return "خادم/VPS (غير محدد)"
+
+
+def _git_info() -> str:
+    try:
+        base = Path(__file__).parent
+        r = subprocess.run(["git", "-C", str(base), "log", "-1", "--format=%h %cd %s", "--date=short"], capture_output=True, text=True, timeout=5)
+        return r.stdout.strip() or "—"
+    except Exception:  # noqa: BLE001
+        return "— (لا يوجد git)"
+
+
+async def host_report() -> str:
+    import aiogram
+    import photolib
+    work = Path(CTX.get("WORK", "work"))
+    mt, ma = _meminfo()
+    du = shutil.disk_usage(str(work if work.exists() else "."))
+    ff = "—"
+    try:
+        pr = await asyncio.create_subprocess_exec("ffmpeg", "-version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+        out, _ = await asyncio.wait_for(pr.communicate(), 5)
+        ff = out.decode().splitlines()[0]
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        load = "/".join(f"{x:.2f}" for x in os.getloadavg())
+    except OSError:
+        load = "—"
+    env_names = sorted(k for k in os.environ if k in ("BOT_TOKEN", "ADMIN_IDS", "WEBAPP_URL", "PROXY", "PORT", "MAX_PARALLEL", "WORK_DIR", "DB_PATH", "CA_BUNDLE", "IG_COOKIES", "PHOTO_MODELS", "PREMIUM_EMOJI"))
+    t = await db.totals()
+    at = await db.account_totals()
+    models = {n: bool(photolib._model_path(n)) for n in ("u2net_human_seg.onnx", "silueta.onnx", "u2netp.onnx")}
+    lines = [
+        "=== تقرير معلومات الاستضافة (للإرسال إلى Claude) ===",
+        f"الوقت: {time.strftime('%Y-%m-%d %H:%M:%S')}  |  يعمل منذ: {fmt_dur(time.time() - STARTED)}",
+        f"المنصة (تخمين): {_host_platform()}",
+        f"الجهاز: {platform.node()} | {platform.platform()} | {platform.machine()}",
+        f"Python {platform.python_version()} | aiogram {aiogram.__version__} | {ff}",
+        f"المعالج: {os.cpu_count()} نواة | الحِمل: {load}",
+        f"الذاكرة: {(mt - ma) / 1e9:.2f}/{mt / 1e9:.2f} GB | القرص: {(du.total - du.free) / 1e9:.1f}/{du.total / 1e9:.1f} GB",
+        f"مجلد العمل: {work} | المشروع: {Path(__file__).parent}",
+        f"آخر تحديث (git): {_git_info()}",
+        "متغيرات البيئة المضبوطة (أسماء فقط، بلا قيم): " + (", ".join(env_names) or "—"),
+        f"الجلسات: فيديو {len(CTX.get('JOBS', {}))} | صور {len(photo.PJOBS)}",
+        f"المستخدمون {t['users']} | الحسابات {at['total']} | العمليات الناجحة {t['jobs_all']} | الفاشلة {t['failed_all']}",
+        "نماذج فصل الخلفية: " + ", ".join(f"{k.split('.')[0]}={'✔' if v else '✘'}" for k, v in models.items()),
+        "الإعدادات: " + ", ".join(f"{k}={db.setting(k)}" for k in sorted(db.DEFAULTS)),
+        "",
+        "--- آخر سجلات البوت (بعد حجب التوكنات) ---",
+        *list(_LOGBUF)[-60:],
+    ]
+    return "\n".join(lines)
+
+
+@router.callback_query(F.data == "ad:connect")
+async def cb_connect(cb: CallbackQuery, bot: Bot):
+    await cb.answer("⏳ جاري تجهيز التقرير")
+    rep = await host_report()
+    name = f"claude_host_report_{time.strftime('%Y%m%d_%H%M')}.txt"
+    await bot.send_document(cb.from_user.id, BufferedInputFile(rep.encode("utf-8"), name),
+                            caption="🔗 <b>اتصال بكلاود</b>\n\nهذا تقرير معلومات استضافتك (بلا أي توكن أو كلمة سر).\n"
+                                    "1) افتح محادثتك مع Claude\n2) أرسل له هذا الملف\n"
+                                    "3) بعدها يشتغل على ملفاتك ويرسل لك التحديثات.\n\n"
+                                    "⚠️ البوت لا يفتح باباً خارجياً لأي أحد: لا أوامر عن بعد ولا وصول للخادم من خلاله.",
+                            reply_markup=kb([[("⟦refresh⟧ تقرير جديد", "ad:connect"), BACK[0]]]))
+
+
+async def announce_start(bot: Bot):
+    """رسالة للمسؤول عند تشغيل البوت على الاستضافة فيها زر «اتصال بكلاود» (مرة كل 10 دقائق كحد أقصى)"""
+    if os.getenv("ANNOUNCE_START", "1") == "0":
+        return
+    last = float(db.setting("last_start_announce") or 0)
+    if time.time() - last < 600:
+        return
+    await db.set_setting("last_start_announce", str(time.time()))
+    text = (f"✅ <b>البوت اشتغل على الاستضافة</b>\n"
+            f"🖥 {esc(_host_platform())} • {esc(platform.node())}\n"
+            f"🐍 Python {platform.python_version()} • {os.cpu_count()} نواة\n"
+            f"🕐 {time.strftime('%Y-%m-%d %H:%M')}\n\nاضغط «اتصال بكلاود» لأخذ تقرير الاستضافة وإرساله لـ Claude.")
+    for a in ADMIN_IDS:
+        try:
+            await bot.send_message(a, text, reply_markup=kb([[InlineKeyboardButton(text="🔗 اتصال بكلاود", callback_data="ad:connect", style="success")], [("⟦gear⟧ لوحة التحكم", "ad:home")]]))
+        except Exception:  # noqa: BLE001
+            pass

@@ -308,7 +308,7 @@ async def account_card(uid: int):
             f"⟦star⟧ الخطة: {plan} ({sub})\n"
             f"📅 أُنشئ: {time.strftime('%Y-%m-%d', time.localtime(acc[4]))} • آخر دخول: {time.strftime('%Y-%m-%d %H:%M', time.localtime(acc[5] or acc[4]))}\n"
             f"⟦badge⟧ أعمالي: {n} (ناجحة {ok})\n\n<b>آخر أعمالي:</b>\n{rec}")
-    return text, kb([[("⟦key⟧ تغيير كلمة السر", "au:pw"), ("⟦logout⟧ تسجيل الخروج", "au:out")], [("⟦film⟧ القائمة", "au:start")]])
+    return text, kb([[("⟦key⟧ تغيير كلمة السر", "au:pw"), ("⟦logout⟧ تسجيل الخروج", "au:out")], [("⟦film⟧ القائمة", "au:start"), ("🗑 حذف حسابي", "au:del")]])
 
 
 @router.message(Command("account"))
@@ -363,3 +363,22 @@ async def cb_start(cb: CallbackQuery):
     await cb.answer()
     if START["fn"]:
         await START["fn"](cb.message)
+
+
+@router.callback_query(F.data == "au:del")
+async def cb_del(cb: CallbackQuery):
+    await cb.answer()
+    await cb.message.edit_text("⚠️ <b>حذف حسابك نهائياً؟</b>\nيُحذف الحساب وكلمة السر وتُفصل بيانات أعمالك عنه. لا يمكن التراجع.",
+                               reply_markup=kb([[InlineKeyboardButton(text="🗑 نعم، احذف حسابي", callback_data="au:delyes", style="danger"), ("↩️ إلغاء", "au:me")]]))
+
+
+@router.callback_query(F.data == "au:delyes")
+async def cb_del_yes(cb: CallbackQuery):
+    aid = db.account_of(cb.from_user.id)
+    if aid:
+        await db.delete_account(aid)
+        await db.add_alert("account", f"حذف حساب #{aid} بطلب صاحبه")
+    await cb.answer("تم حذف حسابك")
+    STATE.pop(cb.from_user.id, None)
+    t, k = welcome_screen()
+    await cb.message.edit_text("✅ تم حذف حسابك.\n\n" + t, reply_markup=k)

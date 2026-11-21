@@ -146,7 +146,7 @@ def _kb(rows: list) -> InlineKeyboardMarkup:
 # ---------------- لوحات الأزرار تحت الفيديو ----------------
 def kb_pro_home(j: dict) -> InlineKeyboardMarkup:
     """واجهة «المصممين المحترفين»: كل الأدوات والقوالب مجمّعة بأقسام احترافية"""
-    rows = [[("🏆 باقات المصممين المحترفين (17)", "tpl:p")],
+    rows = [[("🏆 باقات المصممين المحترفين (19)", "tpl:p")],
             [("🎥 قوالب كاب كات (12)", "tpl:c"), ("⚡ تأثيرات كاب كات", "c:ed:0")],
             [("🏆 قوالب مصممين (150)", "dz"), ("🆕 قوالب الإيقاع (18)", "tpl:n")],
             [("🎵 قوالب تيك توك (8)", "tpl:k"), ("🔥 قوالب الإيديت (12)", "tpl:e")],
@@ -1538,6 +1538,8 @@ async def main():
     except Exception:  # noqa: BLE001
         pass
     asyncio.create_task(cleaner())
+    admin.attach_log_buffer()
+    asyncio.create_task(admin.announce_start(bot))
     asyncio.create_task(asyncio.to_thread(photolib.ensure_models, lambda s: print(s, flush=True)))  # تنزيل نموذج فصل الخلفية الدقيق مرة واحدة
     asyncio.create_task(photo.cleaner())
     await bot.delete_webhook(drop_pending_updates=True)

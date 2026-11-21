@@ -994,6 +994,10 @@ PHOTO_PRO_PACKS = [
     ("💥 أكشن درامي", ["pro_bleach", "pro_dodge_burn", "a_vignette"]),
     ("🪩 حفلة نيون", ["f_tokyo", "a_light_streak", "a_sparkle", "a_neon_frame"]),
 ]
+PHOTO_PRO_PACKS += [
+    ("✨ جودة نقية", ["pro_deband", "pro_luma_sharp", "pro_color_pop"]),
+    ("🧑 بشرة مثالية", ["pro_even_skin", "pro_dodge_burn", "a_softfocus"]),
+]
 
 
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)

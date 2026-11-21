@@ -208,7 +208,7 @@ def style_for(b: InlineKeyboardButton) -> str | None:
         return "success"
     if d in ("au:login", "au:gen", "au:me", "mode:pro", "pro:video") or d.startswith(("ptp:", "pg:p")):
         return "primary"
-    if d in ("au:outy",):
+    if d in ("au:outy", "au:delyes"):
         return "danger"
     if d in ("go", "pg", "pv", "ad:bcgo") or d.startswith("ad:unban:"):
         return "success"

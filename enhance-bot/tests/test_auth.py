@@ -88,6 +88,9 @@ async def main():
     await click(7, f"ad:ad:{aid}"); assert (await db.account_by_id(aid))[8] == 1
     await click(7, f"ad:ap:{aid}:pro:30"); assert (await db.account_by_id(aid))[6] == "pro"
     await click(7, f"ad:ax:{aid}:y"); assert await db.account_by_id(aid) is None; print("ADMIN ACCOUNTS OK")
+    X = 58
+    await click(X, "au:reg"); await say(X, "Temp_1"); await click(X, "au:gen"); assert db.account_of(X)
+    await click(X, "au:del"); await click(X, "au:delyes"); assert db.account_of(X) is None and await db.account_by_name("Temp_1") is None; print("self delete OK")
     await db.set_setting("allow_register", "0"); W = 57
     await click(W, "au:reg"); assert "متوقف" in last_text()["text"]; await db.set_setting("allow_register", "1"); print("registration toggle OK")
     print("AUTH OK")

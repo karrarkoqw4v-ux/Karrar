@@ -112,5 +112,7 @@ PRO_PACKS = [
     ("💥 باقة أكشن", [T("pro_bleach"), T("pro_clarity"), T("shake_beat"), T("whip_zoom"), T("vignette")]),
     ("🪩 باقة حفلات", [T("tokyo"), T("strobe"), T("hue_pulse"), T("bloom_beat"), T("pro_audio_master")]),
     ("📰 باقة مجلة فيديو", [T("f_matte") if False else T("matte"), T("pro_local_contrast"), T("pro_skin_glow"), T("ratio45")]),
+    ("✨ باقة جودة نقية", [T("pro_denoise_video"), T("pro_deband"), T("pro_clarity"), T("pro_punch")]),
+    ("🌫 باقة حالمة Orton", [T("pro_soft_light"), T("golden_hour"), T("pro_skin_glow"), T("vignette")]),
 ]
 TEMPLATE_SETS = {"p": ("🏆 باقات المصممين المحترفين", PRO_PACKS, 5), "c": ("🎥 قوالب بروح كاب كات", CAPCUT_TEMPLATES, 4), "n": ("🆕 قوالب الإيقاع والسينما الجديدة", NEW_TEMPLATES, 6), "k": ("🎵 قوالب ستايل تيك توك", TT_TEMPLATES, 4), "l": ("🎞 قوالب الأجواء والألوان", TEMPLATES, 5), "e": ("🔥 قوالب الإيديت والإيقاع", EDIT_TEMPLATES, 4)}
