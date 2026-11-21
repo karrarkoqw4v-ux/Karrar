@@ -339,6 +339,15 @@ _hide("hide_pixel", "إخفاء الشخص/الجسم بالبكسلة", lambda 
 _hide("hide_black", "إخفاء الشخص كظل أسود", lambda i: _u(_f(i) * 0.0))
 
 
+@tool("bg_remove_soft", "bg", "إزالة الخلفية (حواف ناعمة)", alpha=True, desc="نفس الإزالة بحواف أنعم للشعر والملابس الخفيفة.")
+def bg_remove_soft(img, a):
+    m = cv2.GaussianBlur(mask(img), (0, 0), max(1.0, _S(img) * 0.0025))
+    return img, m if a is None else a * m
+
+
+_bgfx("bg_cinema_dark", "خلفية سينمائية داكنة", lambda i: _u(_f(blur(i, 0.04)) * 0.22 * vignette_map(i, 1.2, 0.6)[..., None]), "الشخص واضح والخلفية مظلمة مضببة.")
+
+
 @tool("bg_sticker", "bg", "ستيكر بحدّ أبيض (شفاف)", alpha=True, desc="يقص الجسم ويضيف إطاراً أبيض كالملصق.")
 def bg_sticker(img, a):
     m = mask(img) if a is None else a

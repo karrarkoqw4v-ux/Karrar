@@ -647,6 +647,11 @@ def _meminfo():
         return 0, 0
 
 
+def _model_ok(name: str) -> bool:
+    import photolib
+    return photolib._model_path(name) is not None
+
+
 def _dirsize(p: Path) -> int:
     t = 0
     for f in p.rglob("*"):
@@ -689,6 +694,7 @@ async def cb_sys(cb: CallbackQuery):
         f"⚙️ الجلسات: فيديو {len(CTX.get('JOBS', {}))} • صور {len(photo.PJOBS)}\n"
         f"⚙️ الحد المتوازي: {CTX.get('MAX_PARALLEL', '—')} • المنفذ {CTX.get('PORT', '—')}\n"
         f"🌐 الواجهة المصغّرة: {'مفعّلة' if CTX.get('WEBAPP') else 'غير مفعّلة'}"
+        + "\n🧠 نماذج فصل الخلفية: " + " • ".join(f"{n.split('.')[0]} {'✅' if _model_ok(n) else '⏳/❌'}" for n in ("u2net_human_seg.onnx", "silueta.onnx", "u2netp.onnx"))
     )
     await show(cb, text, kb([[("⟦refresh⟧ تحديث", "ad:sys"), ("⟦trash⟧ تنظيف", "ad:clean")], BACK]))
 
