@@ -399,7 +399,32 @@ reg("speed2", "edit", "تسريع 2×", _speed(2), noprev=True)
 reg("speed3", "edit", "تسريع 3×", _speed(3), noprev=True)
 reg("slow05", "edit", "بطيء 0.5×", _speed(0.5), noprev=True)
 reg("slow025", "edit", "بطيء جداً 0.25×", _speed(0.25), noprev=True)
-reg("reverse", "edit", "عكس الفيديو (حتى 60ث)", lambda c: [Piece("pre", ["-t", "60"]), vf("reverse"), af("areverse")], noprev=True)
+def _reverse(c: Ctx):
+    if c.dur > 60:
+        from compose import UserError
+        raise UserError("عكس الفيديو يدعم فيديوهات حتى 60 ثانية (حتى لا يُقصّ الفيديو). اختر أداة أخرى للفيديوهات الأطول.")
+    return [vf("reverse"), af("areverse")]
+
+
+reg("reverse", "edit", "عكس الفيديو (حتى 60ث)", _reverse, noprev=True)
+def _boomerang(c: Ctx):
+    if c.dur > 15:
+        from compose import UserError
+        raise UserError("البومرانج يدعم فيديوهات حتى 15 ثانية (حتى لا يُقصّ الفيديو).")
+    c.dur = c.dur * 2
+    return [cx("[{i}]split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0[{o}]"), Piece("mute")]
+
+
+def _loop2(c: Ctx):
+    if c.dur > 20:
+        from compose import UserError
+        raise UserError("التكرار (لوب) يدعم فيديوهات حتى 20 ثانية (حتى لا يُقصّ الفيديو).")
+    c.dur = c.dur * 2
+    return [cx("[{i}]split[a][b];[a][b]concat=n=2:v=1:a=0[{o}]"), Piece("mute")]
+
+
+reg("boomerang", "edit", "بومرانج (ذهاب وإياب)", _boomerang, noprev=True, desc="يشغّل الفيديو للأمام ثم للخلف (حتى 15 ثانية).")
+reg("loop2", "edit", "تكرار مرتين (لوب)", _loop2, noprev=True)
 reg("rot_r", "edit", "تدوير 90° يمين", lambda c: _rot(c, "transpose=1"))
 reg("rot_l", "edit", "تدوير 90° يسار", lambda c: _rot(c, "transpose=2"))
 
@@ -563,7 +588,7 @@ reg("music", "aud", "إضافة موسيقى (ملف أو رسالة صوتية)
            ("choice", "الصوت الأصلي للفيديو:", [("🎚 دمج مع الموسيقى", 0), ("🔇 استبدال بالموسيقى", 1)], "rep")], noprev=True)
 
 # =============== تصدير خاص ===============
-reg("out_gif", "out", "تحويل إلى GIF متحرك", lambda c: [Piece("out", "gif")], noprev=True)
+reg("out_gif", "out", "تحويل إلى GIF متحرك (أول 12ث فقط)", lambda c: [Piece("out", "gif")], noprev=True)
 reg("out_mp3", "out", "استخراج الصوت MP3", lambda c: [Piece("out", "mp3")], noprev=True)
 reg("out_cover", "out", "صورة غلاف من الفيديو", lambda c: [Piece("out", "cover")], noprev=True)
 

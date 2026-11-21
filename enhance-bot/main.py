@@ -61,7 +61,7 @@ from templates import TEMPLATE_SETS, TEMPLATES
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN", "").strip()
-MAX_DURATION = int(os.getenv("MAX_DURATION", "180"))
+MAX_DURATION = int(os.getenv("MAX_DURATION", "7200"))  # 2 ساعة: لا نقص أبداً من الفيديو
 MAX_PARALLEL = int(os.getenv("MAX_PARALLEL", "2"))
 PROXY = os.getenv("PROXY", "").strip() or None
 ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").replace(" ", "").split(",") if x.strip().isdigit()}
@@ -217,7 +217,7 @@ async def start(msg: Message):
 
 HELP = (
     "📖 <b>طريقة الاستخدام</b>\n\n"
-    "<b>1.</b> أرسل فيديو (حتى 20MB و3 دقائق).\n"
+    "<b>1.</b> أرسل فيديو (حتى 20MB، وأي مدة: يُعدَّل كاملاً بدون قص).\n"
     "<b>2.</b> يظهر لك فيديو معاينة وتحته أزرار. اضغط أي تأثير فيتغيّر الفيديو <b>مباشرة في نفس الرسالة</b> (تقدر تشغّله أو تكتم صوته).\n"
     "<b>3.</b> ✨ <b>تلقائي ذكي</b>: يحلّل ألوان فيديوك ويضبط السطوع والتباين والتشبع والحدة تلقائياً.\n"
     "<b>4.</b> 🥁 <b>إيديت</b>: فلاش وزوم واهتزاز وقلب وغليتش على <b>إيقاع صوت الفيديو</b> فعلاً، أو أضف موسيقى (✂️ المونتاج ← إضافة موسيقى) وسيتبع الإيقاع موسيقاك.\n"
@@ -369,7 +369,7 @@ async def on_video(msg: Message, bot: Bot):
     if size and size > MAX_DL:
         return await msg.answer("⚠️ حجم الفيديو أكبر من 20MB (حد تيليجرام للبوتات). أرسل فيديو أصغر أو قصّه.")
     if dur and dur > MAX_DURATION:
-        return await msg.answer(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقائق. أرسل فيديو أقصر.")
+        return await msg.answer(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقيقة. أرسل فيديو أقصر.")
     drop_job(uid)
     d = WORK / f"{uid}_{uuid.uuid4().hex[:6]}"
     d.mkdir(parents=True, exist_ok=True)
@@ -389,7 +389,7 @@ async def on_video(msg: Message, bot: Bot):
         if not w or not h or dd <= 0:
             raise ValueError("bad video")
         if dd > MAX_DURATION:
-            await note.edit_text(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقائق.")
+            await note.edit_text(f"⚠️ الفيديو أطول من {MAX_DURATION // 60} دقيقة.")
             shutil.rmtree(d, ignore_errors=True)
             return
         # نسخة معاينة للفيديو **كاملاً بدون أي قص** (أبعاد أصغر للفيديوهات الطويلة لتبقى المعاينة سريعة)

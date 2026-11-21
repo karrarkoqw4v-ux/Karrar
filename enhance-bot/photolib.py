@@ -755,6 +755,18 @@ def _sky(img):
     return cvlib.dehaze(cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR), 0.5, 0.4)
 
 
+_art("a_focus_radial", "تركيز دائري (طمس الأطراف)", lambda i: _radial_focus(i))
+_art("a_lens_vignette_warm", "عدسة دافئة بحواف داكنة", lambda i: _u(_f(grade(i, hi=(-.03, .0, .05), sat=1.08)) * vignette_map(i, 1.3, 0.5)[..., None]))
+
+
+def _radial_focus(img):
+    h, w = img.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    d = np.sqrt(((xx - w / 2) / (w / 2)) ** 2 + ((yy - h / 2) / (h / 2)) ** 2)
+    m = np.clip((d - 0.45) / 0.55, 0, 1)
+    return comp(blur(img, 0.03), img, 1 - m)
+
+
 # ---- قوالب جاهزة للصور (بنقرة واحدة تركّب عدة أدوات)
 PHOTO_TEMPLATES = [
     ("🧑 بورتريه احترافي", ["e_portrait", "a_vignette"]),
